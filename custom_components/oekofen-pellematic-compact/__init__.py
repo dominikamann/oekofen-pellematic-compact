@@ -20,7 +20,6 @@ CONFIG_SCHEMA = vol.Schema(
 )
 
 PLATFORMS = ["binary_sensor"]
-PLATFORMS = ["sensor"]
 
 async def async_setup(hass: HomeAssistant, config: dict):
     """Set up the oekofen-pellematic-compact integration."""

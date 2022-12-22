@@ -1,6 +1,6 @@
 {
   "domain": "oekofen-pellematic-compact",
-  "name": "Ökofen Pellematic Compact (Beta)",
+  "name": "Ökofen Pellematic Compact",
   "documentation": "https://github.com/dominikamann/oekofen-pellematic-compact",
   "issue_tracker": "https://github.com/dominikamann/oekofen-pellematic-compact/issues",
   "iot_class": "local_polling",

@@ -31,12 +31,12 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
             total=10, connect=None, sock_connect=None, sock_read=None
         ),
     )
-    entities.append(PeellematicCompact(websession, url, name, update_interval))
+    entities.append(PellematicCompact(websession, url, name, update_interval))
     LOGGER.debug(f"Added entity for url:{url}, name:{name}")
     add_entities(entities, True)
 
 
-class PeellematicCompact(BinarySensorEntity):
+class PellematicCompact(BinarySensorEntity):
     """Representation of a Sensor."""
 
     def __init__(self, websession, url, name, update_interval):
