@@ -1,1 +1,0 @@
-DOMAIN = "oekofen-pellematic-compact"
