@@ -1,2 +1,3 @@
-# oekofen-pellematic-compact
-Ökofen Pellematic Compact Home Assistant Integration
+# Ökofen Pellematic Compact for Home Assistant
+
+## Installation
