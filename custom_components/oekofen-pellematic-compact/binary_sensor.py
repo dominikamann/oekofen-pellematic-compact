@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.const import CONF_URL, CONF_NAME
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .const import CONF_UPDATE_INTERVAL, CONF_URL, LOGGER
+from .const import CONF_UPDATE_INTERVAL, CONF_HEATER_URL, CONF_HEATER_NAME, LOGGER
 
 
 SCAN_INTERVAL = timedelta(minutes=1)
@@ -23,8 +23,8 @@ async def async_setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform."""
     entities = []
     update_interval = discovery_info.get(CONF_UPDATE_INTERVAL)
-    url = discovery_info.get(CONF_URL)
-    name = discovery_info.get(CONF_NAME)
+    url = discovery_info.get(CONF_HEATER_URL)
+    name = discovery_info.get(CONF_HEATER_NAME)
     websession = async_create_clientsession(
         hass,
         timeout=aiohttp.ClientTimeout(
