@@ -10,7 +10,7 @@ CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
             {
-                vol.Required(CONF_HEATER_URL): cv.string,
+                vol.Required(CONF_HEATER_URL): vol.Url(),
                 vol.Optional(CONF_HEATER_NAME, default="Pellematic Compact"): cv.string,
                 vol.Optional(CONF_UPDATE_INTERVAL, default=60): cv.positive_int,
             },
