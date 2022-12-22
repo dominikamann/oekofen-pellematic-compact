@@ -1,7 +1,6 @@
 import voluptuous as vol
 
 from homeassistant.core import HomeAssistant
-from homeassistant.const import CONF_URL, CONF_NAME
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, CONF_UPDATE_INTERVAL, CONF_HEATER_NAME, CONF_HEATER_URL
@@ -12,7 +11,7 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 vol.Required(CONF_HEATER_URL): vol.Url(),
                 vol.Optional(CONF_HEATER_NAME, default="Pellematic Compact"): cv.string,
-                vol.Optional(CONF_UPDATE_INTERVAL, default=60): cv.positive_int,
+                vol.Optional(CONF_UPDATE_INTERVAL, default=1): cv.positive_int,
             },
         ),
     },

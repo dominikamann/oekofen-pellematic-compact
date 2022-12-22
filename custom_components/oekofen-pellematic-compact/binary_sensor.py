@@ -10,7 +10,6 @@ from homeassistant.components.binary_sensor import (
     DEVICE_CLASS_PROBLEM,
     BinarySensorEntity,
 )
-from homeassistant.const import CONF_URL, CONF_NAME
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .const import CONF_UPDATE_INTERVAL, CONF_HEATER_URL, CONF_HEATER_NAME, LOGGER
