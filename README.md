@@ -16,8 +16,8 @@ Go to your Ökofen Pellematic Compact
 ```
 oekofen-pellematic-compact:
   update_interval: 1  # Optional, defaults to 1 minutes
-  url: http://[ip]:[port]/[password]/all
-  name: Pellematic Compact
+  heater_url: http://[ip]:[port]/[password]/all
+  heater_name: Pellematic Compact
 ```
 
 ## Installation
