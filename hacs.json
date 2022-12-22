@@ -1,5 +1,5 @@
 {
   "name": "Ökofen Pellematic Compact",
   "render_readme": true,
-  "iot_class": "calculated"
+  "homeassistant": "2022.8.0"
 }
