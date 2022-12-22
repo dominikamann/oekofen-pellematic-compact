@@ -1,16 +1,17 @@
 # Ökofen Pellematic Compact for Home Assistant
 
+TODO
 
-## Configuration examples
+## Configuration
 
-### Pellematic Compact Settings
+### Pellematic Compact
 
 Go to your Ökofen Pellematic Compact 
   -> Touchscreen -> Open General Settings -> Network Settings 
     -> Scroll down -> Activate JSON Interface 
       -> Enter your IP-Address (Pellematic), Port & Password in the config section below
 
-### HA Configuration
+### Home Assistant Configuration.yaml
 
 ```
 oekofen-pellematic-compact:
