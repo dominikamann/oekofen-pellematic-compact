@@ -1,6 +1,9 @@
 # Ökofen Pellematic Compact for Home Assistant
 
-TODO
+Currently in development. Not ready.
+
+Meanwhile you can follow the following tutorial to get your Pellematic Compact connected
+-> https://github.com/dominikamann/HomeAssistant-Oekofen-Pellematic-REST-Template
 
 ## Configuration
 
