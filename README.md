@@ -1,4 +1,4 @@
-# Ökofen Pellematic Compact for Home Assistant
+# Ökofen Pellematic Compact Integration for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
 
