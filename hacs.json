@@ -1,5 +1,6 @@
 {
   "name": "Ökofen Pellematic Compact",
   "render_readme": true,
-  "homeassistant": "2022.8.0"
+  "content_in_root": false,
+  "homeassistant": "2022.11.0",
 }
