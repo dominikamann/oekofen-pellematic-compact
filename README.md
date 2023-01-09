@@ -14,7 +14,7 @@ After reboot of Home-Assistant, this integration can be configured through the i
 ![grafik](https://user-images.githubusercontent.com/29973737/211389542-0800d1cf-6df9-45d4-8607-5f90689a8628.png)
 
 
-# Enable JSON-Interface on you Ökofen Pellematic Compact
+# Enable JSON-Interface on your Ökofen Pellematic Compact
 
 Go to your Ökofen Pellematic Compact 
   -> Touchscreen -> Open General Settings -> Network Settings 
