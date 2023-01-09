@@ -1,31 +1,160 @@
+"""The Ökofen Pellematic Compact Integration."""
+import asyncio
+import logging
+import threading
+from datetime import timedelta
+from typing import Optional
+import json
+import urllib
+
 import voluptuous as vol
 
+import homeassistant.helpers.config_validation as cv
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import config_validation as cv
-
-from .const import DOMAIN, CONF_UPDATE_INTERVAL, CONF_HEATER_NAME, CONF_HEATER_URL
-
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: vol.Schema(
-            {
-                vol.Required(CONF_HEATER_URL): vol.Url(),
-                vol.Optional(CONF_HEATER_NAME, default="Pellematic Compact"): cv.string,
-                vol.Optional(CONF_UPDATE_INTERVAL, default=1): cv.positive_int,
-            },
-        ),
-    },
-    extra=vol.ALLOW_EXTRA,
+from homeassistant.core import callback
+from homeassistant.helpers.event import async_track_time_interval
+from .const import (
+    DEFAULT_HOST,
+    DOMAIN,
+    DEFAULT_NAME,
+    DEFAULT_SCAN_INTERVAL,
 )
 
-PLATFORMS = ["binary_sensor"]
+_LOGGER = logging.getLogger(__name__)
 
-async def async_setup(hass: HomeAssistant, config: dict):
-    """Set up the oekofen-pellematic-compact integration."""
+PELLEMATIC_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+        vol.Optional(CONF_HOST, default=DEFAULT_HOST): cv.string,
+        vol.Optional(
+            CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+        ): cv.positive_int,
+    }
+)
+
+CONFIG_SCHEMA = vol.Schema(
+    {DOMAIN: vol.Schema({cv.slug: PELLEMATIC_SCHEMA})}, extra=vol.ALLOW_EXTRA
+)
+
+PLATFORMS = ["sensor"]
+
+
+async def async_setup(hass, config):
+    """Set up the Ökofen Pellematic component."""
+    hass.data[DOMAIN] = {}
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Set up a Ökofen Pellematic Component."""
+    host = entry.data[CONF_HOST]
+    name = entry.data[CONF_NAME]
+    scan_interval = entry.data[CONF_SCAN_INTERVAL]
+
+    _LOGGER.debug("Setup %s.%s", DOMAIN, name)
+
+    hub = PellematicHub(hass, name, host, scan_interval)
+
+    """Register the hub."""
+    hass.data[DOMAIN][name] = {"hub": hub}
+
     for component in PLATFORMS:
         hass.async_create_task(
-            hass.helpers.discovery.async_load_platform(
-                component, DOMAIN, config.get(DOMAIN), config
-            )
+            hass.config_entries.async_forward_entry_setup(entry, component)
         )
     return True
+
+
+async def async_unload_entry(hass, entry):
+    """Unload Pellematic entry."""
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(entry, component)
+                for component in PLATFORMS
+            ]
+        )
+    )
+    if not unload_ok:
+        return False
+
+    hass.data[DOMAIN].pop(entry.data["name"])
+    return True
+
+
+class PellematicHub:
+    """Thread safe wrapper class."""
+
+    def __init__(
+        self,
+        hass,
+        name,
+        host,
+        scan_interval,
+    ):
+        """Initialize the hub."""
+        self._hass = hass
+        self._host = host
+        self._lock = threading.Lock()
+        self._name = name
+        self._scan_interval = timedelta(seconds=scan_interval)
+        self._unsub_interval_method = None
+        self._sensors = []
+        self.data = {}
+
+    @callback
+    def async_add_pellematic_sensor(self, update_callback):
+        """Listen for data updates."""
+        # This is the first sensor, set up interval.
+        if not self._sensors:
+            self._unsub_interval_method = async_track_time_interval(
+                self._hass, self.async_refresh_api_data, self._scan_interval
+            )
+
+        self._sensors.append(update_callback)
+
+    @callback
+    def async_remove_pellematic_sensor(self, update_callback):
+        """Remove data update."""
+        self._sensors.remove(update_callback)
+
+        if not self._sensors:
+            """stop the interval timer upon removal of last sensor"""
+            self._unsub_interval_method()
+            self._unsub_interval_method = None
+
+    async def async_refresh_api_data(self, _now: Optional[int] = None) -> None:
+        """Time to update."""
+        if not self._sensors:
+            return
+
+        try:
+            update_result = await self.fetch_pellematic_data()
+        except Exception as e:
+            _LOGGER.exception("Error reading pellematic data")
+            update_result = False
+
+        if update_result:
+            for update_callback in self._sensors:
+                update_callback()
+
+    @property
+    def name(self):
+        """Return the name of this hub."""
+        return self._name
+
+    async def fetch_pellematic_data(self):
+        """Get data from api"""
+        result = await self._hass.async_add_executor_job(fetch_data, self._host)
+        self.data = result
+        # self.data["system.L_ambient"] = result["system"]["L_ambient"]
+        return True
+
+
+def fetch_data(url: str):
+    """Get data"""
+    req = urllib.request.Request(url)
+    result = json.loads(urllib.request.urlopen(req).read().decode("utf-8", "ignore"))
+    return result

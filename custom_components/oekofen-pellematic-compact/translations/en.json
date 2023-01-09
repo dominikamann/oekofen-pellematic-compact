@@ -1,0 +1,21 @@
+{
+    "config": {
+      "title": "\u00d6kofen Pellematic Compact",
+      "step": {
+        "user": {
+          "title": "Define your JSON-Interface connection",
+          "data": {
+            "host": "The full url",
+            "name": "The prefix to be used for your sensors",
+            "scan_interval": "The polling frequentie of the API in seconds"
+          }
+        }
+      },
+      "error": {
+        "already_configured": "Device is already configured"
+      },
+      "abort": {
+        "already_configured": "Device is already configured"
+      }
+    }
+  }
