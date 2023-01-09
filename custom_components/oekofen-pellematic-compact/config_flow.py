@@ -4,7 +4,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL
 
-from ..const import (
+from .const import (
     DOMAIN,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
