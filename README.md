@@ -5,7 +5,9 @@
 Home Assistant integration `oekofen-pellematic-compact` is designed for Ökofen Pellematic Compact Heaters with enabled TCP/JSON-Interface.
 It communicates locally with the heater. This is not an official integration by Ökofen.
 
-![grafik](https://user-images.githubusercontent.com/29973737/211399791-75865ef4-72be-4601-9c34-764a5f4198a2.png)
+![grafik](https://user-images.githubusercontent.com/29973737/214123527-3ae3e842-2f4e-49e0-b18f-e6c2fa4160a2.png)
+
+![grafik](https://user-images.githubusercontent.com/29973737/214123458-af495562-fb5e-491e-843c-c9d7a52ac11a.png)
 
 # Installation
 
