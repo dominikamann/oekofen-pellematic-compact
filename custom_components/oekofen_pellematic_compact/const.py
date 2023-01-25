@@ -235,7 +235,7 @@ WW1_SENSOR_TYPES = {
         None,
     ],
     "L_statetext": ["Hot Water Circuit State", "L_statetext", None, "mdi:fire-circle"],
-    "name": ["Hot Water Circuit State Name", "name", None, "mdi:fire-circle"],
+    "name": ["Hot Water Circuit Name", "name", None, "mdi:fire-circle"],
 }
 
 WW1_BINARY_SENSOR_TYPES = {
