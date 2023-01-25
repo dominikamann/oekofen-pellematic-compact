@@ -67,13 +67,13 @@ PE1_SENSOR_TYPES = {
         None,
     ],
     "L_frt_temp_act": [
-        "Heater Flame Chamber Temperature",
+        "Heater Combustion Chamber Temperature",
         "L_frt_temp_act",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_frt_temp_set": [
-        "Heater Flame Chamber Temperature set",
+        "Heater Combustion Chamber Temperature set",
         "L_frt_temp_set",
         UnitOfTemperature.CELSIUS,
         None,
