@@ -8,16 +8,18 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from .const import (
-    HK1_BINARY_SENSOR_TYPES,
+    HK_BINARY_SENSOR_TYPES,
     PU1_BINARY_SENSOR_TYPES,
     SYSTEM_SENSOR_TYPES,
-    HK1_SENSOR_TYPES,
+    HK_SENSOR_TYPES,
+    SE1_SENSOR_TYPES,
+    SK1_BINARY_SENSOR_TYPES,
+    SK1_SENSOR_TYPES,
     PE1_SENSOR_TYPES,
     PU1_SENSOR_TYPES,
     WW1_BINARY_SENSOR_TYPES,
     WW1_SENSOR_TYPES,
     DOMAIN,
-    ATTR_STATUS_DESCRIPTION,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
 )
@@ -69,12 +71,51 @@ async def async_setup_entry(hass, entry, async_add_entities):
         )
         entities.append(sensor)
 
-    for sensor_info in HK1_SENSOR_TYPES.values():
+    for sensor_info in HK_SENSOR_TYPES.values():
         sensor = PellematicSensor(
             hub_name,
             hub,
             device_info,
             "hk1",
+            sensor_info[0].format(""),
+            sensor_info[1],
+            sensor_info[2],
+            sensor_info[3],
+        )
+        entities.append(sensor)
+        
+    for sensor_info in HK_SENSOR_TYPES.values():
+        sensor = PellematicSensor(
+            hub_name,
+            hub,
+            device_info,
+            "hk2",
+            sensor_info[0].format(" 2"),
+            sensor_info[1],
+            sensor_info[2],
+            sensor_info[3],
+        )
+        entities.append(sensor)
+        
+    for sensor_info in SK1_SENSOR_TYPES.values():
+        sensor = PellematicSensor(
+            hub_name,
+            hub,
+            device_info,
+            "sk1",
+            sensor_info[0],
+            sensor_info[1],
+            sensor_info[2],
+            sensor_info[3],
+        )
+        entities.append(sensor)
+        
+    for sensor_info in SE1_SENSOR_TYPES.values():
+        sensor = PellematicSensor(
+            hub_name,
+            hub,
+            device_info,
+            "se1",
             sensor_info[0],
             sensor_info[1],
             sensor_info[2],
@@ -147,12 +188,38 @@ async def async_setup_entry(hass, entry, async_add_entities):
         )
         entities.append(sensor)
 
-    for sensor_info in HK1_BINARY_SENSOR_TYPES.values():
+    for sensor_info in HK_BINARY_SENSOR_TYPES.values():
         sensor = PellematicBinarySensor(
             hub_name,
             hub,
             device_info,
             "hk1",
+            sensor_info[0].format(""),
+            sensor_info[1],
+            sensor_info[2],
+            sensor_info[3],
+        )
+        entities.append(sensor)
+        
+    for sensor_info in HK_BINARY_SENSOR_TYPES.values():
+        sensor = PellematicBinarySensor(
+            hub_name,
+            hub,
+            device_info,
+            "hk2",
+            sensor_info[0].format(" 2"),
+            sensor_info[1],
+            sensor_info[2],
+            sensor_info[3],
+        )
+        entities.append(sensor)
+        
+    for sensor_info in SK1_BINARY_SENSOR_TYPES.values():
+        sensor = PellematicBinarySensor(
+            hub_name,
+            hub,
+            device_info,
+            "sk1",
             sensor_info[0],
             sensor_info[1],
             sensor_info[2],
