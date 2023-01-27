@@ -21,6 +21,12 @@ SYSTEM_SENSOR_TYPES = {
         UnitOfTemperature.CELSIUS,
         None,
     ],
+    "L_errors": [
+        "Errors",
+        "L_errors",
+        None,
+        "mdi:numeric",
+    ],
 }
 
 PE1_SENSOR_TYPES = {
@@ -77,6 +83,90 @@ PE1_SENSOR_TYPES = {
         "L_frt_temp_set",
         UnitOfTemperature.CELSIUS,
         None,
+    ],
+    "L_frt_temp_end": [
+        "Heater Combustion Chamber Temperature end",
+        "L_frt_temp_end",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_modulation": [
+        "Heater Modulation",
+        "L_modulation",
+        None,
+        "mdi:numeric",
+    ],
+    "L_runtimeburner": [
+        "Heater Burner Runtime",
+        "L_runtimeburner",
+        None,
+        "mdi:numeric",
+    ],
+    "L_resttimeburner": [
+        "Heater Burner Rest Time",
+        "L_resttimeburner",
+        None,
+        "mdi:numeric",
+    ],
+    "L_starts": [
+        "Heater Starts",
+        "L_starts",
+        None,
+        "mdi:numeric",
+    ],
+    "L_runtime": [
+        "Heater Runtime (h)",
+        "L_runtime",
+        None,
+        "mdi:numeric",
+    ],
+    "L_avg_runtime": [
+        "Heater Runtime AVG (m)",
+        "L_avg_runtime",
+        None,
+        "mdi:numeric",
+    ],
+    "L_uw": [
+        "Heater UW",
+        "L_uw",
+        None,
+        "mdi:numeric",
+    ],
+    "L_uw_release": [
+        "Heater UW Release",
+        "L_uw_release",
+        None,
+        "mdi:numeric",
+    ],
+    "L_uw_speed": [
+        "Heater UW Speed",
+        "L_uw_speed",
+        None,
+        "mdi:numeric",
+    ],
+    "L_fluegas": [
+        "Heater Flue Gas",
+        "L_fluegas",
+        None,
+        "mdi:numeric",
+    ],
+    "L_currentairflow": [
+        "Heater Airflow Current",
+        "L_currentairflow",
+        None,
+        "mdi:numeric",
+    ],
+    "L_lowpressure": [
+        "Heater Pressure Low",
+        "L_lowpressure",
+        None,
+        "mdi:numeric",
+    ],
+    "L_lowpressure_set": [
+        "Heater Pressure Low set",
+        "L_lowpressure_set",
+        None,
+        "mdi:numeric",
     ],
     "L_statetext": ["Pellematic State", "L_statetext", None, "mdi:fire-circle"],
 }
@@ -165,6 +255,24 @@ HK_SENSOR_TYPES = {
         UnitOfTemperature.CELSIUS,
         None,
     ],
+    "temp_setback": [
+        "Heating Circuit{0} Temperature Setback",
+        "temp_setback",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "temp_heat": [
+        "Heating Circuit{0} Flow Temperature Heat",
+        "temp_heat",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "temp_vacation": [
+        "Heating Circuit{0} Flow Temperature Vacation",
+        "temp_vacation",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
     "L_statetext": ["Heating Circuit{0} State", "L_statetext", None, "mdi:fire-circle"],
     "name": ["Heating Circuit{0} Name", "name", None, "mdi:fire-circle"],
 }
@@ -203,6 +311,24 @@ PU1_SENSOR_TYPES = {
         UnitOfTemperature.CELSIUS,
         None,
     ],
+    "mintemp_off": [
+        "Buffer Storage Temperature minimum off",
+        "mintemp_off",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "mintemp_on": [
+        "Buffer Storage Temperature minimum on",
+        "mintemp_on",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_pump_release": [
+        "Buffer Storage Pump Release",
+        "L_pump_release",
+        None,
+        "mdi:numeric",
+    ],
     "L_statetext": ["Buffer Storage State", "L_statetext", None, "mdi:water-circle"],
 }
 
@@ -231,6 +357,18 @@ WW1_SENSOR_TYPES = {
     "L_offtemp_act": [
         "Hot Water Circuit Temperature off",
         "L_offtemp_act",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "temp_min_set": [
+        "Hot Water Circuit Temperature minimum set",
+        "temp_min_set",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "temp_max_set": [
+        "Hot Water Circuit Temperature maximum set",
+        "temp_max_set",
         UnitOfTemperature.CELSIUS,
         None,
     ],
