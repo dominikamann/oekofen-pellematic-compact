@@ -149,7 +149,6 @@ class PellematicHub:
         """Get data from api"""
         result = await self._hass.async_add_executor_job(fetch_data, self._host)
         self.data = result
-        # self.data["system.L_ambient"] = result["system"]["L_ambient"]
         return True
 
 
