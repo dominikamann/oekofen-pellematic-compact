@@ -11,6 +11,7 @@ from .const import (
     HK_BINARY_SENSOR_TYPES,
     PU1_BINARY_SENSOR_TYPES,
     SYSTEM_SENSOR_TYPES,
+    SYSTEM_BINARY_SENSOR_TYPES,
     HK_SENSOR_TYPES,
     SE1_SENSOR_TYPES,
     SK1_BINARY_SENSOR_TYPES,
@@ -26,9 +27,11 @@ from .const import (
 
 from homeassistant.const import (
     CONF_NAME,
+    PERCENTAGE,
     UnitOfEnergy,
     UnitOfTemperature,
     UnitOfMass,
+    UnitOfTime,
 )
 
 from homeassistant.components.sensor import (
@@ -71,6 +74,19 @@ async def async_setup_entry(hass, entry, async_add_entities):
         )
         entities.append(sensor)
 
+    for sensor_info in SYSTEM_BINARY_SENSOR_TYPES.values():
+        sensor = PellematicBinarySensor(
+            hub_name,
+            hub,
+            device_info,
+            "system",
+            sensor_info[0],
+            sensor_info[1],
+            sensor_info[2],
+            sensor_info[3],
+        )
+        entities.append(sensor)
+
     for sensor_info in HK_SENSOR_TYPES.values():
         sensor = PellematicSensor(
             hub_name,
@@ -83,7 +99,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             sensor_info[3],
         )
         entities.append(sensor)
-        
+
     for sensor_info in HK_SENSOR_TYPES.values():
         sensor = PellematicSensor(
             hub_name,
@@ -96,7 +112,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             sensor_info[3],
         )
         entities.append(sensor)
-        
+
     for sensor_info in SK1_SENSOR_TYPES.values():
         sensor = PellematicSensor(
             hub_name,
@@ -109,7 +125,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             sensor_info[3],
         )
         entities.append(sensor)
-        
+
     for sensor_info in SE1_SENSOR_TYPES.values():
         sensor = PellematicSensor(
             hub_name,
@@ -200,7 +216,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             sensor_info[3],
         )
         entities.append(sensor)
-        
+
     for sensor_info in HK_BINARY_SENSOR_TYPES.values():
         sensor = PellematicBinarySensor(
             hub_name,
@@ -213,7 +229,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             sensor_info[3],
         )
         entities.append(sensor)
-        
+
     for sensor_info in SK1_BINARY_SENSOR_TYPES.values():
         sensor = PellematicBinarySensor(
             hub_name,
@@ -259,6 +275,8 @@ class PellematicBinarySensor(BinarySensorEntity):
         self._icon = icon
         self._device_info = device_info
         self._attr_device_class = BinarySensorDeviceClass.POWER
+        if icon == "mdi:usb-flash-drive":
+            self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
     @callback
     def _api_data_updated(self):
@@ -345,6 +363,18 @@ class PellematicSensor(SensorEntity):
         if self._unit_of_measurement == UnitOfMass.KILOGRAMS:
             self._attr_device_class = SensorDeviceClass.WEIGHT
             self._attr_state_class = SensorStateClass.MEASUREMENT
+        if self.unit_of_measurement == PERCENTAGE:
+            self._attr_device_class = SensorDeviceClass.POWER_FACTOR
+        if self.unit_of_measurement == UnitOfTime.HOURS:
+            self._attr_device_class = SensorDeviceClass.DURATION
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        if self.unit_of_measurement == UnitOfTime.MINUTES:
+            self._attr_device_class = SensorDeviceClass.DURATION
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        if self.unit_of_measurement == UnitOfTime.SECONDS:
+            self._attr_device_class = SensorDeviceClass.DURATION
+        if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
+            self._attr_device_class = SensorDeviceClass.DURATION
 
     async def async_added_to_hass(self):
         """Register callbacks."""

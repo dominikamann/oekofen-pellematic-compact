@@ -1,6 +1,8 @@
 """Constants for the Ökofen Pellematic Compact integration."""
 
 from homeassistant.const import (
+    UnitOfTime,
+    PERCENTAGE,
     UnitOfTemperature,
     UnitOfMass,
 )
@@ -25,7 +27,16 @@ SYSTEM_SENSOR_TYPES = {
         "Errors",
         "L_errors",
         None,
-        "mdi:numeric",
+        "mdi:alert-circle",
+    ],
+}
+
+SYSTEM_BINARY_SENSOR_TYPES = {
+    "L_usb_stick": [
+        "USB Stick",
+        "L_usb_stick",
+        None,
+        "mdi:usb-flash-drive",
     ],
 }
 
@@ -93,44 +104,44 @@ PE1_SENSOR_TYPES = {
     "L_modulation": [
         "Heater Modulation",
         "L_modulation",
-        None,
-        "mdi:numeric",
+        PERCENTAGE,
+        "mdi:speedometer",
     ],
     "L_runtimeburner": [
-        "Heater Burner Runtime",
+        "Heater Burner Insertion Time",
         "L_runtimeburner",
-        None,
-        "mdi:numeric",
+        UnitOfTime.MILLISECONDS,
+        "mdi:history",
     ],
     "L_resttimeburner": [
-        "Heater Burner Rest Time",
+        "Heater Burner Break Time",
         "L_resttimeburner",
-        None,
-        "mdi:numeric",
+        UnitOfTime.MILLISECONDS,
+        "mdi:history",
     ],
     "L_starts": [
         "Heater Starts",
         "L_starts",
         None,
-        "mdi:numeric",
+        "mdi:fire",
     ],
     "L_runtime": [
-        "Heater Runtime (h)",
+        "Heater Runtime",
         "L_runtime",
-        None,
-        "mdi:numeric",
+        UnitOfTime.HOURS,
+        "mdi:timer",
     ],
     "L_avg_runtime": [
-        "Heater Runtime AVG (m)",
+        "Heater Runtime AVG",
         "L_avg_runtime",
-        None,
-        "mdi:numeric",
+        UnitOfTime.MINUTES,
+        "mdi:timer",
     ],
     "L_uw": [
-        "Heater UW",
+        "Heater UW Rotational speed",
         "L_uw",
-        None,
-        "mdi:numeric",
+        PERCENTAGE,
+        "mdi:rotate-3d-variant",
     ],
     "L_uw_release": [
         "Heater UW Release",
@@ -142,13 +153,13 @@ PE1_SENSOR_TYPES = {
         "Heater UW Speed",
         "L_uw_speed",
         None,
-        "mdi:numeric",
+        "mdi:speedometer",
     ],
     "L_fluegas": [
-        "Heater Flue Gas",
+        "Heater Flue Gas Rotational speed",
         "L_fluegas",
-        None,
-        "mdi:numeric",
+        PERCENTAGE,
+        "mdi:rotate-3d-variant",
     ],
     "L_currentairflow": [
         "Heater Airflow Current",
@@ -188,25 +199,25 @@ SE1_SENSOR_TYPES = {
         "Solar Gain Counter",
         "L_counter",
         None,
-        "mdi:numeric",
+        "mdi:solar-power-variant",
     ],
     "L_total": [
         "Solar Gain Total",
         "L_total",
         None,
-        "mdi:numeric",
+        "mdi:solar-power-variant",
     ],
     "L_day": [
         "Solar Gain Today",
         "L_day",
         None,
-        "mdi:numeric",
+        "mdi:solar-power-variant",
     ],
     "L_yesterday": [
         "Solar Gain Yesterday",
         "L_yesterday",
         None,
-        "mdi:numeric",
+        "mdi:solar-power-variant",
     ],
 }
 
@@ -217,8 +228,18 @@ SK1_SENSOR_TYPES = {
         UnitOfTemperature.CELSIUS,
         None,
     ],
-    "L_statetext": ["Solar Thermal Collector Circuit State", "L_statetext", None, "mdi:fire-circle"],
-    "name": ["Solar Thermal Collector Circuit Name", "name", None, "mdi:fire-circle"],
+    "L_statetext": [
+        "Solar Thermal Collector Circuit State",
+        "L_statetext",
+        None,
+        "mdi:solar-power-variant",
+    ],
+    "name": [
+        "Solar Thermal Collector Circuit Name",
+        "name",
+        None,
+        "mdi:solar-power-variant",
+    ],
 }
 
 SK1_BINARY_SENSOR_TYPES = {
@@ -273,8 +294,24 @@ HK_SENSOR_TYPES = {
         UnitOfTemperature.CELSIUS,
         None,
     ],
-    "L_statetext": ["Heating Circuit{0} State", "L_statetext", None, "mdi:fire-circle"],
-    "name": ["Heating Circuit{0} Name", "name", None, "mdi:fire-circle"],
+    "oekomode": [
+        "Heating Circuit{0} Oekomode",
+        "oekomode",
+        None,
+        "mdi:nature",
+    ],
+    "L_statetext": [
+        "Heating Circuit{0} State",
+        "L_statetext",
+        None,
+        "mdi:heating-coil",
+    ],
+    "name": [
+        "Heating Circuit{0} Name",
+        "name",
+        None,
+        "mdi:heating-coil",
+    ],
 }
 
 HK_BINARY_SENSOR_TYPES = {
@@ -329,7 +366,12 @@ PU1_SENSOR_TYPES = {
         None,
         "mdi:numeric",
     ],
-    "L_statetext": ["Buffer Storage State", "L_statetext", None, "mdi:water-circle"],
+    "L_statetext": [
+        "Buffer Storage State",
+        "L_statetext",
+        None,
+        "mdi:storage-tank",
+    ],
 }
 
 PU1_BINARY_SENSOR_TYPES = {
@@ -372,8 +414,24 @@ WW1_SENSOR_TYPES = {
         UnitOfTemperature.CELSIUS,
         None,
     ],
-    "L_statetext": ["Hot Water Circuit State", "L_statetext", None, "mdi:fire-circle"],
-    "name": ["Hot Water Circuit Name", "name", None, "mdi:fire-circle"],
+    "oekomode": [
+        "Hot Water Circuit Oekomode",
+        "oekomode",
+        None,
+        "mdi:nature",
+    ],
+    "L_statetext": [
+        "Hot Water Circuit State",
+        "L_statetext",
+        None,
+        "mdi:water-sync",
+    ],
+    "name": [
+        "Hot Water Circuit Name",
+        "name",
+        None,
+        "mdi:water-sync",
+    ],
 }
 
 WW1_BINARY_SENSOR_TYPES = {
