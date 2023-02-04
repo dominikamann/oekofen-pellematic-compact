@@ -365,6 +365,7 @@ class PellematicSensor(SensorEntity):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         if self.unit_of_measurement == PERCENTAGE:
             self._attr_device_class = SensorDeviceClass.POWER_FACTOR
+            self._attr_state_class = SensorStateClass.MEASUREMENT
         if self.unit_of_measurement == UnitOfTime.HOURS:
             self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_state_class = SensorStateClass.TOTAL_INCREASING
@@ -373,8 +374,10 @@ class PellematicSensor(SensorEntity):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         if self.unit_of_measurement == UnitOfTime.SECONDS:
             self._attr_device_class = SensorDeviceClass.DURATION
+            self._attr_state_class = SensorStateClass.MEASUREMENT
         if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
             self._attr_device_class = SensorDeviceClass.DURATION
+            self._attr_state_class = SensorStateClass.MEASUREMENT
 
     async def async_added_to_hass(self):
         """Register callbacks."""
