@@ -3,7 +3,7 @@
       "title": "\u00d6kofen Pellematic Compact",
       "step": {
         "user": {
-          "title": "Define your JSON-Interface connection",
+          "title": "Define your \u00d6kofen Pellematic JSON-Interface connection",
           "data": {
             "host": "The full url",
             "name": "The prefix to be used for your sensors",

@@ -2,13 +2,22 @@
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL, DEFAULT_NUM_OF_HEATING_CIRCUIT, CONF_NUM_OF_HEATING_CIRCUIT, CONF_SOLAR_CIRCUIT
+
+from homeassistant.const import (
+    CONF_NAME,
+    CONF_HOST,
+    CONF_SCAN_INTERVAL,
+)
 
 from .const import (
     DOMAIN,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_NUM_OF_HEATING_CIRCUIT,
+    CONF_NUM_OF_HEATING_CIRCUIT,
+    CONF_SOLAR_CIRCUIT,
 )
+
 from homeassistant.core import HomeAssistant, callback
 
 DATA_SCHEMA = vol.Schema(

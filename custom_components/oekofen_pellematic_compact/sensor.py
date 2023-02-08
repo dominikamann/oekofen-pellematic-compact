@@ -55,8 +55,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     hub = hass.data[DOMAIN][hub_name]["hub"]
     num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
     solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
-    
-    
+
     device_info = {
         "identifiers": {(DOMAIN, hub_name)},
         "name": hub_name,
@@ -93,27 +92,27 @@ async def async_setup_entry(hass, entry, async_add_entities):
         entities.append(sensor)
 
     i = 1
-    while i <=  num_heating_circuit:
+    while i <= num_heating_circuit:
         for sensor_info in HK_SENSOR_TYPES.values():
             sensor = PellematicSensor(
                 hub_name,
                 hub,
                 device_info,
                 ("hk" + str(i)),
-                sensor_info[0].format(""),
+                sensor_info[0].format(" " + str(i)),
                 sensor_info[1],
                 sensor_info[2],
                 sensor_info[3],
             )
             entities.append(sensor)
-            
+
         for sensor_info in HK_BINARY_SENSOR_TYPES.values():
             sensor = PellematicBinarySensor(
                 hub_name,
                 hub,
                 device_info,
                 ("hk" + str(i)),
-                sensor_info[0].format(""),
+                sensor_info[0].format(" " + str(i)),
                 sensor_info[1],
                 sensor_info[2],
                 sensor_info[3],
@@ -121,7 +120,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             entities.append(sensor)
         i += 1
 
-    if (solar_circuit == True):
+    if solar_circuit is True:
         for sensor_info in SK1_SENSOR_TYPES.values():
             sensor = PellematicSensor(
                 hub_name,
@@ -134,7 +133,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 sensor_info[3],
             )
             entities.append(sensor)
-            
+
         for sensor_info in SK1_BINARY_SENSOR_TYPES.values():
             sensor = PellematicBinarySensor(
                 hub_name,
@@ -148,7 +147,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
             entities.append(sensor)
 
-
         for sensor_info in SE1_SENSOR_TYPES.values():
             sensor = PellematicSensor(
                 hub_name,
@@ -161,8 +159,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 sensor_info[3],
             )
             entities.append(sensor)
-            
-            
 
     for sensor_info in PE1_SENSOR_TYPES.values():
         sensor = PellematicSensor(
@@ -192,19 +188,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     for sensor_info in WW1_SENSOR_TYPES.values():
         sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "ww1",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
-        )
-        entities.append(sensor)
-
-    for sensor_info in WW1_BINARY_SENSOR_TYPES.values():
-        sensor = PellematicBinarySensor(
             hub_name,
             hub,
             device_info,
