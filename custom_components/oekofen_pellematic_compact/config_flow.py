@@ -2,7 +2,7 @@
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL, DEFAULT_NUM_OF_HEATING_CIRCUIT, CONF_NUM_OF_HEATING_CIRCUIT, CONF_SOLAR_CIRCUIT
 
 from .const import (
     DOMAIN,
@@ -16,6 +16,8 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
         vol.Optional(CONF_HOST, default="http://192.168.178.91:4321/8n2L/all"): str,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
+        vol.Optional(CONF_NUM_OF_HEATING_CIRCUIT, default= DEFAULT_NUM_OF_HEATING_CIRCUIT): int,
+        vol.Optional(CONF_SOLAR_CIRCUIT, default=False): bool,
     }
 )
 

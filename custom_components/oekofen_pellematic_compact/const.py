@@ -10,6 +10,9 @@ from homeassistant.const import (
 DOMAIN = "oekofen_pellematic_compact"
 DEFAULT_NAME = "pellematic"
 DEFAULT_SCAN_INTERVAL = 30
+DEFAULT_NUM_OF_HEATING_CIRCUIT = 1
+CONF_SOLAR_CIRCUIT = "solar_circuit"
+CONF_NUM_OF_HEATING_CIRCUIT = "num_of_heating_circuits"
 DEFAULT_HOST = "http://192.168.178.91:4321/8n2L/all"
 CONF_SOLAREDGE_HUB = "solaredge_hub"
 ATTR_STATUS_DESCRIPTION = "status_description"
