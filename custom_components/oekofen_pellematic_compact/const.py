@@ -226,8 +226,20 @@ SE1_SENSOR_TYPES = {
 
 SK1_SENSOR_TYPES = {
     "L_koll_temp": [
-        "Solar Thermal Collector Circuit Temperature",
+        "Solar Thermal Collector Temperature",
         "L_koll_temp",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_spu": [
+        "Solar Thermal Buffer Storage Temperature lower area",
+        "L_spu",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "spu_max": [
+        "Solar Thermal Buffer Storage Temperature Max",
+        "spu_max",
         UnitOfTemperature.CELSIUS,
         None,
     ],
@@ -340,13 +352,13 @@ PU1_SENSOR_TYPES = {
         None,
     ],
     "L_tpm_act": [
-        "Buffer Storage Temperature lower area",
+        "Buffer Storage Temperature middle area",
         "L_tpm_act",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_tpm_set": [
-        "Buffer Storage Temperature lower area set",
+        "Buffer Storage Temperature middle area set",
         "L_tpm_set",
         UnitOfTemperature.CELSIUS,
         None,
