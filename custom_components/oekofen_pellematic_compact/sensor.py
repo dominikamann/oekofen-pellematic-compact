@@ -10,6 +10,7 @@ from homeassistant.components.binary_sensor import (
 from .const import (
     CONF_NUM_OF_HEATING_CIRCUIT,
     CONF_SOLAR_CIRCUIT,
+    CONF_CIRCULATOR,
     HK_BINARY_SENSOR_TYPES,
     PU1_BINARY_SENSOR_TYPES,
     SYSTEM_SENSOR_TYPES,
@@ -22,6 +23,7 @@ from .const import (
     PU1_SENSOR_TYPES,
     WW1_BINARY_SENSOR_TYPES,
     WW1_SENSOR_TYPES,
+    CIRC1_SENSOR_TYPES,
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
@@ -55,6 +57,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     hub = hass.data[DOMAIN][hub_name]["hub"]
     num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
     solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
+    cirulator = entry.data[CONF_CIRCULATOR]
 
     device_info = {
         "identifiers": {(DOMAIN, hub_name)},
@@ -119,6 +122,20 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
             entities.append(sensor)
         i += 1
+        
+    if cirulator is True:
+        for sensor_info in CIRC1_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name,
+                hub,
+                device_info,
+                "circ1",
+                sensor_info[0],
+                sensor_info[1],
+                sensor_info[2],
+                sensor_info[3],
+            )
+            entities.append(sensor)
 
     if solar_circuit is True:
         for sensor_info in SK1_SENSOR_TYPES.values():

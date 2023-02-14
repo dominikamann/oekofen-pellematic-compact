@@ -16,6 +16,7 @@ from .const import (
     DEFAULT_NUM_OF_HEATING_CIRCUIT,
     CONF_NUM_OF_HEATING_CIRCUIT,
     CONF_SOLAR_CIRCUIT,
+    CONF_CIRCULATOR,
 )
 
 from homeassistant.core import HomeAssistant, callback
@@ -27,6 +28,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_NUM_OF_HEATING_CIRCUIT, default= DEFAULT_NUM_OF_HEATING_CIRCUIT): int,
         vol.Optional(CONF_SOLAR_CIRCUIT, default=False): bool,
+        vol.Optional(CONF_CIRCULATOR, default=False): bool,
     }
 )
 
