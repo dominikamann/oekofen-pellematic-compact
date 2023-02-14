@@ -365,7 +365,7 @@ class PellematicSensor(SensorEntity):
         try:
             current_value = self._hub.data[self._prefix][self._key]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-                current_value = current_value / 10
+                current_value = int(current_value) / 10
         except:
             self._state = current_value
         self._state = current_value
@@ -396,7 +396,7 @@ class PellematicSensor(SensorEntity):
         try:
             current_value = self._hub.data[self._prefix][self._key]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-                current_value = current_value / 10
+                current_value = int(current_value) / 10
         except:
             return current_value
         return current_value
