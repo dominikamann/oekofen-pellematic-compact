@@ -57,7 +57,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     hub = hass.data[DOMAIN][hub_name]["hub"]
     num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
     solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
-    cirulator = entry.data[CONF_CIRCULATOR]
+    cirulator = False
+    try:
+        cirulator = entry.data[CONF_CIRCULATOR]
+    except:
+        cirulator = False
 
     device_info = {
         "identifiers": {(DOMAIN, hub_name)},
