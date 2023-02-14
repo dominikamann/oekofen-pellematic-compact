@@ -12,6 +12,7 @@ DEFAULT_NAME = "pellematic"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_NUM_OF_HEATING_CIRCUIT = 1
 CONF_SOLAR_CIRCUIT = "solar_circuit"
+CONF_CIRCULATOR = "circulator"
 CONF_NUM_OF_HEATING_CIRCUIT = "num_of_heating_circuits"
 DEFAULT_HOST = "http://192.168.178.91:4321/8n2L/all"
 CONF_SOLAREDGE_HUB = "solaredge_hub"
@@ -223,6 +224,52 @@ SE1_SENSOR_TYPES = {
         "mdi:solar-power-variant",
     ],
 }
+
+CIRC1_SENSOR_TYPES = {
+    "L_ret_temp": [
+        "Circulator Return Temperature",
+        "L_ret_temp",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_release_temp": [
+        "Circulator Release Temperature",
+        "L_release_temp",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "pump_release": [
+        "Circulator Pump Release Temperature",
+        "pump_release",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "return_set": [
+        "Circulator Return Temperature set",
+        "return_set",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_pummp": [
+        "Circulator Pump",
+        "L_pummp",
+        None,
+        "mdi:numeric",
+    ],
+    "mode": [
+        "Circulator Mode",
+        "mode",
+        None,
+        "mdi:numeric",
+    ],
+    "name": [
+        "Circulator Name",
+        "name",
+        None,
+        "mdi:autorenew",
+    ],   
+}
+
 
 SK1_SENSOR_TYPES = {
     "L_koll_temp": [
