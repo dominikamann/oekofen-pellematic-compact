@@ -21,5 +21,7 @@ After reboot of Home-Assistant, this integration can be configured through the i
 Go to your Ökofen Pellematic Compact
   -> Touchscreen -> Open General Settings -> Network Settings
     -> Scroll down -> Activate JSON Interface
+    
+    IMPORTANT: Do not activate the compatibility mode. This mode is not supported/recommended.
 
  Use the provide URL as HOST in Component-Configuration (<http://[ip]:[port]/[password]/all>)
