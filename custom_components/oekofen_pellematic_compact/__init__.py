@@ -155,5 +155,7 @@ class PellematicHub:
 def fetch_data(url: str):
     """Get data"""
     req = urllib.request.Request(url)
-    result = json.loads(urllib.request.urlopen(req).read().decode("utf-8", "ignore"))
+    response = urllib.request.urlopen(req).read().decode("utf-8", "ignore")
+    response.replace("L_statetext:", "L_statetext\":")  # Hotfix for pellematic update 4.02 (invalid json)
+    result = json.loads(response)
     return result
