@@ -7,7 +7,7 @@
           "data": {
             "host": "The full url",
             "name": "The prefix to be used for your sensors",
-            "scan_interval": "The polling frequentie of the API in seconds",
+            "scan_interval": "The polling frequency of the API in seconds",
             "solar_circuit": "Solar & Sun Sensors support yes/no (SE1, SK1)",
             "circulator": "Circulator support yes/no (CIRC1)",
             "num_of_heating_circuits": "Num of heating circuits (HKx)"
