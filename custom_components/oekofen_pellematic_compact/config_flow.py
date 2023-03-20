@@ -11,6 +11,7 @@ from homeassistant.const import (
 
 from .const import (
     DOMAIN,
+    DEFAULT_HOST,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_NUM_OF_HEATING_CIRCUIT,
@@ -24,7 +25,7 @@ from homeassistant.core import HomeAssistant, callback
 DATA_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
-        vol.Optional(CONF_HOST, default="http://192.168.178.91:4321/8n2L/all"): str,
+        vol.Optional(CONF_HOST, default=DEFAULT_HOST): str,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_NUM_OF_HEATING_CIRCUIT, default= DEFAULT_NUM_OF_HEATING_CIRCUIT): int,
         vol.Optional(CONF_SOLAR_CIRCUIT, default=False): bool,
