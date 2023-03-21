@@ -158,8 +158,8 @@ def fetch_data(url: str):
     response = None
     str_response = None
     try:
-        response = urllib.request.urlopen(req)
-        str_response = response.read().decode("iso-8859-1", "ignore")
+        response = urllib.request.urlopen(req, timeout=3) #okofen api recommanded timeout is 2,5s
+        str_response = response.read().decode("iso-8859-1", "ignore") 
     finally:
         if response is not None:
             response.close()
