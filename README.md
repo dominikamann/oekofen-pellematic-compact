@@ -27,4 +27,4 @@ Go to your Ökofen Pellematic
     
     IMPORTANT: Do not activate the compatibility mode. This mode is not supported/recommended.
 
- Use the provide URL as HOST in Component-Configuration (<http://[ip]:[port]/[password]/all>)
+ Use the provided URL as HOST in Component-Configuration (<http://[ip]:[port]/[password]/all>)
