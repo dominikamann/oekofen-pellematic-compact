@@ -9,6 +9,8 @@ from homeassistant.components.binary_sensor import (
 )
 from .const import (
     CONF_NUM_OF_HEATING_CIRCUIT,
+    CONF_NUM_OF_HOT_WATER,
+    CONF_NUM_OF_PELLEMATIC_HEATER,
     CONF_SOLAR_CIRCUIT,
     CONF_CIRCULATOR,
     HK_BINARY_SENSOR_TYPES,
@@ -19,10 +21,10 @@ from .const import (
     SE1_SENSOR_TYPES,
     SK1_BINARY_SENSOR_TYPES,
     SK1_SENSOR_TYPES,
-    PE1_SENSOR_TYPES,
+    PE_SENSOR_TYPES,
     PU1_SENSOR_TYPES,
-    WW1_BINARY_SENSOR_TYPES,
-    WW1_SENSOR_TYPES,
+    WW_BINARY_SENSOR_TYPES,
+    WW_SENSOR_TYPES,
     CIRC1_SENSOR_TYPES,
     DOMAIN,
     ATTR_MANUFACTURER,
@@ -56,6 +58,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
     num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
+    num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
+    num_pellematic_heater = entry.data[CONF_NUM_OF_PELLEMATIC_HEATER]
     solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
     cirulator = False
     try:
@@ -72,177 +76,152 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     entities = []
 
-    for sensor_info in SYSTEM_SENSOR_TYPES.values():
+    for name, key, unit, icon in SYSTEM_SENSOR_TYPES.values():
         sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "system",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
+            hub_name, hub, device_info, "system", name, key, unit, icon
         )
         entities.append(sensor)
 
-    for sensor_info in SYSTEM_BINARY_SENSOR_TYPES.values():
+    for name, key, unit, icon in SYSTEM_BINARY_SENSOR_TYPES.values():
         sensor = PellematicBinarySensor(
-            hub_name,
-            hub,
-            device_info,
-            "system",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
+            hub_name, hub, device_info, "system", name, key, unit, icon
         )
         entities.append(sensor)
 
     i = 1
     while i <= num_heating_circuit:
-        for sensor_info in HK_SENSOR_TYPES.values():
+        for name, key, unit, icon in HK_SENSOR_TYPES.values():
             sensor = PellematicSensor(
                 hub_name,
                 hub,
                 device_info,
-                ("hk" + str(i)),
-                sensor_info[0].format(" " + str(i)),
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
+                f"hk{i}",
+                name.format(" " + str(i)),
+                key,
+                unit,
+                icon,
             )
             entities.append(sensor)
 
-        for sensor_info in HK_BINARY_SENSOR_TYPES.values():
+        for name, key, unit, icon in HK_BINARY_SENSOR_TYPES.values():
             sensor = PellematicBinarySensor(
                 hub_name,
                 hub,
                 device_info,
-                ("hk" + str(i)),
-                sensor_info[0].format(" " + str(i)),
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
+                f"hk{i}",
+                name.format(" " + str(i)),
+                key,
+                unit,
+                icon,
             )
             entities.append(sensor)
         i += 1
-        
+
     if cirulator is True:
-        for sensor_info in CIRC1_SENSOR_TYPES.values():
+        for name, key, unit, icon in CIRC1_SENSOR_TYPES.values():
             sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "circ1",
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
+                hub_name, hub, device_info, "circ1", name, key, unit, icon
             )
             entities.append(sensor)
 
     if solar_circuit is True:
-        for sensor_info in SK1_SENSOR_TYPES.values():
+        for name, key, unit, icon in SK1_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name, hub, device_info, "sk1", name, key, unit, icon
+            )
+            entities.append(sensor)
+
+        for name, key, unit, icon in SK1_BINARY_SENSOR_TYPES.values():
+            sensor = PellematicBinarySensor(
+                hub_name, hub, device_info, "sk1", name, key, unit, icon
+            )
+            entities.append(sensor)
+
+        for name, key, unit, icon in SE1_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name, hub, device_info, "se1", name, key, unit, icon
+            )
+            entities.append(sensor)
+
+    for pe_count in range(num_pellematic_heater):
+        pe = f"pe{pe_count+1}"
+        for name, key, unit, icon in PE_SENSOR_TYPES.values():
             sensor = PellematicSensor(
                 hub_name,
                 hub,
                 device_info,
-                "sk1",
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
+                pe,
+                f"{pe.upper()} - {name}",
+                key,
+                unit,
+                icon,
             )
             entities.append(sensor)
 
-        for sensor_info in SK1_BINARY_SENSOR_TYPES.values():
+    for error_count in range(1, 6):
+        sensor = PellematicSensor(
+            hub_name,
+            hub,
+            device_info,
+            "error",
+            f"Error {error_count}",
+            f"error_{error_count}",
+            None,
+            "mdi:alert-circle",
+        )
+        entities.append(sensor)
+
+    for name, key, unit, icon in PU1_SENSOR_TYPES.values():
+        sensor = PellematicSensor(
+            hub_name,
+            hub,
+            device_info,
+            "pu1",
+            name,
+            key,
+            unit,
+            icon,
+        )
+        entities.append(sensor)
+
+    for i in range(num_hot_water):
+        for name, key, unit, icon in WW_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name,
+                hub,
+                device_info,
+                f"ww{i+1}",
+                name,
+                key,
+                unit,
+                icon,
+            )
+            entities.append(sensor)
+
+    for i in range(num_hot_water):
+        for name, key, unit, icon in WW_BINARY_SENSOR_TYPES.values():
             sensor = PellematicBinarySensor(
                 hub_name,
                 hub,
                 device_info,
-                "sk1",
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
+                f"ww{i+1}",
+                name,
+                key,
+                unit,
+                icon,
             )
             entities.append(sensor)
 
-        for sensor_info in SE1_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "se1",
-                sensor_info[0],
-                sensor_info[1],
-                sensor_info[2],
-                sensor_info[3],
-            )
-            entities.append(sensor)
-
-    for sensor_info in PE1_SENSOR_TYPES.values():
-        sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "pe1",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
-        )
-        entities.append(sensor)
-
-    for sensor_info in PU1_SENSOR_TYPES.values():
-        sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "pu1",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
-        )
-        entities.append(sensor)
-
-    for sensor_info in WW1_SENSOR_TYPES.values():
-        sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "ww1",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
-        )
-        entities.append(sensor)
-
-    for sensor_info in WW1_BINARY_SENSOR_TYPES.values():
-        sensor = PellematicBinarySensor(
-            hub_name,
-            hub,
-            device_info,
-            "ww1",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
-        )
-        entities.append(sensor)
-
-    for sensor_info in PU1_BINARY_SENSOR_TYPES.values():
+    for name, key, unit, icon in PU1_BINARY_SENSOR_TYPES.values():
         sensor = PellematicBinarySensor(
             hub_name,
             hub,
             device_info,
             "pu1",
-            sensor_info[0],
-            sensor_info[1],
-            sensor_info[2],
-            sensor_info[3],
+            name,
+            key,
+            unit,
+            icon,
         )
         entities.append(sensor)
 

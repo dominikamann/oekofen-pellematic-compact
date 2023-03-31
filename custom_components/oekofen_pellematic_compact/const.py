@@ -11,9 +11,13 @@ DOMAIN = "oekofen_pellematic_compact"
 DEFAULT_NAME = "pellematic"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_NUM_OF_HEATING_CIRCUIT = 1
+DEFAULT_NUM_OF_HOT_WATER = 1
+DEFAULT_NUM_OF_PELLEMATIC_HEATER = 1
 CONF_SOLAR_CIRCUIT = "solar_circuit"
 CONF_CIRCULATOR = "circulator"
 CONF_NUM_OF_HEATING_CIRCUIT = "num_of_heating_circuits"
+CONF_NUM_OF_PELLEMATIC_HEATER = "num_of_pellematic_heaters"
+CONF_NUM_OF_HOT_WATER = "num_of_hot_water"
 DEFAULT_HOST = "http://[YOU_IP]:4321/[YOUR_PASSWORD]/all"
 CONF_SOLAREDGE_HUB = "solaredge_hub"
 ATTR_STATUS_DESCRIPTION = "status_description"
@@ -28,7 +32,7 @@ SYSTEM_SENSOR_TYPES = {
         None,
     ],
     "L_errors": [
-        "Errors",
+        "System Errors",
         "L_errors",
         None,
         "mdi:alert-circle",
@@ -44,7 +48,7 @@ SYSTEM_BINARY_SENSOR_TYPES = {
     ],
 }
 
-PE1_SENSOR_TYPES = {
+PE_SENSOR_TYPES = {
     "L_storage_max": [
         "Pellet Storage Level Max",
         "L_storage_max",
@@ -267,7 +271,7 @@ CIRC1_SENSOR_TYPES = {
         "name",
         None,
         "mdi:autorenew",
-    ],   
+    ],
 }
 
 
@@ -445,7 +449,7 @@ PU1_BINARY_SENSOR_TYPES = {
     ],
 }
 
-WW1_SENSOR_TYPES = {
+WW_SENSOR_TYPES = {
     "L_temp_set": [
         "Hot Water Circuit Temperature set ",
         "L_temp_set",
@@ -496,7 +500,7 @@ WW1_SENSOR_TYPES = {
     ],
 }
 
-WW1_BINARY_SENSOR_TYPES = {
+WW_BINARY_SENSOR_TYPES = {
     "L_pump": [
         "Hot Water Circuit Pump",
         "L_pump",
