@@ -224,7 +224,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             hub_name,
             hub,
             device_info,
-            f"error{error_count}",
+            "error",
             f"Error {error_count}",
             f"error_{error_count}",
             None,
