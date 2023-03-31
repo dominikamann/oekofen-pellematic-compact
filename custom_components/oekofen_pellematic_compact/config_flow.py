@@ -31,13 +31,9 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
         vol.Optional(CONF_HOST, default=DEFAULT_HOST): str,
         vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
-        vol.Optional(
-            CONF_NUM_OF_HEATING_CIRCUIT, default=DEFAULT_NUM_OF_HEATING_CIRCUIT
-        ): int,
+        vol.Optional(CONF_NUM_OF_HEATING_CIRCUIT, default=DEFAULT_NUM_OF_HEATING_CIRCUIT): int,
         vol.Optional(CONF_NUM_OF_HOT_WATER, default=DEFAULT_NUM_OF_HOT_WATER): int,
-        vol.Optional(
-            CONF_NUM_OF_PELLEMATIC_HEATER, default=DEFAULT_NUM_OF_PELLEMATIC_HEATER
-        ): int,
+        vol.Optional(CONF_NUM_OF_PELLEMATIC_HEATER, default=DEFAULT_NUM_OF_PELLEMATIC_HEATER): int,
         vol.Optional(CONF_SOLAR_CIRCUIT, default=False): bool,
         vol.Optional(CONF_CIRCULATOR, default=False): bool,
     }

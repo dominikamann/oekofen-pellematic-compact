@@ -58,14 +58,24 @@ async def async_setup_entry(hass, entry, async_add_entities):
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
     num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
-    num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
-    num_pellematic_heater = entry.data[CONF_NUM_OF_PELLEMATIC_HEATER]
     solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
     cirulator = False
+    
+    # For already existing users it could be that the keys does not exists
     try:
         cirulator = entry.data[CONF_CIRCULATOR]
     except:
         cirulator = False
+    try:
+        num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
+    except:
+        num_hot_water = 1
+    try:
+        num_pellematic_heater = entry.data[CONF_NUM_OF_PELLEMATIC_HEATER]
+    except:
+        num_pellematic_heater = 1
+        
+
 
     device_info = {
         "identifiers": {(DOMAIN, hub_name)},
@@ -88,15 +98,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
         )
         entities.append(sensor)
 
-    i = 1
-    while i <= num_heating_circuit:
+    for heating_cir_count in range(num_heating_circuit):
         for name, key, unit, icon in HK_SENSOR_TYPES.values():
             sensor = PellematicSensor(
                 hub_name,
                 hub,
                 device_info,
-                f"hk{i}",
-                name.format(" " + str(i)),
+                f"hk{heating_cir_count +1}",
+                name.format(" " + str(heating_cir_count +1)),
                 key,
                 unit,
                 icon,
@@ -108,14 +117,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 hub_name,
                 hub,
                 device_info,
-                f"hk{i}",
-                name.format(" " + str(i)),
+                f"hk{heating_cir_count +1}",
+                name.format(" " + str(heating_cir_count +1)),
                 key,
                 unit,
                 icon,
             )
             entities.append(sensor)
-        i += 1
 
     if cirulator is True:
         for name, key, unit, icon in CIRC1_SENSOR_TYPES.values():
@@ -144,33 +152,19 @@ async def async_setup_entry(hass, entry, async_add_entities):
             entities.append(sensor)
 
     for pe_count in range(num_pellematic_heater):
-        pe = f"pe{pe_count+1}"
         for name, key, unit, icon in PE_SENSOR_TYPES.values():
             sensor = PellematicSensor(
                 hub_name,
                 hub,
                 device_info,
-                pe,
-                f"{pe.upper()} - {name}",
+                f"pe{pe_count+1}",
+                name.format(" " + str(pe_count+1)),
                 key,
                 unit,
                 icon,
             )
             entities.append(sensor)
-
-    for error_count in range(1, 6):
-        sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "error",
-            f"Error {error_count}",
-            f"error_{error_count}",
-            None,
-            "mdi:alert-circle",
-        )
-        entities.append(sensor)
-
+        
     for name, key, unit, icon in PU1_SENSOR_TYPES.values():
         sensor = PellematicSensor(
             hub_name,
@@ -183,35 +177,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             icon,
         )
         entities.append(sensor)
-
-    for i in range(num_hot_water):
-        for name, key, unit, icon in WW_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"ww{i+1}",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
-    for i in range(num_hot_water):
-        for name, key, unit, icon in WW_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
-                hub_name,
-                hub,
-                device_info,
-                f"ww{i+1}",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
+        
     for name, key, unit, icon in PU1_BINARY_SENSOR_TYPES.values():
         sensor = PellematicBinarySensor(
             hub_name,
@@ -222,6 +188,47 @@ async def async_setup_entry(hass, entry, async_add_entities):
             key,
             unit,
             icon,
+        )
+        entities.append(sensor)
+
+
+    for hot_water_count in range(num_hot_water):
+        for name, key, unit, icon in WW_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name,
+                hub,
+                device_info,
+                f"ww{hot_water_count+1}",
+                name.format(" " + str(hot_water_count+1)),
+                key,
+                unit,
+                icon,
+            )
+            entities.append(sensor)
+
+        for name, key, unit, icon in WW_BINARY_SENSOR_TYPES.values():
+            sensor = PellematicBinarySensor(
+                hub_name,
+                hub,
+                device_info,
+                f"ww{hot_water_count+1}",
+                name.format(" " + str(hot_water_count+1)),
+                key,
+                unit,
+                icon,
+            )
+            entities.append(sensor)
+
+    for error_count in range(1, 6):
+        sensor = PellematicSensor(
+            hub_name,
+            hub,
+            device_info,
+            f"error{error_count}",
+            f"Error {error_count}",
+            f"error_{error_count}",
+            None,
+            "mdi:alert-circle",
         )
         entities.append(sensor)
 
