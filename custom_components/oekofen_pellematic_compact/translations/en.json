@@ -10,6 +10,7 @@
           "scan_interval": "The polling frequency of the API in seconds",
           "solar_circuit": "Solar & Sun Sensors support yes/no (SE1, SK1)",
           "circulator": "Circulator support yes/no (CIRC1)",
+          "smart_pv": "Smart PV support yes/no (POWER)",
           "num_of_heating_circuits": "Num of heating circuits (HKx)",
           "num_of_hot_water": "Num of hot water circuits (HWx)",
           "num_of_pellematic_heaters": "Num of Pellematic heaters (PEx)"

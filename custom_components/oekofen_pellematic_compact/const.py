@@ -5,6 +5,8 @@ from homeassistant.const import (
     PERCENTAGE,
     UnitOfTemperature,
     UnitOfMass,
+    UnitOfPower,
+    UnitOfEnergy,
 )
 
 DOMAIN = "oekofen_pellematic_compact"
@@ -15,6 +17,7 @@ DEFAULT_NUM_OF_HOT_WATER = 1
 DEFAULT_NUM_OF_PELLEMATIC_HEATER = 1
 CONF_SOLAR_CIRCUIT = "solar_circuit"
 CONF_CIRCULATOR = "circulator"
+CONF_SMART_PV = "smart_pv"
 CONF_NUM_OF_HEATING_CIRCUIT = "num_of_heating_circuits"
 CONF_NUM_OF_PELLEMATIC_HEATER = "num_of_pellematic_heaters"
 CONF_NUM_OF_HOT_WATER = "num_of_hot_water"
@@ -45,6 +48,249 @@ SYSTEM_BINARY_SENSOR_TYPES = {
         "L_usb_stick",
         None,
         "mdi:usb-flash-drive",
+    ],
+}
+
+POWER_SENSOR_TYPES = {
+    "L_usage": [
+        "Power - Usage",
+        "L_usage",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_pv_1": [
+        "Power - PV 1",
+        "L_pv_1",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_pv_2": [
+        "Power - PV 1",
+        "L_pv_2",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_from_grid": [
+        "Power - From grid",
+        "L_from_grid",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_to_grid": [
+        "Power - To grid",
+        "L_to_grid",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_p1": [
+        "Power - P1",
+        "L_p1",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_p1": [
+        "Power - P2",
+        "L_p1",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_p1": [
+        "Power - P3",
+        "L_p1",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_batt_in": [
+        "Power - Battery in",
+        "L_batt_in",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_batt_out": [
+        "Power - Battery out",
+        "L_batt_out",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_batt_chg": [
+        "Power - Battery chg",
+        "L_batt_chg",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_batt_chg": [
+        "Power - Battery charged",
+        "L_batt_chg",
+        PERCENTAGE,
+        None,
+    ],
+    "L_batt_enabled": [
+        "Power - Battery enabled",
+        "L_batt_enabled",
+        None,
+        "mdi:numeric",
+    ],
+    "L_pwr_out_per": [
+        "Power - Precentage power out",
+        "L_pwr_out_per",
+        PERCENTAGE,
+        None,
+    ],
+    "L_pwr_out": [
+        "Power - Power out",
+        "L_pwr_out",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_power2car": [
+        "Power - Power to car",
+        "L_power2car",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_today_total": [
+        "Power - Power today total",
+        "L_today_total",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_today_in": [
+        "Power - Power today in",
+        "L_today_in",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_today_out": [
+        "Power - Power today out",
+        "L_today_out",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_state": [
+        "Power - State",
+        "L_state",
+        None,
+        "mdi:numeric",
+    ],
+    "L_total": [
+        "Power - Total",
+        "L_total",
+        None,
+        "mdi:numeric",
+    ],
+    "L_yesterday": [
+        "Power - Yesterday",
+        "L_yesterday",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_total_tyristor": [
+        "Power - Total tyristor",
+        "L_total_tyristor",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_yesterday_tyristor": [
+        "Power - Yesterday total tyristor",
+        "L_yesterday_tyristor",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_total_car": [
+        "Power - Total car",
+        "L_total_car",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_yesterday_car": [
+        "Power - Yesterday total car",
+        "L_yesterday_car",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_total_pv": [
+        "Power - Total pv",
+        "L_total_pv",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_yesterday_pv": [
+        "Power - Yesterday total pv",
+        "L_yesterday_pv",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_today_batt_in": [
+        "Power - Today battery in",
+        "L_today_batt_in",
+        None,
+        "mdi:numeric",
+    ],
+    "L_today_batt_out": [
+        "Power - Today battery out",
+        "L_today_batt_out",
+        None,
+        "mdi:numeric",
+    ],
+    "L_yesterday_batt_in": [
+        "Power - Yesterday battery in",
+        "L_yesterday_batt_in",
+        None,
+        "mdi:numeric",
+    ],
+    "L_yesterday_batt_out": [
+        "Power - Yesterday battery out",
+        "L_yesterday_batt_out",
+        None,
+        "mdi:numeric",
+    ],
+    "L_output_mode": [
+        "Power - Output mode",
+        "L_output_mode",
+        None,
+        "mdi:numeric",
+    ],
+    "L_range": [
+        "Power - Range",
+        "L_range",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_offset": [
+        "Power - Offset",
+        "L_offset",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_total_in": [
+        "Power - Total in",
+        "L_total_in",
+        None,
+        "mdi:numeric",
+    ],
+    "L_total_out": [
+        "Power - Total out",
+        "L_total_out",
+        None,
+        "mdi:numeric",
+    ],
+    "L_yesterday_in": [
+        "Power - Yesterday in",
+        "L_yesterday_in",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "L_yesterday_out": [
+        "Power - Yesterday out",
+        "L_yesterday_out",
+        UnitOfEnergy.KILO_WATT_HOUR,
+        None,
+    ],
+    "offtemp": [
+        "Power - Temperature off",
+        "offtemp",
+        UnitOfTemperature.CELSIUS,
+        None,
     ],
 }
 

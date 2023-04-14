@@ -13,6 +13,7 @@ from .const import (
     CONF_NUM_OF_PELLEMATIC_HEATER,
     CONF_SOLAR_CIRCUIT,
     CONF_CIRCULATOR,
+    CONF_SMART_PV,
     HK_BINARY_SENSOR_TYPES,
     PU1_BINARY_SENSOR_TYPES,
     SYSTEM_SENSOR_TYPES,
@@ -23,6 +24,7 @@ from .const import (
     SK1_SENSOR_TYPES,
     PE_SENSOR_TYPES,
     PU1_SENSOR_TYPES,
+    POWER_SENSOR_TYPES,
     WW_BINARY_SENSOR_TYPES,
     WW_SENSOR_TYPES,
     CIRC1_SENSOR_TYPES,
@@ -35,6 +37,7 @@ from homeassistant.const import (
     CONF_NAME,
     PERCENTAGE,
     UnitOfEnergy,
+    UnitOfPower,
     UnitOfTemperature,
     UnitOfMass,
     UnitOfTime,
@@ -60,8 +63,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
     num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
     solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
     cirulator = False
+    smart_pv = False
     
     # For already existing users it could be that the keys does not exists
+    try:
+        smart_pv = entry.data[CONF_SMART_PV]
+    except:
+        smart_pv = False
     try:
         cirulator = entry.data[CONF_CIRCULATOR]
     except:
@@ -122,6 +130,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 key,
                 unit,
                 icon,
+            )
+            entities.append(sensor)
+
+    if smart_pv is True:
+        for name, key, unit, icon in POWER_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name, hub, device_info, "power", name, key, unit, icon
             )
             entities.append(sensor)
 
@@ -336,10 +351,18 @@ class PellematicSensor(SensorEntity):
         self._unit_of_measurement = unit
         self._icon = icon
         self._device_info = device_info
-        if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        if self._unit_of_measurement == UnitOfPower.KILO_WATT:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_device_class = SensorDeviceClass.POWER
+        if self._unit_of_measurement == UnitOfPower.WATT:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_device_class = SensorDeviceClass.POWER
+        if self._unit_of_measurement == UnitOfEnergy.WATT_HOUR:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_device_class = SensorDeviceClass.ENERGY
-            self._attr_last_reset = dt_util.utc_from_timestamp(0)
+        if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_device_class = SensorDeviceClass.ENERGY
         if self._unit_of_measurement == UnitOfTemperature.CELSIUS:
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
             self._attr_state_class = SensorStateClass.MEASUREMENT

@@ -22,6 +22,7 @@ from .const import (
     CONF_NUM_OF_HEATING_CIRCUIT,
     CONF_SOLAR_CIRCUIT,
     CONF_CIRCULATOR,
+    CONF_SMART_PV,
 )
 
 from homeassistant.core import HomeAssistant, callback
@@ -36,6 +37,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_NUM_OF_PELLEMATIC_HEATER, default=DEFAULT_NUM_OF_PELLEMATIC_HEATER): int,
         vol.Optional(CONF_SOLAR_CIRCUIT, default=False): bool,
         vol.Optional(CONF_CIRCULATOR, default=False): bool,
+        vol.Optional(CONF_SMART_PV, default=False): bool,
     }
 )
 
