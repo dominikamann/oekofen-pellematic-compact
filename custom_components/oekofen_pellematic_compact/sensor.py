@@ -263,9 +263,12 @@ class PellematicBinarySensor(BinarySensorEntity):
         """Return the state of the sensor."""
         current_value = None
         try:
-            current_value = self._hub.data[self._prefix][self._key]
+            current_value = self._hub.data[self._prefix][self._key]["val"]
         except:
-            return current_value
+            try:
+                current_value = self._hub.data[self._prefix][self._key]
+            except:
+                return current_value
         return current_value
 
     async def async_added_to_hass(self):
@@ -282,12 +285,16 @@ class PellematicBinarySensor(BinarySensorEntity):
     @callback
     def _update_state(self):
         current_value = None
+        
         try:
-            current_value = self._hub.data[self._prefix][self._key]
+            current_value = self._hub.data[self._prefix][self._key]["val"]
         except:
-            self._attr_is_on = current_value
+            try:
+                current_value = self._hub.data[self._prefix][self._key]
+            except:
+                self._attr_is_on = current_value
         self._attr_is_on = current_value
-
+  
     @property
     def name(self):
         """Return the name."""
@@ -369,14 +376,20 @@ class PellematicSensor(SensorEntity):
     @callback
     def _update_state(self):
         current_value = None
+        
         try:
-            current_value = self._hub.data[self._prefix][self._key]
+            current_value = self._hub.data[self._prefix][self._key]["val"]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
         except:
-            self._state = current_value
+            try:
+                current_value = self._hub.data[self._prefix][self._key]
+                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+                    current_value = int(current_value) / 10
+            except:
+                self._state = current_value
         self._state = current_value
-
+     
     @property
     def name(self):
         """Return the name."""
