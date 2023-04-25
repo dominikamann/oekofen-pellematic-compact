@@ -404,14 +404,14 @@ class PellematicSensor(SensorEntity):
             current_value = self._hub.data[self._prefix][self._key]["val"]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
-            if self._unit_of_measurement == UnitOfPower.KILO_WATT:
+            if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                 current_value = int(current_value) / 10000 
         except:
             try:
                 current_value = self._hub.data[self._prefix][self._key]
                 if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfPower.KILO_WATT:
+                if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                     current_value = int(current_value) / 10000 
             except:
                 self._state = current_value
@@ -444,7 +444,7 @@ class PellematicSensor(SensorEntity):
             current_value = self._hub.data[self._prefix][self._key]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
-            if self._unit_of_measurement == UnitOfPower.KILO_WATT:
+            if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                 current_value = int(current_value) / 10000 
         except:
             return current_value
