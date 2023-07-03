@@ -173,7 +173,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 hub,
                 device_info,
                 f"pe{pe_count+1}",
-                f"{name} {str(pe_count+1)}",
+                name.format(" " + str(pe_count+1)),
                 key,
                 unit,
                 icon,
