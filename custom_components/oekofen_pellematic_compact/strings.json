@@ -6,7 +6,7 @@
         "title": "Define your \u00d6kofen Pellematic JSON-Interface connection",
         "data": {
           "host": "The url including password",
-          "name": "The prefix to be used for your sensors",
+          "name": "The name of the device",
           "scan_interval": "The polling frequency of the API in seconds",
           "solar_circuit": "Solar & Sun Sensors support yes/no (SE1, SK1)",
           "circulator": "Circulator support yes/no (CIRC1)",
