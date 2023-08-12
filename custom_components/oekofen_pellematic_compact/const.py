@@ -10,7 +10,7 @@ from homeassistant.const import (
 )
 
 DOMAIN = "oekofen_pellematic_compact"
-DEFAULT_NAME = "pellematic"
+DEFAULT_NAME = "Pellematic"
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_NUM_OF_HEATING_CIRCUIT = 1
 DEFAULT_NUM_OF_HOT_WATER = 1

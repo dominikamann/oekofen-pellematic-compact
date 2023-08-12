@@ -41,7 +41,7 @@ CONFIG_SCHEMA = vol.Schema(
 PLATFORMS = ["sensor"]
 
 
-async def async_setup(hass, config):
+async def async_setup(hass: HomeAssistant, config):
     """Set up the Ökofen Pellematic component."""
     hass.data[DOMAIN] = {}
     return True
@@ -53,11 +53,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     name = entry.data[CONF_NAME]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
 
-    _LOGGER.debug("Setup %s.%s", DOMAIN, name)
+    _LOGGER.debug("Setup Pellematic Hub %s, %s", DOMAIN, name)
 
     hub = PellematicHub(hass, name, host, scan_interval)
 
-    """Register the hub."""
+    # Register the hub.
     hass.data[DOMAIN][name] = {"hub": hub}
 
     for component in PLATFORMS:
@@ -67,7 +67,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
-async def async_unload_entry(hass, entry):
+async def async_unload_entry(hass: HomeAssistant, entry):
     """Unload Pellematic entry."""
     unload_ok = all(
         await asyncio.gather(
@@ -89,11 +89,11 @@ class PellematicHub:
 
     def __init__(
         self,
-        hass,
+        hass: HomeAssistant,
         name,
         host,
         scan_interval,
-    ):
+    ) -> None:
         """Initialize the hub."""
         self._hass = hass
         self._host = host
@@ -121,7 +121,7 @@ class PellematicHub:
         self._sensors.remove(update_callback)
 
         if not self._sensors:
-            """stop the interval timer upon removal of last sensor"""
+            # stop the interval timer upon removal of last sensor.
             self._unsub_interval_method()
             self._unsub_interval_method = None
 
@@ -154,12 +154,16 @@ class PellematicHub:
 
 def fetch_data(url: str):
     """Get data"""
+    # _LOGGER.debug("Fetching pellematic datas with REST API")
+
     req = urllib.request.Request(url)
     response = None
     str_response = None
     try:
-        response = urllib.request.urlopen(req, timeout=3) #okofen api recommanded timeout is 2,5s
-        str_response = response.read().decode("iso-8859-1", "ignore") 
+        response = urllib.request.urlopen(
+            req, timeout=3
+        )  # okofen api recommanded timeout is 2,5s
+        str_response = response.read().decode("iso-8859-1", "ignore")
     finally:
         if response is not None:
             response.close()
