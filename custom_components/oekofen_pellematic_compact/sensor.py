@@ -266,7 +266,7 @@ async def async_setup_entry(
                 hub_name,
                 hub,
                 device_info,
-                "ww{hot_water_count+1}",
+                f"ww{hot_water_count+1}",
                 name.format(" " + str(hot_water_count + 1)),
                 key,
                 unit,
