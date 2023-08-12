@@ -501,8 +501,14 @@ CIRC1_SENSOR_TYPES = {
         None,
     ],
     "L_pummp": [
-        "Circulator Pump",
+        "Circulator Pump (obsolete)",
         "L_pummp",
+        None,
+        "mdi:numeric",
+    ],
+    "L_pump": [
+        "Circulator Pump",
+        "L_pump",
         None,
         "mdi:numeric",
     ],
