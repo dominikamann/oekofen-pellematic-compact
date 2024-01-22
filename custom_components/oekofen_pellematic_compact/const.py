@@ -56,37 +56,37 @@ STIRLING_SENSOR_TYPES = {
     "L_temp_1": [
         "Stirling Engine Temperature 1",
         "L_temp_1",
-        UnitOfPower.CELSIUS,
+        UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_temp_2": [
         "Stirling Engine Temperature 2",
         "L_temp_2",
-        UnitOfPower.CELSIUS,
+        UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_temp_diff": [
         "Stirling Engine Temperature Diff",
         "L_temp_diff",
-        UnitOfPower.CELSIUS,
+        UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_temp_flow": [
         "Stirling Engine Temperature Flow",
         "L_temp_flow",
-        UnitOfPower.CELSIUS,
+        UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_temp_ret": [
         "Stirling Engine Temperature Ret",
         "L_temp_ret",
-        UnitOfPower.CELSIUS,
+        UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_temp_amb": [
         "Stirling Engine Temperature Ambient",
         "L_temp_amb",
-        UnitOfPower.CELSIUS,
+        UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_flow": [
