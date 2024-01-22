@@ -14,6 +14,7 @@ from .const import (
     CONF_SOLAR_CIRCUIT,
     CONF_CIRCULATOR,
     CONF_SMART_PV,
+    CONF_STIRLING,
     HK_BINARY_SENSOR_TYPES,
     PU1_BINARY_SENSOR_TYPES,
     SYSTEM_SENSOR_TYPES,
@@ -25,6 +26,7 @@ from .const import (
     PE_SENSOR_TYPES,
     PU1_SENSOR_TYPES,
     POWER_SENSOR_TYPES,
+    STIRLING_SENSOR_TYPES,
     WW_BINARY_SENSOR_TYPES,
     WW_SENSOR_TYPES,
     CIRC1_SENSOR_TYPES,
@@ -70,8 +72,13 @@ async def async_setup_entry(
     solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
     cirulator = False
     smart_pv = False
+    stirling = False
 
     # For already existing users it could be that the keys does not exists
+    try:
+        stirling = entry.data[CONF_STIRLING]
+    except:
+        stirling = False
     try:
         smart_pv = entry.data[CONF_SMART_PV]
     except:
@@ -133,6 +140,20 @@ async def async_setup_entry(
                 device_info,
                 f"hk{heating_cir_count +1}",
                 name.format(" " + str(heating_cir_count + 1)),
+                key,
+                unit,
+                icon,
+            )
+            entities.append(sensor)
+    
+    if stirling is True:
+        for name, key, unit, icon in STIRLING_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name,
+                hub,
+                device_info,
+                "stirling",
+                name,
                 key,
                 unit,
                 icon,
