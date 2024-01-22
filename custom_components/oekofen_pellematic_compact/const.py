@@ -18,6 +18,7 @@ DEFAULT_NUM_OF_PELLEMATIC_HEATER = 1
 CONF_SOLAR_CIRCUIT = "solar_circuit"
 CONF_CIRCULATOR = "circulator"
 CONF_SMART_PV = "smart_pv"
+CONF_STIRLING = "stirling"
 CONF_NUM_OF_HEATING_CIRCUIT = "num_of_heating_circuits"
 CONF_NUM_OF_PELLEMATIC_HEATER = "num_of_pellematic_heaters"
 CONF_NUM_OF_HOT_WATER = "num_of_hot_water"
@@ -48,6 +49,141 @@ SYSTEM_BINARY_SENSOR_TYPES = {
         "L_usb_stick",
         None,
         "mdi:usb-flash-drive",
+    ],
+}
+
+STIRLING_SENSOR_TYPES = {
+    "L_temp_1": [
+        "Stirling Temperature 1",
+        "L_temp_1",
+        UnitOfPower.CELSIUS,
+        None,
+    ],
+    "L_temp_2": [
+        "Stirling Temperature 2",
+        "L_temp_2",
+        UnitOfPower.CELSIUS,
+        None,
+    ],
+    "L_temp_diff": [
+        "Stirling Temperature Diff",
+        "L_temp_diff",
+        UnitOfPower.CELSIUS,
+        None,
+    ],
+    "L_temp_flow": [
+        "Stirling Temperature Flow",
+        "L_temp_flow",
+        UnitOfPower.CELSIUS,
+        None,
+    ],
+    "L_temp_ret": [
+        "Stirling Temperature Ret",
+        "L_temp_ret",
+        UnitOfPower.CELSIUS,
+        None,
+    ],
+    "L_temp_amb": [
+        "Stirling Temperature Ambient",
+        "L_temp_amb",
+        UnitOfPower.CELSIUS,
+        None,
+    ],
+    "L_flow": [
+        "Stirling Flow",
+        "L_flow",
+        None,
+        "mdi:numeric",
+    ],
+    "L_voltage": [
+        "Stirling Voltage",
+        "L_voltage",
+        None,
+        "mdi:numeric",
+    ],
+    "L_current": [
+        "Stirling Current",
+        "L_current",
+        None,
+        "mdi:numeric",
+    ],
+    "L_frequency": [
+        "Stirling Frequency",
+        "L_frequency",
+        None,
+        "mdi:numeric",
+    ],
+    "L_phase": [
+        "Stirling Phase",
+        "L_phase",
+        None,
+        "mdi:numeric",
+    ],
+    "L_power": [
+        "Stirling Power",
+        "L_power",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_power_totals": [
+        "Stirling Power Totals",
+        "L_power_totals",
+        None,
+        "mdi:numeric",
+    ],
+    "L_power_today": [
+        "Stirling Power Today",
+        "L_power_today",
+        None,
+        "mdi:numeric",
+    ],
+    "L_power_yesterday": [
+        "Stirling Power Yesterday",
+        "L_power_yesterday",
+        None,
+        "mdi:numeric",
+    ],
+    "L_source": [
+        "Stirling Source",
+        "L_source",
+        None,
+        "mdi:numeric",
+    ],
+    "L_st_req": [
+        "Stirling St req",
+        "L_st_req",
+        None,
+        "mdi:numeric",
+    ],
+    "L_state": [
+        "Stirling State",
+        "L_state",
+        None,
+        "mdi:numeric",
+    ],
+    "L_runtime": [
+        "Stirling Runtime",
+        "L_runtime",
+        UnitOfTime.HOURS,
+        "mdi:timer",
+    ],
+    "L_start": [
+        "Stirling Start",
+        "L_start",
+        None,
+        "mdi:numeric",
+    ],
+    "L_safety_shutdown": [
+        "Stirling Safety shutdown",
+        "L_safety_shutdown",
+        None,
+        "mdi:numeric",
+    ],
+    "L_error": [
+        "Stirling Runtime",
+        "L_error",
+        None,
+        "mdi:numeric",
     ],
 }
 

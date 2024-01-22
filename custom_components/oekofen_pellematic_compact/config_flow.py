@@ -23,6 +23,7 @@ from .const import (
     CONF_SOLAR_CIRCUIT,
     CONF_CIRCULATOR,
     CONF_SMART_PV,
+    CONF_STIRLING
 )
 
 from homeassistant.core import HomeAssistant, callback
@@ -38,6 +39,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_SOLAR_CIRCUIT, default=False): bool,
         vol.Optional(CONF_CIRCULATOR, default=False): bool,
         vol.Optional(CONF_SMART_PV, default=False): bool,
+        vol.Optional(CONF_STIRLING, default=False): bool,
     }
 )
 
