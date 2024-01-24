@@ -4,6 +4,7 @@
 ![commit_activity](https://img.shields.io/github/commit-activity/y/dominikamann/oekofen-pellematic-compact?color=brightgreen&label=Commits&style=flat-square)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/dominikamann/oekofen-pellematic-compact?style=flat-square)
 [![dominik support](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://ko-fi.com/dominikamann)
+[![downloads](https://img.shields.io/github/downloads/dominikamann/oekofen-pellematic-compact/total)](https://github.com/dominikamann/oekofen-pellematic-compact/releases)
 
 Home Assistant integration `oekofen-pellematic-compact` is designed for Ökofen Pellematic Heaters with enabled TCP/JSON-Interface.
 It communicates locally with the heater. This is not an official integration by Ökofen.
