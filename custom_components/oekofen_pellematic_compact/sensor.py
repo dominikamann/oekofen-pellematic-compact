@@ -452,16 +452,16 @@ class PellematicSensor(SensorEntity):
         self._device_info = device_info
         self._state = None
         if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-            self._attr_state_class = SensorStateClass.STATE_CLASS_TOTAL_INCREASING
+            self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_device_class = SensorDeviceClass.POWER
         if self._unit_of_measurement == UnitOfPower.WATT:
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_device_class = SensorDeviceClass.POWER
         if self._unit_of_measurement == UnitOfEnergy.WATT_HOUR:
-            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
             self._attr_device_class = SensorDeviceClass.ENERGY
         if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
             self._attr_device_class = SensorDeviceClass.ENERGY
         if self._unit_of_measurement == UnitOfTemperature.CELSIUS:
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -517,15 +517,27 @@ class PellematicSensor(SensorEntity):
             current_value = self._hub.data[self._prefix][self._key]["val"]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
+            if self._attr_device_class == UnitOfPower.KILO_WATT:
+                current_value = int(current_value) / 10                         
             if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                current_value = int(current_value) / 10000
+                # SE1 need / 10 but POWER need / 10000
+                if self._prefix == "se1":
+                    current_value = int(current_value) / 10
+                else:
+                    current_value = int(current_value) / 10000
         except:
             try:
                 current_value = self._hub.data[self._prefix][self._key]
                 if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
+                if self._attr_device_class == UnitOfPower.KILO_WATT:
+                    current_value = int(current_value) / 10     
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                    current_value = int(current_value) / 10000
+                    # SE1 need / 10 but POWER need / 10000
+                    if self._prefix == "se1":
+                        current_value = int(current_value) / 10
+                    else:
+                        current_value = int(current_value) / 10000
             except:
                 self._state = current_value
         self._state = current_value

@@ -594,21 +594,27 @@ SE1_SENSOR_TYPES = {
     "L_total": [
         "Solar Gain Total",
         "L_total",
-        None,
+        UnitOfEnergy.KILO_WATT_HOUR,
         "mdi:solar-power-variant",
     ],
     "L_day": [
         "Solar Gain Today",
         "L_day",
-        None,
+        UnitOfEnergy.KILO_WATT_HOUR,
         "mdi:solar-power-variant",
     ],
     "L_yesterday": [
         "Solar Gain Yesterday",
         "L_yesterday",
-        None,
+        UnitOfEnergy.KILO_WATT_HOUR,
         "mdi:solar-power-variant",
     ],
+    "L_pwr": [
+        "Solar Gain Current",
+        "L_pwr",
+        UnitOfPower.KILO_WATT,
+        "mdi:solar-power-variant",
+    ],  
 }
 
 CIRC1_SENSOR_TYPES = {
