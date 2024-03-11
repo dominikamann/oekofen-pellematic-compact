@@ -566,7 +566,11 @@ class PellematicSensor(SensorEntity):
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
             if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                current_value = int(current_value) / 10000
+                # SE1 need / 10 but POWER need / 10000
+                if self._prefix == "se1":
+                    current_value = int(current_value) / 10
+                else:
+                    current_value = int(current_value) / 10000
         except:
             return current_value
         return current_value
