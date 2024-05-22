@@ -12,6 +12,7 @@ from .const import (
     CONF_NUM_OF_HOT_WATER,
     CONF_NUM_OF_PELLEMATIC_HEATER,
     CONF_NUM_OF_SMART_PV_SE,
+    CONF_NUM_OF_SMART_PV_SK,
     CONF_SOLAR_CIRCUIT,
     CONF_CIRCULATOR,
     CONF_SMART_PV,
@@ -100,7 +101,11 @@ async def async_setup_entry(
         num_smart_pv_se = entry.data[CONF_NUM_OF_SMART_PV_SE]
     except:
         num_smart_pv_se = 1
-
+    try:
+        num_smart_pv_sk = entry.data[CONF_NUM_OF_SMART_PV_SK]
+    except:
+        num_smart_pv_sk = 1       
+            
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
 
     device_info = {
@@ -194,31 +199,33 @@ async def async_setup_entry(
             entities.append(sensor)
 
     if solar_circuit is True:
-        for name, key, unit, icon in SK1_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "sk1",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+        
+        for sk_count in range(num_smart_pv_sk):
+            for name, key, unit, icon in SK1_SENSOR_TYPES.values():
+                sensor = PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"sk{sk_count+1}",
+                    name.format(" " + str(sk_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
+                entities.append(sensor)
 
-        for name, key, unit, icon in SK1_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
-                hub_name,
-                hub,
-                device_info,
-                "sk1",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+            for name, key, unit, icon in SK1_BINARY_SENSOR_TYPES.values():
+                sensor = PellematicBinarySensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"sk{sk_count+1}",
+                    name.format(" " + str(sk_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
+                entities.append(sensor)
 
         for se_count in range(num_smart_pv_se):
             for name, key, unit, icon in SE1_SENSOR_TYPES.values():
