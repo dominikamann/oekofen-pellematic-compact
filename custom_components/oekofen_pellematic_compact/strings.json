@@ -14,7 +14,8 @@
           "stirling": "Stirling engine generator support yes/no (stirling)",
           "num_of_heating_circuits": "Num of heating circuits (HKx)",
           "num_of_hot_water": "Num of hot water circuits (HWx)",
-          "num_of_pellematic_heaters": "Num of Pellematic heaters (PELx)"
+          "num_of_pellematic_heaters": "Num of Pellematic heaters (PELx)",
+          "num_of_smart_pv_se_count" : "Num of Smart PV (SEx)"
         }
       }
     },
