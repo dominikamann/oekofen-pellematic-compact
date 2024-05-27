@@ -170,5 +170,5 @@ def fetch_data(url: str):
 
     # Hotfix for pellematic update 4.02 (invalid json)
     str_response = str_response.replace("L_statetext:", 'L_statetext":')
-    result = json.loads(str_response)
+    result = json.loads(str_response, strict=False)
     return result
