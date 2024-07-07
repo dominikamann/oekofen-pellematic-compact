@@ -157,7 +157,7 @@ class PellematicHub:
 
 def fetch_data(url: str):
     """Get data"""
-    #_LOGGER.debug("Fetching pellematic datas with REST API")
+    # _LOGGER.debug("Fetching pellematic datas with REST API")
 
     req = urllib.request.Request(url)
     response = None
@@ -172,11 +172,8 @@ def fetch_data(url: str):
             response.close()
 
     # Hotfix for pellematic update 4.02 (invalid json)
-    if str_response[:1] == "{":
-        str_response = str_response.replace("L_statetext:", 'L_statetext":')
-        result = json.loads(str_response, strict=False)
-    else: 
-        result = str_response
+    str_response = str_response.replace("L_statetext:", 'L_statetext":')
+    result = json.loads(str_response, strict=False)
     return result
 
 def send_data(url: str):
