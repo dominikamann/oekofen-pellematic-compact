@@ -15,7 +15,6 @@ from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_time_interval
-from homeassistant.helpers.issue_registry import async_create_issue
 from .const import (
     DEFAULT_HOST,
     DOMAIN,
@@ -61,17 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Register the hub.
     hass.data[DOMAIN][name] = {"hub": hub}
 
-    if not await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS):
-        async_create_issue(
-            hass,
-            DOMAIN,
-            f"failed_setup_{entry.entry_id}",
-            is_fixable=False,
-            severity="error",
-            translation_key="failed_setup",
-            translation_placeholders={"name": name},
-        )
-        return False
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
