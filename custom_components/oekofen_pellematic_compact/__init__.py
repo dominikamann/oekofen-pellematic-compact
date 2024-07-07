@@ -38,7 +38,7 @@ CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: vol.Schema({cv.slug: PELLEMATIC_SCHEMA})}, extra=vol.ALLOW_EXTRA
 )
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor","select","number"]
 
 
 async def async_setup(hass: HomeAssistant, config):
@@ -124,6 +124,12 @@ class PellematicHub:
             # stop the interval timer upon removal of last sensor.
             self._unsub_interval_method()
             self._unsub_interval_method = None
+            
+    def send_pellematic_data(self, val, prefix, key) -> None:
+        """Call data update."""
+        urlsent=f"{self._host[:-3]}{prefix}_{key}={val}"
+        _LOGGER.debug("URL maj : %s",urlsent)
+        result = send_data(urlsent)
 
     async def async_refresh_api_data(self, _now: Optional[int] = None) -> None:
         """Time to update."""
@@ -154,7 +160,7 @@ class PellematicHub:
 
 def fetch_data(url: str):
     """Get data"""
-    # _LOGGER.debug("Fetching pellematic datas with REST API")
+    #_LOGGER.debug("Fetching pellematic datas with REST API")
 
     req = urllib.request.Request(url)
     response = None
@@ -169,6 +175,27 @@ def fetch_data(url: str):
             response.close()
 
     # Hotfix for pellematic update 4.02 (invalid json)
-    str_response = str_response.replace("L_statetext:", 'L_statetext":')
-    result = json.loads(str_response, strict=False)
+    if str_response[:1] == "{":
+        str_response = str_response.replace("L_statetext:", 'L_statetext":')
+        result = json.loads(str_response, strict=False)
+    else: 
+        result = str_response
     return result
+
+def send_data(url: str):
+    """Put data"""
+    # _LOGGER.debug("Sending pellematic datas with REST API")
+
+    req = urllib.request.Request(url)
+    response = None
+    str_response = None
+    try:
+        response = urllib.request.urlopen(
+            req, timeout=3
+        )  # okofen api recommanded timeout is 2,5s
+        str_response = response.read().decode("iso-8859-1", "ignore")
+    finally:
+        if response is not None:
+            response.close()    
+    #_LOGGER.debug("Sending pellematic datas with REST API %s",str_response)
+    return str_response

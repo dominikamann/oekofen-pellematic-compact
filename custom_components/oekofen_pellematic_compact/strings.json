@@ -26,5 +26,38 @@
     "abort": {
       "already_configured": "Device is already configured"
     }
+  },
+  "entity": {
+	"select": {
+      "heater": {
+        "state": {
+          "0_off": "0 - Stop",
+          "1_auto": "1 - Auto",
+          "2_conmfort": "2 - Comfort",
+		  "3_slow": "3 - Reduced"
+        }
+      },
+      "mode": {
+        "state": {
+          "0_off": "0 - Stop",
+          "1_auto": "1 - Auto",
+          "2_force": "2 - Forced"
+        }
+      }
+    },
+	"switch": {
+      "onoff": {
+        "state": {
+          "0_off": "0 - Off",
+          "1_on": "1 - On"
+        }
+      },
+      "prog": {
+        "state": {
+          "0_prog1": "0 - Program 1",
+          "1_prog2": "1 - Program 2"
+        }
+      }
+    }
   }
 }
