@@ -1,0 +1,63 @@
+{
+  "config": {
+    "title": "\u00d6kofen Pellematic",
+    "step": {
+      "user": {
+        "title": "Configurer la connexion à l'interface JSON de votre chaudière \u00d6kofen Pellematic",
+        "data": {
+          "host": "L'url incluant le mot de passe",
+          "name": "Nom de l'appareil",
+          "scan_interval": "Fréquence de raffraichissement en secondes",
+          "solar_circuit": "Solar & Sun Sensors support yes/no (SE1, SK1)",
+          "circulator": "Circulator support yes/no (CIRC1)",
+          "smart_pv": "Smart PV support yes/no (POWER)",
+          "stirling": "Stirling engine generator support yes/no (stirling)",
+          "num_of_heating_circuits": "Nombre de circuits de chauffage (HKx)",
+          "num_of_hot_water": "Nombre de circuits d'eau chaude (HWx)",
+          "num_of_pellematic_heaters": "Num of Pellematic heaters (PEx)",
+          "num_of_smart_pv_se_count" : "Nombre de Smart PV (SEx)",
+          "num_of_smart_pv_sk_count" : "Nombre de Smart PV (SKx)"     
+        }
+      }
+    },
+    "error": {
+      "already_configured": "Appareil déja configuré"
+    },
+    "abort": {
+      "already_configured": "Appareil déja configuré"
+    }
+  },
+  "entity": {
+	"select": {
+      "heater": {
+        "state": {
+          "0_off": "0 - Arrêt",
+          "1_auto": "1 - Auto",
+          "2_comfort": "2 - Confort",
+		  "3_slow": "3 - Réduit"
+        }
+      },
+      "mode": {
+        "state": {
+          "0_off": "0 - Arrêt",
+          "1_auto": "1 - Auto",
+          "2_force": "2 - Marche forcée"
+        }
+      }
+    },
+	"switch": {
+      "onoff": {
+        "state": {
+          "0_off": "0 - Arrêt",
+          "1_on": "1 - Marche"
+        }
+      },
+      "prog": {
+        "state": {
+          "0_prog1": "0 - Programme 1",
+          "1_prog2": "1 - Programme 2"
+        }
+      }
+    }
+  }
+}

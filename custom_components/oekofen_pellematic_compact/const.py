@@ -8,6 +8,8 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfEnergy,
 )
+from homeassistant.components.number import NumberDeviceClass, NumberMode
+
 
 DOMAIN = "oekofen_pellematic_compact"
 DEFAULT_NAME = "Pellematic"
@@ -776,6 +778,33 @@ HK_SENSOR_TYPES = {
         None,
         "mdi:heating-coil",
     ],
+    "mode_auto": [
+        "Heating Circuit{0} Mode Auto",
+        "mode_auto",
+        None,
+        "mdi:heating-coil",
+    ],
+}
+
+HK_SELECT_TYPES = {
+    "mode_auto": [
+        "Heating Circuit{0} Mode Auto",
+        "mode_auto",
+        "heater",
+        ["0_off","1_auto","2_comfort","3_slow"]
+    ],
+}
+
+HK_NUMBER_TYPES = {
+    "temp_heat": [
+        "Heating Circuit{0} Heat Temp",
+        "temp_heat",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        10,
+        40,
+        0.5
+    ],
 }
 
 HK_BINARY_SENSOR_TYPES = {
@@ -895,6 +924,42 @@ WW_SENSOR_TYPES = {
         "name",
         None,
         "mdi:water-sync",
+    ],
+    "mode_auto": [
+        "Hot Water Circuit{0} Mode Auto",
+        "mode_auto",
+        None,
+        "mdi:water-sync",
+    ],
+}
+
+WW_SELECT_TYPES = {
+    "mode_auto": [
+        "Hot Water Circuit{0} Mode Auto",
+        "mode_auto",
+        "mode",
+        ["0_off","1_auto","2_force"]
+    ],
+}
+
+WW_NUMBER_TYPES = {
+    "temp_min_set": [
+        "Hot Water Circuit{0} Min Temp",
+        "temp_min_set",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        8,
+        80,
+        1
+    ],
+    "temp_max_set": [
+        "Hot Water Circuit{0} Max Temp",
+        "temp_max_set",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        8,
+        80,
+        1
     ],
 }
 
