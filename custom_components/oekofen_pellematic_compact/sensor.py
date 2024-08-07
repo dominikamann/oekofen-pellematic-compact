@@ -381,10 +381,10 @@ class PellematicBinarySensor(BinarySensorEntity):
         """Return the state of the sensor."""
         current_value = None
         try:
-            current_value = self._hub.data[self._prefix][self._key]["val"]
+            current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
         except:
             try:
-                current_value = self._hub.data[self._prefix][self._key]
+                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
             except:
                 return current_value
         return current_value
@@ -405,10 +405,10 @@ class PellematicBinarySensor(BinarySensorEntity):
         current_value = None
 
         try:
-            current_value = self._hub.data[self._prefix][self._key]["val"]
+            current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
         except:
             try:
-                current_value = self._hub.data[self._prefix][self._key]
+                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
             except:
                 self._attr_is_on = current_value
         self._attr_is_on = current_value
@@ -527,7 +527,7 @@ class PellematicSensor(SensorEntity):
         current_value = None
 
         try:
-            current_value = self._hub.data[self._prefix][self._key]["val"]
+            current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
             if self._attr_device_class == UnitOfPower.KILO_WATT:
@@ -540,7 +540,7 @@ class PellematicSensor(SensorEntity):
                     current_value = int(current_value) / 10000
         except:
             try:
-                current_value = self._hub.data[self._prefix][self._key]
+                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
                 if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._attr_device_class == UnitOfPower.KILO_WATT:
@@ -575,9 +575,11 @@ class PellematicSensor(SensorEntity):
         """Return the state of the sensor."""
         current_value = None
         try:
-            current_value = self._hub.data[self._prefix][self._key]
+            current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
+            if self._attr_device_class == UnitOfPower.KILO_WATT:
+                current_value = int(current_value) / 10                         
             if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                 # SE1 need / 10 but POWER need / 10000
                 if self._prefix == "se1":
@@ -585,7 +587,20 @@ class PellematicSensor(SensorEntity):
                 else:
                     current_value = int(current_value) / 10000
         except:
-            return current_value
+            try:
+                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
+                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+                    current_value = int(current_value) / 10
+                if self._attr_device_class == UnitOfPower.KILO_WATT:
+                    current_value = int(current_value) / 10     
+                if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
+                    # SE1 need / 10 but POWER need / 10000
+                    if self._prefix == "se1":
+                        current_value = int(current_value) / 10
+                    else:
+                        current_value = int(current_value) / 10000
+            except:
+                return current_value
         return current_value
 
     @property

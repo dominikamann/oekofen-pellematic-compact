@@ -724,6 +724,12 @@ SK1_SENSOR_TYPES = {
         None,
         "mdi:solar-power-variant",
     ],
+    "L_pump": [
+        "Solar Thermal Collector Circuit Pump %",
+        "L_pump#2",
+        PERCENTAGE,
+        "mdi:pump",
+    ],
 }
 
 SK1_BINARY_SENSOR_TYPES = {
@@ -801,6 +807,12 @@ HK_SENSOR_TYPES = {
         "mode_auto",
         None,
         "mdi:heating-coil",
+    ],
+    "L_pump": [
+        "Heating Circuit{0} Pump %",
+        "L_pump#2",
+        PERCENTAGE,
+        "mdi:pump",
     ],
 }
 
@@ -883,6 +895,12 @@ PU1_SENSOR_TYPES = {
         None,
         "mdi:storage-tank",
     ],
+    "L_pump": [
+        "Buffer Storage Pump %",
+        "L_pump#2",
+        PERCENTAGE,
+        "mdi:pump",
+    ],
 }
 
 PU1_BINARY_SENSOR_TYPES = {
@@ -949,6 +967,12 @@ WW_SENSOR_TYPES = {
         None,
         "mdi:water-sync",
     ],
+    "L_pump": [
+        "Hot Water Circuit{0} Pump %",
+        "L_pump#2",
+        None,
+        "mdi:pump",
+    ]
 }
 
 WW_SELECT_TYPES = {
