@@ -455,15 +455,33 @@ PE_SENSOR_TYPES = {
         UnitOfMass.KILOGRAMS,
         None,
     ],
+    "L_pellets_yesterday": [
+        "Pellet{0} Usage Yesterday (new)",
+        "L_pellets_yesterday",
+        UnitOfMass.KILOGRAMS,
+        None,
+    ],
     "storage_fill_today": [
         "Pellet{0} Usage Today",
         "storage_fill_today",
         UnitOfMass.KILOGRAMS,
         None,
     ],
+    "L_pellets_today": [
+        "Pellet{0} Usage Today (new)",
+        "L_pellets_today",
+        UnitOfMass.KILOGRAMS,
+        None,
+    ],
     "L_storage_popper": [
         "Pellet{0} Hopper Tank",
         "L_storage_popper",
+        UnitOfMass.KILOGRAMS,
+        None,
+    ],
+    "L_storage_hopper": [
+        "Pellet{0} Hopper Tank (new)",
+        "L_storage_hopper",
         UnitOfMass.KILOGRAMS,
         None,
     ],
