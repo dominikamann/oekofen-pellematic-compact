@@ -31,3 +31,11 @@ Go to your Ökofen Pellematic
     IMPORTANT: Do not activate the compatibility mode. This mode is not supported/recommended.
 
  Use the provided URL as HOST in Component-Configuration (<http://[ip]:[port]/[password]/all>)
+
+## Password or url change
+
+If you upgrade your Ökofen Pellematic firmawre or change your password, you can simply change it in the homessistant configuration by : 
+- connecting via ssh to your homeassistant : `ssh root@homeassistant`
+- edit your configuration via : `vi /root/config/.storage/core.config_entries`
+- search for pellematic configuration and change the url in the "host" key of pellematic configuration
+- restart your homeassistant core
