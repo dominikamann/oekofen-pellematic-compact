@@ -386,7 +386,13 @@ class PellematicBinarySensor(BinarySensorEntity):
             try:
                 current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
             except:
-                return current_value
+                pass
+        
+        if current_value == 'true':
+            current_value = True
+        elif current_value == 'false':
+            current_value = False
+
         return current_value
 
     async def async_added_to_hass(self):
@@ -586,6 +592,11 @@ class PellematicSensor(SensorEntity):
                     current_value = int(current_value) / 10
                 else:
                     current_value = int(current_value) / 10000
+            if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                if current_value == 'true':
+                    current_value = 100
+                elif current_value == 'false':
+                    current_value = 0
         except:
             try:
                 current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
@@ -599,8 +610,13 @@ class PellematicSensor(SensorEntity):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
+                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                    if current_value == 'true':
+                        current_value = 100
+                    elif current_value == 'false':
+                        current_value = 0
             except:
-                return current_value
+                pass
         return current_value
 
     @property
