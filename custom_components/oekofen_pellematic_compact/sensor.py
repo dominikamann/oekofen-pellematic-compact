@@ -544,6 +544,11 @@ class PellematicSensor(SensorEntity):
                     current_value = int(current_value) / 10
                 else:
                     current_value = int(current_value) / 10000
+            if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                if current_value == 'true':
+                    current_value = 100
+                elif current_value == 'false':
+                    current_value = 0
         except:
             try:
                 current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
@@ -557,6 +562,11 @@ class PellematicSensor(SensorEntity):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
+                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                    if current_value == 'true':
+                        current_value = 100
+                    elif current_value == 'false':
+                        current_value = 0
             except:
                 self._state = current_value
         self._state = current_value
