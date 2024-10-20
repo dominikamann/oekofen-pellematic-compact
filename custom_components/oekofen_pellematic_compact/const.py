@@ -48,7 +48,7 @@ SYSTEM_SENSOR_TYPES = {
         "mdi:alert-circle",
     ],
     "L_existing_boiler": [
-        "Existing Boiler",
+        "Existing Boiler Temperature",
         "L_existing_boiler",
         UnitOfTemperature.CELSIUS,
         None,
