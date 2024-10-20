@@ -47,6 +47,12 @@ SYSTEM_SENSOR_TYPES = {
         None,
         "mdi:alert-circle",
     ],
+    "L_existing_boiler": [
+        "Existing Boiler",
+        "L_existing_boiler",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
 }
 
 SYSTEM_BINARY_SENSOR_TYPES = {
