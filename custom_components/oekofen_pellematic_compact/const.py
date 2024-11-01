@@ -602,6 +602,15 @@ PE_SENSOR_TYPES = {
     "L_statetext": ["Pellematic State", "L_statetext", None, "mdi:fire-circle"],
 }
 
+PE_SELECT_TYPES = {
+    "mode": [
+        "Pellematic{0} Mode",
+        "mode",
+        "mode",
+        ["0_off","1_auto","2_force"]
+    ],
+}
+
 SE1_SENSOR_TYPES = {
     "L_flow_temp": [
         "Solar Gain Flow Temperature",
