@@ -8,8 +8,10 @@ from homeassistant.components.select import SelectEntity
 from .const import (
     CONF_NUM_OF_HEATING_CIRCUIT,
     CONF_NUM_OF_HOT_WATER,
+    CONF_NUM_OF_PELLEMATIC_HEATER,
     HK_SELECT_TYPES,
     WW_SELECT_TYPES,
+    PE_SELECT_TYPES,
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
@@ -34,14 +36,9 @@ async def async_setup_entry(
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
     
-    try:
-        num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
-    except:
-        num_heating_circuit = 1
-    try:
-        num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
-    except:
-        num_hot_water = 1
+    num_heating_circuit = entry.data.get(CONF_NUM_OF_HEATING_CIRCUIT, 1)
+    num_hot_water = entry.data.get(CONF_NUM_OF_HOT_WATER, 1)
+    num_pellematic_heater = entry.data.get(CONF_NUM_OF_PELLEMATIC_HEATER, 1)
 
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
     
@@ -54,32 +51,26 @@ async def async_setup_entry(
     
     entities = []
     
-    for heating_cir_count in range(num_heating_circuit):
-        for name, key, trname, options  in HK_SELECT_TYPES.values():
-            select = PellematicSelect(
-                hub_name,
-                hub,
-                device_info,
-                f"hk{heating_cir_count +1}",
-                name.format(" " + str(heating_cir_count + 1)),
-                key,
-                options,
-                trname
-            )
-            entities.append(select)    
-    for hot_water_count in range(num_hot_water):
-        for name, key, trname, options in WW_SELECT_TYPES.values():
-            select = PellematicSelect(
-                hub_name,
-                hub,
-                device_info,
-                f"ww{hot_water_count +1}",
-                name.format(" " + str(hot_water_count + 1)),
-                key,
-                options,
-                trname
-            )
-            entities.append(select)
+    selects_to_add = [
+        ("hk", HK_SELECT_TYPES, num_heating_circuit),
+        ("ww", WW_SELECT_TYPES, num_hot_water),
+        ("pe", PE_SELECT_TYPES, num_pellematic_heater),
+    ]
+
+    for prefix, select_types, num_selects in selects_to_add:
+        for n in range(1, num_selects + 1):
+            for name, key, trname, options  in select_types.values():
+                select = PellematicSelect(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"{prefix}{n}",
+                    name.format(f" {n}"),
+                    key,
+                    options,
+                    trname
+                )
+                entities.append(select)
     
     _LOGGER.debug("Entities added : %i", len(entities))
     
