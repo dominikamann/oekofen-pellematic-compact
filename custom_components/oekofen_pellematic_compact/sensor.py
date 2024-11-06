@@ -503,6 +503,8 @@ class PellematicSensor(SensorEntity):
         if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
             self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_state_class = SensorStateClass.MEASUREMENT
+        if self._key == 'L_state' or self._key == 'mode_auto' or self._key == 'oekomode':
+            self._attr_state_class = SensorStateClass.MEASUREMENT
 
         _LOGGER.debug(
             "Adding a PellematicSensor : %s, %s, %s, %s, %s, %s, %s, %s, %s",
