@@ -811,6 +811,12 @@ HK_SENSOR_TYPES = {
         None,
         "mdi:heating-coil",
     ],
+    "L_state": [
+        "Heating Circuit{0} State numeric",
+        "L_state",
+        None,
+        "mdi:heating-coil",
+    ],
     "name": [
         "Heating Circuit{0} Name",
         "name",
