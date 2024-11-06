@@ -10,6 +10,8 @@ from homeassistant.const import (
 )
 
 from .const import (
+    CONF_CHARSET,
+    DEFAULT_CHARSET,
     DOMAIN,
     DEFAULT_HOST,
     DEFAULT_NAME,
@@ -46,6 +48,7 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_CIRCULATOR, default=False): bool,
         vol.Optional(CONF_SMART_PV, default=False): bool,
         vol.Optional(CONF_STIRLING, default=False): bool,
+        vol.Optional(CONF_CHARSET, default=DEFAULT_CHARSET): str,
     }
 )
 
