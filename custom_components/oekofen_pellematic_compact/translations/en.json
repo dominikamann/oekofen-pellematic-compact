@@ -16,7 +16,8 @@
           "num_of_hot_water": "Num of hot water circuits (HWx)",
           "num_of_pellematic_heaters": "Num of Pellematic heaters (PEx)",
           "num_of_smart_pv_se_count" : "Num of Smart PV (SEx)",
-          "num_of_smart_pv_sk_count" : "Num of Smart PV (SKx)"     
+          "num_of_smart_pv_sk_count" : "Num of Smart PV (SKx)",
+          "charset": "Character set for decoding (try iso-8859-1 or utf-8)"     
         }
       }
     },

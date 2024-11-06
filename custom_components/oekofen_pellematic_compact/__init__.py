@@ -16,6 +16,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_time_interval
 from .const import (
+    CONF_CHARSET,
+    DEFAULT_CHARSET,
     DEFAULT_HOST,
     DOMAIN,
     DEFAULT_NAME,
@@ -23,11 +25,13 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_CHARSET = DEFAULT_CHARSET
 
 PELLEMATIC_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
         vol.Optional(CONF_HOST, default=DEFAULT_HOST): cv.string,
+        vol.Optional(CONF_CHARSET, default=DEFAULT_CHARSET): cv.string,
         vol.Optional(
             CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
         ): cv.positive_int,
@@ -46,12 +50,14 @@ async def async_setup(hass: HomeAssistant, config):
     hass.data[DOMAIN] = {}
     return True
 
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up a Ökofen Pellematic Component."""
     host = entry.data[CONF_HOST]
     name = entry.data[CONF_NAME]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
+
+    global _CHARSET
+    _CHARSET = entry.data.get(CONF_CHARSET, DEFAULT_CHARSET)
 
     _LOGGER.debug("Setup Pellematic Hub %s, %s", DOMAIN, name)
 
@@ -162,11 +168,12 @@ def fetch_data(url: str):
     req = urllib.request.Request(url)
     response = None
     str_response = None
+
     try:
         response = urllib.request.urlopen(
             req, timeout=3
         )  # okofen api recommanded timeout is 2,5s
-        str_response = response.read().decode("iso-8859-1", "ignore")
+        str_response = response.read().decode(_CHARSET, "ignore")
     finally:
         if response is not None:
             response.close()
@@ -187,7 +194,7 @@ def send_data(url: str):
         response = urllib.request.urlopen(
             req, timeout=3
         )  # okofen api recommanded timeout is 2,5s
-        str_response = response.read().decode("iso-8859-1", "ignore")
+        str_response = response.read().decode(_CHARSET, "ignore")
     finally:
         if response is not None:
             response.close()    
