@@ -858,6 +858,15 @@ HK_NUMBER_TYPES = {
         40,
         0.5
     ],
+    "temp_setback": [
+        "Heating Circuit{0} Set Down Temp",
+        "temp_setback",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        10,
+        40,
+        0.5
+    ],
 }
 
 HK_BINARY_SENSOR_TYPES = {
@@ -1004,6 +1013,12 @@ WW_SELECT_TYPES = {
         "mode_auto",
         "mode",
         ["0_off","1_auto","2_force"]
+    ],
+    "heat_once": [
+        "Hot Water Circuit{0} Heat Once",
+        "heat_once",
+        "heat_once",
+        ["0_off","1_on"]
     ],
 }
 

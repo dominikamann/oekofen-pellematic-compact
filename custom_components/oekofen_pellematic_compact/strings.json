@@ -44,6 +44,12 @@
           "1_auto": "1 - Auto",
           "2_force": "2 - Forced"
         }
+      },
+      "heat_once": {
+        "state": {
+          "0_off": "0 - Off",
+          "1_on": "1 - On"
+        }
       }
     },
 	"switch": {
