@@ -858,6 +858,15 @@ HK_NUMBER_TYPES = {
         40,
         0.5
     ],
+    "temp_setback": [
+        "Heating Circuit{0} Set Down Temp",
+        "temp_setback",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        10,
+        40,
+        0.5
+    ],
 }
 
 HK_BINARY_SENSOR_TYPES = {
