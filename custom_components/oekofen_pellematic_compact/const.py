@@ -1005,6 +1005,12 @@ WW_SELECT_TYPES = {
         "mode",
         ["0_off","1_auto","2_force"]
     ],
+    "heat_once": [
+        "Hot Water Circuit{0} Heat Once",
+        "heat_once",
+        "heat_once",
+        ["0_off","1_on"]
+    ],
 }
 
 WW_NUMBER_TYPES = {
