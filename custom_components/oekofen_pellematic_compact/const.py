@@ -7,6 +7,7 @@ from homeassistant.const import (
     UnitOfMass,
     UnitOfPower,
     UnitOfEnergy,
+    UnitOfElectricPotential,
 )
 from homeassistant.components.number import NumberDeviceClass, NumberMode
 
@@ -112,8 +113,8 @@ STIRLING_SENSOR_TYPES = {
     "L_voltage": [
         "Stirling Engine Voltage",
         "L_voltage",
+        UnitOfElectricPotential.VOLT,
         None,
-        "mdi:numeric",
     ],
     "L_current": [
         "Stirling Engine Current",
@@ -142,20 +143,20 @@ STIRLING_SENSOR_TYPES = {
     "L_power_totals": [
         "Stirling Engine Power Totals",
         "L_power_totals",
+        UnitOfEnergy.KILO_WATT_HOUR,
         None,
-        "mdi:numeric",
     ],
     "L_power_today": [
         "Stirling Engine Power Today",
         "L_power_today",
+        UnitOfEnergy.KILO_WATT_HOUR,
         None,
-        "mdi:numeric",
     ],
     "L_power_yesterday": [
         "Stirling Engine Power Yesterday",
         "L_power_yesterday",
+        UnitOfEnergy.KILO_WATT_HOUR,
         None,
-        "mdi:numeric",
     ],
     "L_source": [
         "Stirling Engine Source",
