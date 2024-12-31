@@ -36,7 +36,12 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
-    WP_SENSOR_TYPES
+    WP_SENSOR_TYPES,
+    DEFAULT_NUM_OF_HEAT_PUMPS,
+    DEFAULT_NUM_OF_HOT_WATER,
+    DEFAULT_NUM_OF_PELLEMATIC_HEATER,
+    DEFAULT_NUM_OF_SMART_PV_SE,
+    DEFAULT_NUM_OF_SMART_PV_SK
 )
 
 from homeassistant.const import (
@@ -96,23 +101,23 @@ async def async_setup_entry(
     try:
         num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
     except:
-        num_hot_water = 1
+        num_hot_water = DEFAULT_NUM_OF_HOT_WATER
     try:
         num_pellematic_heater = entry.data[CONF_NUM_OF_PELLEMATIC_HEATER]
     except:
-        num_pellematic_heater = 1
+        num_pellematic_heater = DEFAULT_NUM_OF_PELLEMATIC_HEATER
     try:
         num_smart_pv_se = entry.data[CONF_NUM_OF_SMART_PV_SE]
     except:
-        num_smart_pv_se = 1
+        num_smart_pv_se = DEFAULT_NUM_OF_SMART_PV_SE
     try:
         num_smart_pv_sk = entry.data[CONF_NUM_OF_SMART_PV_SK]
     except:
-        num_smart_pv_sk = 1    
+        num_smart_pv_sk = DEFAULT_NUM_OF_SMART_PV_SK    
     try:
         num_heat_pumps = entry.data[CONF_NUM_OF_HEAT_PUMPS]
     except:
-        num_heat_pumps = 1  
+        num_heat_pumps = DEFAULT_NUM_OF_HEAT_PUMPS 
             
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
 

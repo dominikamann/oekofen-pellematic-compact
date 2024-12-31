@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import logging
+from typing import Any, Optional
 
 from homeassistant.components.select import SelectEntity
 
@@ -15,6 +16,9 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
+    DEFAULT_NUM_OF_HEATING_CIRCUIT,
+    DEFAULT_NUM_OF_HOT_WATER,
+    DEFAULT_NUM_OF_PELLEMATIC_HEATER
 )
 
 from homeassistant.const import (
@@ -36,9 +40,9 @@ async def async_setup_entry(
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
     
-    num_heating_circuit = entry.data.get(CONF_NUM_OF_HEATING_CIRCUIT, 1)
-    num_hot_water = entry.data.get(CONF_NUM_OF_HOT_WATER, 1)
-    num_pellematic_heater = entry.data.get(CONF_NUM_OF_PELLEMATIC_HEATER, 1)
+    num_heating_circuit = entry.data.get(CONF_NUM_OF_HEATING_CIRCUIT, DEFAULT_NUM_OF_HEATING_CIRCUIT)
+    num_hot_water = entry.data.get(CONF_NUM_OF_HOT_WATER, DEFAULT_NUM_OF_HOT_WATER)
+    num_pellematic_heater = entry.data.get(CONF_NUM_OF_PELLEMATIC_HEATER, DEFAULT_NUM_OF_PELLEMATIC_HEATER)
 
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
     

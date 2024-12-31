@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import logging
+from typing import Any, Optional
 
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 
@@ -13,6 +14,8 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
+    DEFAULT_NUM_OF_HEATING_CIRCUIT,
+    DEFAULT_NUM_OF_HOT_WATER
 )
 
 from homeassistant.const import (
@@ -38,11 +41,11 @@ async def async_setup_entry(
     try:
         num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
     except:
-        num_heating_circuit = 1
+        num_heating_circuit = DEFAULT_NUM_OF_HEATING_CIRCUIT
     try:
         num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
     except:
-        num_hot_water = 1
+        num_hot_water = DEFAULT_NUM_OF_HOT_WATER
 
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
     
