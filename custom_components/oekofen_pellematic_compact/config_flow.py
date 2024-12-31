@@ -23,6 +23,8 @@ from .const import (
     CONF_NUM_OF_PELLEMATIC_HEATER,
     CONF_NUM_OF_SMART_PV_SE,
     CONF_NUM_OF_SMART_PV_SK,
+    CONF_NUM_OF_HEAT_PUMPS,
+    DEFAULT_NUM_OF_HEAT_PUMPS,
     DEFAULT_NUM_OF_SMART_PV_SE,
     DEFAULT_NUM_OF_SMART_PV_SK,
     CONF_NUM_OF_HEATING_CIRCUIT,
@@ -44,11 +46,13 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_NUM_OF_PELLEMATIC_HEATER, default=DEFAULT_NUM_OF_PELLEMATIC_HEATER): int,
         vol.Optional(CONF_SOLAR_CIRCUIT, default=False): bool,
         vol.Optional(CONF_NUM_OF_SMART_PV_SE, default=DEFAULT_NUM_OF_SMART_PV_SE): int,
-        vol.Optional(CONF_NUM_OF_SMART_PV_SK, default=DEFAULT_NUM_OF_SMART_PV_SK): int,       
+        vol.Optional(CONF_NUM_OF_SMART_PV_SK, default=DEFAULT_NUM_OF_SMART_PV_SK): int,   
+        vol.Optional(CONF_NUM_OF_HEAT_PUMPS, default=DEFAULT_NUM_OF_HEAT_PUMPS): int,    
         vol.Optional(CONF_CIRCULATOR, default=False): bool,
         vol.Optional(CONF_SMART_PV, default=False): bool,
         vol.Optional(CONF_STIRLING, default=False): bool,
         vol.Optional(CONF_CHARSET, default=DEFAULT_CHARSET): str,
+
     }
 )
 
