@@ -17,6 +17,7 @@
           "num_of_pellematic_heaters": "Num of Pellematic heaters (PELx)",
           "num_of_smart_pv_se_count" : "Num of Smart PV (SEx)",
           "num_of_smart_pv_sk_count" : "Num of thermal solar collectors (SKx)",
+          "num_of_heat_pumps_count" : "Num of Heat Pumps (WPx)",
           "charset": "Character set for decoding (try iso-8859-1 or utf-8)"    
         }
       }
