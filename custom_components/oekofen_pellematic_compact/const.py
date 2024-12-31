@@ -8,6 +8,8 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfEnergy,
     UnitOfElectricPotential,
+    UnitOfVolumeFlowRate,
+    UnitOfPressure
 )
 from homeassistant.components.number import NumberDeviceClass, NumberMode
 
@@ -28,6 +30,7 @@ CONF_CHARSET = "charset"
 CONF_NUM_OF_HEATING_CIRCUIT = "num_of_heating_circuits"
 CONF_NUM_OF_PELLEMATIC_HEATER = "num_of_pellematic_heaters"
 CONF_NUM_OF_SMART_PV_SE = "num_of_smart_pv_se_count"
+CONF_NUM_OF_HEAT_PUMPS = "num_of_heat_pumps_count"
 CONF_NUM_OF_SMART_PV_SK = "num_of_smart_pv_sk_count"
 CONF_NUM_OF_HOT_WATER = "num_of_hot_water"
 DEFAULT_HOST = "http://[YOU_IP]:4321/[YOUR_PASSWORD]/all"
@@ -943,6 +946,225 @@ PU1_BINARY_SENSOR_TYPES = {
         None,
         "mdi:pump",
     ],
+}
+
+WP_SENSOR_TYPES = {
+    "L_state": [
+        "Heat Pump{0} State",
+        "L_state",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_statetext": [
+        "Heat Pump{0} State Text",
+        "L_statetext",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_sg_ready": [
+        "Heat Pump{0} SG Ready",
+        "L_sg_ready",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_cop": [
+        "Heat Pump{0} COP",
+        "L_cop",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_uwp": [
+        "Heat Pump{0} UWP Compressor",
+        "L_uwp",
+        PERCENTAGE,
+        None,
+    ],
+    "L_fan": [
+        "Heat Pump{0} Fan",
+        "L_fan",
+        PERCENTAGE,
+        None,
+    ],
+    "L_highpressure": [
+        "Heat Pump{0} High pressure",
+        "L_highpressure",
+        UnitOfPressure.BAR,
+        "mdi:heat-pump",
+    ],
+    "L_lowpressure": [
+        "Heat Pump{0} Low pressure",
+        "L_lowpressure",
+        UnitOfPressure.BAR,
+        "mdi:heat-pump",
+    ],
+    "L_overheat_is": [
+        "Heat Pump{0} Overheat is",
+        "L_overheat_is",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_overheat_set": [
+        "Heat Pump{0} Overheat set",
+        "L_overheat_set",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_eev": [
+        "Heat Pump{0} EEV",
+        "L_eev",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_overheat": [
+        "Heat Pump{0} Overheat",
+        "L_overheat",
+        None,
+        "mdi:heat-pump",
+    ],
+    "L_compressor_in": [
+         "Heat Pump{0} Compressor in",
+        "L_compressor_in",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_compressor_out": [
+        "Heat Pump{0} Compressor out",
+        "L_compressor_out",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_temp_src_in": [
+        "Heat Pump{0} Fan in",
+        "L_temp_src_in",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_temp_src_out": [
+        "Heat Pump{0} Fan out",
+        "L_temp_src_out",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_temp_flow_is": [
+        "Heat Pump{0} Flow is",
+        "L_temp_flow_is",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_temp_flow_set": [
+        "Heat Pump{0} Flow set",
+        "L_temp_flow_set",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_temp_return_is": [
+        "Heat Pump{0} Flow return",
+        "L_temp_return_is",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_flowrate": [
+        "Heat Pump{0} Flow rate",
+        "L_flowrate",
+        UnitOfVolumeFlowRate.LITERS_PER_MINUTE,
+        None,
+    ], 
+    "L_temp_vap": [
+        "Heat Pump{0} Evaporation temperature",
+        "L_temp_vap",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_temp_condens": [
+        "Heat Pump{0} Condensation  temperature",
+        "L_temp_condens",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_temp_heater": [
+        "Heat Pump{0} Heating power",
+        "L_temp_heater",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_temp_cooler": [
+        "Heat Pump{0} Cooling power",
+        "L_temp_cooler",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_el_energy": [
+        "Heat Pump{0} Electrical power",
+        "L_el_energy",
+        UnitOfPower.WATT,
+        None,
+    ],
+    "L_total_runtime": [
+        "Heat Pump{0} Runtime Total",
+        "L_total_runtime",
+        UnitOfTime.HOURS,
+        "mdi:timer",
+    ],
+    "L_min_runtime": [
+        "Heat Pump{0} Runtime Min",
+        "L_min_runtime",
+        UnitOfTime.HOURS,
+        "mdi:timer",
+    ],
+    "L_max_runtime": [
+        "Heat Pump{0} Runtime Max",
+        "L_max_runtime",
+        UnitOfTime.HOURS,
+        "mdi:timer",
+    ],
+    "L_activation_count": [
+        "Heat Pump{0} Activation counts",
+        "L_activation_count",
+        None,
+        "mdi:numeric",
+    ],
+    "L_jaz_all": [
+        "Heat Pump{0} JAZ",
+        "L_jaz_all",
+        None,
+        "mdi:numeric",
+    ],
+    "L_jaz_heat": [
+        "Heat Pump{0} JAZ Heat",
+        "L_jaz_heat",
+        None,
+        "mdi:numeric",
+    ],
+    "L_jaz_cool": [
+        "Heat Pump{0} JAZ Cool",
+        "L_jaz_cool",
+        None,
+        "mdi:numeric",
+    ],
+    "L_az_all": [
+        "Heat Pump{0} AZ",
+        "L_az_all",
+        None,
+        "mdi:numeric",
+    ],
+    "L_az_heat": [
+        "Heat Pump{0} AZ Heat",
+        "L_az_heat",
+        None,
+        "mdi:numeric",
+    ],
+    "L_az_cool": [
+        "Heat Pump{0} AZ Cool",
+        "L_az_cool",
+        None,
+        "mdi:numeric",
+    ],
+    "mode": [
+        "Heat Pump{0} Mode",
+        "mode",
+        None,
+        "mdi:heat-pump",
+    ]
 }
 
 WW_SENSOR_TYPES = {
