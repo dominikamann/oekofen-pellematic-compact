@@ -29,7 +29,7 @@ Click here to install over HACS:
 ## Enable JSON-Interface on your Ökofen Pellematic
 
 Go to your Ökofen Pellematic 
-  -> Touchscreen -> Open General Settings -> Network Settings (or IP Config & scroll down)
+  -> Touchscreen -> Open General Settings -> Network Settings/"IP Config"
     -> Scroll down -> Activate JSON Interface
     
     IMPORTANT: Do not activate the compatibility mode. This mode is not supported/recommended.
