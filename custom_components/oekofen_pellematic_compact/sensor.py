@@ -13,6 +13,7 @@ from .const import (
     CONF_NUM_OF_PELLEMATIC_HEATER,
     CONF_NUM_OF_SMART_PV_SE,
     CONF_NUM_OF_SMART_PV_SK,
+    CONF_NUM_OF_HEAT_PUMPS,
     CONF_SOLAR_CIRCUIT,
     CONF_CIRCULATOR,
     CONF_SMART_PV,
@@ -35,6 +36,7 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
+    WP_SENSOR_TYPES
 )
 
 from homeassistant.const import (
@@ -45,6 +47,8 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfMass,
     UnitOfTime,
+    UnitOfVolumeFlowRate,
+    UnitOfPressure
 )
 
 from homeassistant.components.sensor import (
@@ -104,7 +108,11 @@ async def async_setup_entry(
     try:
         num_smart_pv_sk = entry.data[CONF_NUM_OF_SMART_PV_SK]
     except:
-        num_smart_pv_sk = 1       
+        num_smart_pv_sk = 1    
+    try:
+        num_heat_pumps = entry.data[CONF_NUM_OF_HEAT_PUMPS]
+    except:
+        num_heat_pumps = 1  
             
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
 
@@ -321,6 +329,20 @@ async def async_setup_entry(
         )
         entities.append(sensor)
 
+    for heatpump_count in range(num_heat_pumps):
+        for name, key, unit, icon in WP_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name,
+                hub,
+                device_info,
+                f"wp{heatpump_count+1}",
+                name.format(" " + str(heatpump_count + 1)),
+                key,
+                unit,
+                icon,
+            )
+            entities.append(sensor)
+
     _LOGGER.debug("Entities added : %i", len(entities))
 
     async_add_entities(entities)
@@ -470,6 +492,12 @@ class PellematicSensor(SensorEntity):
         self._icon = icon
         self._device_info = device_info
         self._state = None
+        if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
+        if self._unit_of_measurement == UnitOfPressure.BAR:
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_device_class = SensorDeviceClass.PRESSURE
         if self._unit_of_measurement == UnitOfPower.KILO_WATT:
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_device_class = SensorDeviceClass.POWER
@@ -538,6 +566,8 @@ class PellematicSensor(SensorEntity):
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
+            if self._attr_device_class == UnitOfPower.LITERS_PER_MINUTE:
+                current_value = int(current_value) * 60
             if self._attr_device_class == UnitOfPower.KILO_WATT:
                 current_value = int(current_value) / 10                         
             if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
@@ -556,8 +586,10 @@ class PellematicSensor(SensorEntity):
                 current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
                 if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
+                if self._attr_device_class == UnitOfPower.LITERS_PER_MINUTE:
+                    current_value = int(current_value) * 60
                 if self._attr_device_class == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10     
+                    current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                     # SE1 need / 10 but POWER need / 10000
                     if self._prefix == "se1":
@@ -596,6 +628,8 @@ class PellematicSensor(SensorEntity):
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
             if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                 current_value = int(current_value) / 10
+            if self._attr_device_class == UnitOfPower.LITERS_PER_MINUTE:
+                current_value = int(current_value) * 60   
             if self._attr_device_class == UnitOfPower.KILO_WATT:
                 current_value = int(current_value) / 10                         
             if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
@@ -614,6 +648,8 @@ class PellematicSensor(SensorEntity):
                 current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
                 if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
+                if self._attr_device_class == UnitOfPower.LITERS_PER_MINUTE:
+                    current_value = int(current_value) * 60   
                 if self._attr_device_class == UnitOfPower.KILO_WATT:
                     current_value = int(current_value) / 10     
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
