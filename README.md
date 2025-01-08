@@ -43,3 +43,7 @@ If you upgrade your Ökofen Pellematic firmawre or change your password, you can
 - edit your configuration via : `vi /root/config/.storage/core.config_entries`
 - search for pellematic configuration and change the url in the "host" key of pellematic configuration
 - restart your homeassistant core
+
+OR
+
+![401221389-5b7e7316-5a60-4428-93fd-7f5761fa9ed7](https://github.com/user-attachments/assets/7e84f405-fed4-425f-aa96-9504b01bd6ce)
