@@ -607,6 +607,12 @@ PE_SENSOR_TYPES = {
         "mdi:numeric",
     ],
     "L_statetext": ["Pellematic State", "L_statetext", None, "mdi:fire-circle"],
+    "L_state": [
+        "Pellematic State Int",
+        "L_state",
+        None,
+        "mdi:fire-circle",
+    ],
 }
 
 PE_SELECT_TYPES = {
