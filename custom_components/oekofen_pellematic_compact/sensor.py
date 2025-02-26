@@ -577,7 +577,7 @@ class PellematicSensor(SensorEntity):
                 current_value = int(current_value) / 10                         
             if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                 # SE1 need / 10 but POWER need / 10000
-                if self._prefix == "se1":
+                if self._prefix.lower().startswith("se"):
                     current_value = int(current_value) / 10
                 else:
                     current_value = int(current_value) / 10000
@@ -597,7 +597,7 @@ class PellematicSensor(SensorEntity):
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                     # SE1 need / 10 but POWER need / 10000
-                    if self._prefix == "se1":
+                    if self._prefix.lower().startswith("se"):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
@@ -639,7 +639,7 @@ class PellematicSensor(SensorEntity):
                 current_value = int(current_value) / 10                         
             if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                 # SE1 need / 10 but POWER need / 10000
-                if self._prefix == "se1":
+                if self._prefix.lower().startswith("se"):
                     current_value = int(current_value) / 10
                 else:
                     current_value = int(current_value) / 10000
@@ -659,7 +659,7 @@ class PellematicSensor(SensorEntity):
                     current_value = int(current_value) / 10     
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                     # SE1 need / 10 but POWER need / 10000
-                    if self._prefix == "se1":
+                    if self._prefix.lower().startswith("se"):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
