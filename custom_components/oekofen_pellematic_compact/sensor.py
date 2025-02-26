@@ -415,9 +415,9 @@ class PellematicBinarySensor(BinarySensorEntity):
             except:
                 pass
         
-        if current_value == 'true':
+        if (current_value is True or str(current_value).lower() == 'true'):
             current_value = True
-        elif current_value == 'false':
+        elif (current_value is False or str(current_value).lower() == 'false'):
             current_value = False
 
         return current_value
@@ -582,9 +582,9 @@ class PellematicSensor(SensorEntity):
                 else:
                     current_value = int(current_value) / 10000
             if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                if current_value == 'true':
+                if (current_value is True or str(current_value).lower() == 'true'):
                     current_value = 100
-                elif current_value == 'false':
+                elif (current_value is False or str(current_value).lower() == 'false'):
                     current_value = 0
         except:
             try:
@@ -602,9 +602,9 @@ class PellematicSensor(SensorEntity):
                     else:
                         current_value = int(current_value) / 10000
                 if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if current_value == 'true':
+                    if (current_value is True or str(current_value).lower() == 'true'):
                         current_value = 100
-                    elif current_value == 'false':
+                    elif (current_value is False or str(current_value).lower() == 'false'):
                         current_value = 0
             except:
                 self._state = current_value
@@ -644,9 +644,9 @@ class PellematicSensor(SensorEntity):
                 else:
                     current_value = int(current_value) / 10000
             if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                if current_value == 'true':
+                if (current_value is True or str(current_value).lower() == 'true'):
                     current_value = 100
-                elif current_value == 'false':
+                elif (current_value is False or str(current_value).lower() == 'false'):
                     current_value = 0
         except:
             try:
@@ -664,9 +664,9 @@ class PellematicSensor(SensorEntity):
                     else:
                         current_value = int(current_value) / 10000
                 if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if current_value == 'true':
+                    if (current_value is True or str(current_value).lower() == 'true'):
                         current_value = 100
-                    elif current_value == 'false':
+                    elif (current_value is False or str(current_value).lower() == 'false'):
                         current_value = 0
             except:
                 pass
