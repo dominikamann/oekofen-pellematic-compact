@@ -23,6 +23,7 @@ DEFAULT_NUM_OF_PELLEMATIC_HEATER = 1
 DEFAULT_NUM_OF_SMART_PV_SE = 0
 DEFAULT_NUM_OF_SMART_PV_SK = 0
 DEFAULT_NUM_OF_HEAT_PUMPS = 0
+DEFAULT_NUM_OF_WIRELESS_SENSORS = 0
 CONF_SOLAR_CIRCUIT = "solar_circuit"
 CONF_CIRCULATOR = "circulator"
 CONF_SMART_PV = "smart_pv"
@@ -34,6 +35,7 @@ CONF_NUM_OF_SMART_PV_SE = "num_of_smart_pv_se_count"
 CONF_NUM_OF_HEAT_PUMPS = "num_of_heat_pumps_count"
 CONF_NUM_OF_SMART_PV_SK = "num_of_smart_pv_sk_count"
 CONF_NUM_OF_HOT_WATER = "num_of_hot_water"
+CONF_NUM_OF_WIRELESS_SENSORS = "num_of_wireless_sensors"
 DEFAULT_HOST = "http://[YOU_IP]:4321/[YOUR_PASSWORD]/all"
 DEFAULT_CHARSET = "iso-8859-1"
 CONF_SOLAREDGE_HUB = "solaredge_hub"
@@ -68,6 +70,39 @@ SYSTEM_BINARY_SENSOR_TYPES = {
         "L_usb_stick",
         None,
         "mdi:usb-flash-drive",
+    ],
+}
+
+WIRELESS_SENSOR_TYPES = {
+    "L_wireless_temp": [
+        "Wireless Sensor {0} Temperature",
+        "L_wireless_temp",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "L_wireless_hum": [
+        "Wireless Sensor {0} Humidity",
+        "L_wireless_hum",
+        PERCENTAGE,
+        "mdi:water-percent",
+    ],
+    "L_wireless_batt": [
+        "Wireless Sensor {0} Battery",
+        "L_wireless_batt",
+        PERCENTAGE,
+        "mdi:water-percent",
+    ],
+    "L_wireless_name": [
+        "Wireless Sensor {0} Name",
+        "L_wireless_name",
+        None,
+        None,
+    ],
+    "L_wireless_id": [
+        "Wireless Sensor {0} Id",
+        "L_wireless_id",
+        None,
+        "mdi:numeric",
     ],
 }
 
