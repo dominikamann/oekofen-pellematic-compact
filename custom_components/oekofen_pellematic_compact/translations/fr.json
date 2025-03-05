@@ -18,7 +18,8 @@
           "num_of_smart_pv_se_count" : "Nombre de Smart PV (SEx)",
           "num_of_smart_pv_sk_count" : "Nombre de Smart PV (SKx)",
           "num_of_heat_pumps_count" : "Nombre de Heat Pumps (WPx)",
-          "num_of_wireless_sensors" : "NUm of wireless sensors (WIRELESSx)",
+          "num_of_wireless_sensors" : "Nombre de wireless sensors (WIRELESSx)",
+          "num_of_buffer_storage" : "Nombre de buffer storages (PUx)",
           "charset": "Character set for decoding (try iso-8859-1 or utf-8)"     
         }
       }

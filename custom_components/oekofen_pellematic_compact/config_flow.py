@@ -35,7 +35,9 @@ from .const import (
     CONF_SMART_PV,
     CONF_STIRLING,
     DEFAULT_NUM_OF_WIRELESS_SENSORS,
-    CONF_NUM_OF_WIRELESS_SENSORS
+    CONF_NUM_OF_WIRELESS_SENSORS,
+    CONF_NUM_OF_BUFFER_STORAGE,
+    DEFAULT_NUM_OF_BUFFER_STORAGE
 )
 
 from homeassistant.core import HomeAssistant, callback
@@ -53,11 +55,14 @@ DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_NUM_OF_SMART_PV_SK, default=DEFAULT_NUM_OF_SMART_PV_SK): int,   
         vol.Optional(CONF_NUM_OF_HEAT_PUMPS, default=DEFAULT_NUM_OF_HEAT_PUMPS): int,    
         vol.Optional(CONF_NUM_OF_WIRELESS_SENSORS, default=DEFAULT_NUM_OF_WIRELESS_SENSORS): int,
+        vol.Optional(CONF_NUM_OF_BUFFER_STORAGE, default=DEFAULT_NUM_OF_BUFFER_STORAGE): int,
         vol.Optional(CONF_CIRCULATOR, default=False): bool,
         vol.Optional(CONF_SMART_PV, default=False): bool,
         vol.Optional(CONF_STIRLING, default=False): bool,
         vol.Optional(CONF_CHARSET, default=DEFAULT_CHARSET): str,
     }
+        ,
+    
 )
 
 
@@ -154,13 +159,14 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 vol.Optional(CONF_NUM_OF_SMART_PV_SK, default=current_config.get(CONF_NUM_OF_SMART_PV_SK, DEFAULT_NUM_OF_SMART_PV_SK)): int,
                 vol.Optional(CONF_NUM_OF_HEAT_PUMPS, default=current_config.get(CONF_NUM_OF_HEAT_PUMPS, DEFAULT_NUM_OF_HEAT_PUMPS)): int,
                 vol.Optional(CONF_NUM_OF_WIRELESS_SENSORS, default=DEFAULT_NUM_OF_WIRELESS_SENSORS): int,
+                vol.Optional(CONF_NUM_OF_BUFFER_STORAGE, default=DEFAULT_NUM_OF_BUFFER_STORAGE): int,
                 vol.Optional(CONF_CIRCULATOR, default=current_config.get(CONF_CIRCULATOR, False)): bool,
                 vol.Optional(CONF_SMART_PV, default=current_config.get(CONF_SMART_PV, False)): bool,
                 vol.Optional(CONF_STIRLING, default=current_config.get(CONF_STIRLING, False)): bool,
                 vol.Optional(CONF_CHARSET, default=current_config.get(CONF_CHARSET, DEFAULT_CHARSET)): str,
             }
         )
-    
+
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=data_schema,

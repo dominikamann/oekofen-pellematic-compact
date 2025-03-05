@@ -24,6 +24,7 @@ DEFAULT_NUM_OF_SMART_PV_SE = 0
 DEFAULT_NUM_OF_SMART_PV_SK = 0
 DEFAULT_NUM_OF_HEAT_PUMPS = 0
 DEFAULT_NUM_OF_WIRELESS_SENSORS = 0
+DEFAULT_NUM_OF_BUFFER_STORAGE = 1 # Important 1 not 0
 CONF_SOLAR_CIRCUIT = "solar_circuit"
 CONF_CIRCULATOR = "circulator"
 CONF_SMART_PV = "smart_pv"
@@ -36,6 +37,7 @@ CONF_NUM_OF_HEAT_PUMPS = "num_of_heat_pumps_count"
 CONF_NUM_OF_SMART_PV_SK = "num_of_smart_pv_sk_count"
 CONF_NUM_OF_HOT_WATER = "num_of_hot_water"
 CONF_NUM_OF_WIRELESS_SENSORS = "num_of_wireless_sensors"
+CONF_NUM_OF_BUFFER_STORAGE = "num_of_buffer_storage"
 DEFAULT_HOST = "http://[YOU_IP]:4321/[YOUR_PASSWORD]/all"
 DEFAULT_CHARSET = "iso-8859-1"
 CONF_SOLAREDGE_HUB = "solaredge_hub"
@@ -661,43 +663,43 @@ PE_SELECT_TYPES = {
 
 SE1_SENSOR_TYPES = {
     "L_flow_temp": [
-        "Solar Gain Flow Temperature",
+        "Solar{0} Gain Flow Temperature",
         "L_flow_temp",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_ret_temp": [
-        "Solar Gain Return Temperature",
+        "Solar{0} Gain Return Temperature",
         "L_ret_temp",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_counter": [
-        "Solar Gain Counter",
+        "Solar{0} Gain Counter",
         "L_counter",
         None,
         "mdi:solar-power-variant",
     ],
     "L_total": [
-        "Solar Gain Total",
+        "Solar{0} Gain Total",
         "L_total",
         UnitOfEnergy.KILO_WATT_HOUR,
         "mdi:solar-power-variant",
     ],
     "L_day": [
-        "Solar Gain Today",
+        "Solar{0} Gain Today",
         "L_day",
         UnitOfEnergy.KILO_WATT_HOUR,
         "mdi:solar-power-variant",
     ],
     "L_yesterday": [
-        "Solar Gain Yesterday",
+        "Solar Gain{0} Yesterday",
         "L_yesterday",
         UnitOfEnergy.KILO_WATT_HOUR,
         "mdi:solar-power-variant",
     ],
     "L_pwr": [
-        "Solar Gain Current",
+        "Solar Gain{0} Current",
         "L_pwr",
         UnitOfPower.KILO_WATT,
         "mdi:solar-power-variant",
@@ -758,37 +760,37 @@ CIRC1_SENSOR_TYPES = {
 
 SK1_SENSOR_TYPES = {
     "L_koll_temp": [
-        "Solar Thermal Collector Temperature",
+        "Solar Thermal{0} Collector Temperature",
         "L_koll_temp",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_spu": [
-        "Solar Thermal Buffer Storage Temperature lower area",
+        "Solar Thermal{0} Buffer Storage Temperature lower area",
         "L_spu",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "spu_max": [
-        "Solar Thermal Buffer Storage Temperature Max",
+        "Solar Thermal{0} Buffer Storage Temperature Max",
         "spu_max",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_statetext": [
-        "Solar Thermal Collector Circuit State",
+        "Solar Thermal{0} Collector Circuit State",
         "L_statetext",
         None,
         "mdi:solar-power-variant",
     ],
     "name": [
-        "Solar Thermal Collector Circuit Name",
+        "Solar Thermal{0} Collector Circuit Name",
         "name",
         None,
         "mdi:solar-power-variant",
     ],
     "L_pump": [
-        "Solar Thermal Collector Circuit Pump %",
+        "Solar Thermal{0} Collector Circuit Pump %",
         "L_pump#2",
         PERCENTAGE,
         "mdi:pump",
@@ -797,7 +799,7 @@ SK1_SENSOR_TYPES = {
 
 SK1_BINARY_SENSOR_TYPES = {
     "L_pump": [
-        "Solar Thermal Collector Circuit Pump",
+        "Solar Thermal{0} Collector Circuit Pump",
         "L_pump",
         None,
         "mdi:pump",
@@ -926,55 +928,67 @@ HK_BINARY_SENSOR_TYPES = {
 
 PU1_SENSOR_TYPES = {
     "L_tpo_act": [
-        "Buffer Storage Temperature upper area",
+        "Buffer Storage{0} Temperature upper area",
         "L_tpo_act",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_tpo_set": [
-        "Buffer Storage Temperature upper area set",
+        "Buffer Storage{0} Temperature upper area set",
         "L_tpo_set",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_tpm_act": [
-        "Buffer Storage Temperature middle area",
+        "Buffer Storage{0} Temperature middle area",
         "L_tpm_act",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "L_tpm_set": [
-        "Buffer Storage Temperature middle area set",
+        "Buffer Storage{0} Temperature middle area set",
         "L_tpm_set",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "mintemp_off": [
-        "Buffer Storage Temperature minimum off",
+        "Buffer Storage{0} Temperature minimum off",
         "mintemp_off",
         UnitOfTemperature.CELSIUS,
         None,
     ],
     "mintemp_on": [
-        "Buffer Storage Temperature minimum on",
+        "Buffer Storage{0} Temperature minimum on",
         "mintemp_on",
         UnitOfTemperature.CELSIUS,
         None,
     ],
+    "ext_mintemp_off": [
+        "Buffer Storage{0} Ext. Temperature minimum off",
+        "ext_mintemp_off",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "ext_mintemp_on": [
+        "Buffer Storage{0} Ext. Temperature minimum on",
+        "ext_mintemp_on",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
     "L_pump_release": [
-        "Buffer Storage Pump Release",
+        "Buffer Storage{0} Pump Release",
         "L_pump_release",
         None,
         "mdi:numeric",
     ],
     "L_statetext": [
-        "Buffer Storage State",
+        "Buffer Storage{0} State",
         "L_statetext",
         None,
         "mdi:storage-tank",
     ],
     "L_pump": [
-        "Buffer Storage Pump %",
+        "Buffer Storage{0} Pump %",
         "L_pump#2",
         PERCENTAGE,
         "mdi:pump",
@@ -983,7 +997,7 @@ PU1_SENSOR_TYPES = {
 
 PU1_BINARY_SENSOR_TYPES = {
     "L_pump": [
-        "Buffer Storage Pump",
+        "Buffer Storage{0} Pump",
         "L_pump",
         None,
         "mdi:pump",
