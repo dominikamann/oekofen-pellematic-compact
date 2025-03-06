@@ -569,7 +569,7 @@ class PellematicSensor(SensorEntity):
         if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
             self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self._key == 'L_state' or self._key == 'mode_auto' or self._key == 'oekomode' or self._key == 'L_wireless_name' or self._key == 'L_wireless_id':
+        if self._key.replace("#2", "") == 'L_state' or self._key.replace("#2", "") == 'mode_auto' or self._key.replace("#2", "") == 'oekomode' or self._key.replace("#2", "") == 'L_wireless_name' or self._key.replace("#2", "") == 'L_wireless_id':
             self._attr_state_class = SensorStateClass.MEASUREMENT
 
         _LOGGER.debug(
@@ -619,7 +619,7 @@ class PellematicSensor(SensorEntity):
                     current_value = 100
                 elif (current_value is False or str(current_value).lower() == 'false'):
                     current_value = 0
-                if (self._key == 'L_wireless_hum'):
+                if (self._key.replace("#2", "") == 'L_wireless_hum'):
                     #Humidity has factor 0.1 but battery has factor 1
                     current_value = int(current_value) / 10  
         except:
@@ -642,7 +642,7 @@ class PellematicSensor(SensorEntity):
                         current_value = 100
                     elif (current_value is False or str(current_value).lower() == 'false'):
                         current_value = 0
-                    if (self._key == 'L_wireless_hum'):
+                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
                         #Humidity has factor 0.1 but battery has factor 1
                         current_value = int(current_value) / 10  
             except:
@@ -687,7 +687,7 @@ class PellematicSensor(SensorEntity):
                     current_value = 100
                 elif (current_value is False or str(current_value).lower() == 'false'):
                     current_value = 0
-                if (self._key == 'L_wireless_hum'):
+                if (self._key.replace("#2", "") == 'L_wireless_hum'):
                     #Humidity has factor 0.1 but battery has factor 1
                     current_value = int(current_value) / 10  
         except:
@@ -710,7 +710,7 @@ class PellematicSensor(SensorEntity):
                         current_value = 100
                     elif (current_value is False or str(current_value).lower() == 'false'):
                         current_value = 0
-                    if (self._key == 'L_wireless_hum'):
+                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
                         #Humidity has factor 0.1 but battery has factor 1
                         current_value = int(current_value) / 10  
             except:
