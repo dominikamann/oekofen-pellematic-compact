@@ -42,7 +42,7 @@ CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: vol.Schema({cv.slug: PELLEMATIC_SCHEMA})}, extra=vol.ALLOW_EXTRA
 )
 
-PLATFORMS = ["sensor","select","number"]
+PLATFORMS = ["sensor","select","number","climate"]
 
 
 async def async_setup(hass: HomeAssistant, config):
@@ -163,6 +163,8 @@ class PellematicHub:
 
 def fetch_data(url: str):
     """Get data"""
+    # Strip any leading/trailing whitespace
+    url = url.strip()
     # _LOGGER.debug("Fetching pellematic datas with REST API")
 
     req = urllib.request.Request(url)
@@ -185,6 +187,8 @@ def fetch_data(url: str):
 
 def send_data(url: str):
     """Put data"""
+    # Strip any leading/trailing whitespace
+    url = url.strip()
     # _LOGGER.debug("Sending pellematic datas with REST API")
 
     req = urllib.request.Request(url)
