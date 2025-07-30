@@ -541,6 +541,7 @@ class PellematicSensor(SensorEntity):
         self._icon = icon
         self._device_info = device_info
         self._state = None
+        self._attr_state_class = None
         if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
