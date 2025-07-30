@@ -132,33 +132,32 @@ class PellematicClimate(ClimateEntity):
             return
             
         data = self._hub.data[self._prefix]
-        
         if "L_roomtemp_act" in data:
-            self._attr_current_temperature = float(data["L_roomtemp_act"]) / 10
+            self._attr_current_temperature = float(data["L_roomtemp_act"]["val"]) / 10
             
         # Get the remote override value (if any)
-        remote_override = float(data.get("remote_override", 0)) / 10
+        remote_override = float(data.get("remote_override", {}).get("val", 0)) / 10
             
         if "temp_heat" in data:
             # Base comfort temperature without override
-            self._attr_target_temperature_comfort = float(data["temp_heat"]) / 10
+            self._attr_target_temperature_comfort = float(data["temp_heat"]["val"]) / 10
             
         if "temp_setback" in data:
-            self._attr_target_temperature_slow = float(data["temp_setback"]) / 10
+            self._attr_target_temperature_slow = float(data["temp_setback"]["val"]) / 10
             
         if "L_roomtemp_set" in data and "temp_heat" in data:
             # For Auto mode, L_roomtemp_set includes the remote_override adjustment
             # We need to subtract remote_override to get the base temperature
-            l_roomtemp_set = float(data["L_roomtemp_set"]) / 10
+            l_roomtemp_set = float(data["L_roomtemp_set"]["val"]) / 10
             base_temp = l_roomtemp_set - remote_override
             self._attr_target_temperature_auto = base_temp
             
         if "mode_auto" in data:
-            if int(data["mode_auto"]) == 2:
+            if int(data["mode_auto"]["val"]) == 2:
                 self._attr_hvac_mode = HVACMode.HEAT
-            elif int(data["mode_auto"]) == 3:
+            elif int(data["mode_auto"]["val"]) == 3:
                 self._attr_hvac_mode = HVACMode.OFF
-            elif int(data["mode_auto"]) == 1:
+            elif int(data["mode_auto"]["val"]) == 1:
                 self._attr_hvac_mode = HVACMode.AUTO
 
     async def async_added_to_hass(self):

@@ -181,7 +181,8 @@ class PellematicNumber(NumberEntity):
 
     def _update_native_value(self):
         try:
-            current_value = self._hub.data[self._prefix][self._key]
+            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            current_value = raw_data["val"]
             if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
                 return int(current_value) / 10
             return float(current_value)
