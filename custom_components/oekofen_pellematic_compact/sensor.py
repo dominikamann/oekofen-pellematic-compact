@@ -455,13 +455,12 @@ class PellematicBinarySensor(BinarySensorEntity):
         current_value = None
         try:
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
+            if (current_value is True or str(current_value).lower() == 'true'):
+                current_value = True
+            elif (current_value is False or str(current_value).lower() == 'false'):
+                current_value = False
         except:
             pass
-        
-        if (current_value is True or str(current_value).lower() == 'true'):
-            current_value = True
-        elif (current_value is False or str(current_value).lower() == 'false'):
-            current_value = False
 
         return current_value
 
@@ -482,8 +481,13 @@ class PellematicBinarySensor(BinarySensorEntity):
 
         try:
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
+            if (current_value is True or str(current_value).lower() == 'true'):
+                current_value = True
+            elif (current_value is False or str(current_value).lower() == 'false'):
+                current_value = False
         except:
             pass
+
         self._attr_is_on = current_value
 
     @property
@@ -537,6 +541,7 @@ class PellematicSensor(SensorEntity):
         self._icon = icon
         self._device_info = device_info
         self._state = None
+        self._attr_state_class = None
         if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
@@ -606,23 +611,42 @@ class PellematicSensor(SensorEntity):
     @callback
     def _update_state(self):
         current_value = None
-
         try:
-            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            current_value = raw_data["val"]
-            factor = raw_data.get("factor")
-        
+            
+            raw_data = None
+            try:
+                raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            except KeyError as e:
+                # Not found so ok
+                self._state = current_value
+                return 
+                
+            try:
+                current_value = raw_data["val"]
+            except:
+                 current_value = raw_data
+                
             multiply_success = False
-            if factor is not None:
-                try:
-                    current_value = float(current_value) * float(factor)
-                    multiply_success = True
-                except ValueError:
-                    _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            factor = None
+            try:
+                factor = raw_data["factor"]
+                if factor is not None:
+                    try:
+                        result = float(current_value) * float(factor)
+                        if result.is_integer():
+                            current_value = int(result)
+                        else:
+                            current_value = result
+                            
+                        multiply_success = True
+                    except ValueError:
+                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            except:
+                pass
         
             if factor is None or not multiply_success:
                 # Der gesamte else-Block, den du hattest
-                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
                     current_value = int(current_value) * 60
@@ -633,15 +657,15 @@ class PellematicSensor(SensorEntity):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
-                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
                     if (current_value is True or str(current_value).lower() == 'true'):
                         current_value = 100
                     elif (current_value is False or str(current_value).lower() == 'false'):
                         current_value = 0
                     if (self._key.replace("#2", "") == 'L_wireless_hum'):
                         current_value = int(current_value) / 10  
-        except:
-            pass
+        except Exception as e:
+            _LOGGER.error("An error occurred: %s", e)
         
         self._state = current_value
 
@@ -665,21 +689,39 @@ class PellematicSensor(SensorEntity):
         """Return the state of the sensor."""
         current_value = None
         try:
-            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            current_value = raw_data["val"]
-            factor = raw_data.get("factor")
-        
+            
+            raw_data = None
+            try:
+                raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            except KeyError as e:
+                return None
+            
+            try:
+                current_value = raw_data["val"]
+            except:
+                 current_value = raw_data
+
             multiply_success = False
-            if factor is not None:
-                try:
-                    current_value = float(current_value) * float(factor)
-                    multiply_success = True
-                except ValueError:
-                    _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            factor = None
+            try:
+                factor = raw_data["factor"]
+                if factor is not None:
+                    try:
+                        result = float(current_value) * float(factor)
+                        if result.is_integer():
+                            current_value = int(result)
+                        else:
+                            current_value = result
+                            
+                        multiply_success = True
+                    except ValueError:
+                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            except:
+                pass
         
             if factor is None or not multiply_success:
                 # Der gesamte else-Block, den du hattest
-                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
                     current_value = int(current_value) * 60
@@ -690,17 +732,18 @@ class PellematicSensor(SensorEntity):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
-                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
                     if (current_value is True or str(current_value).lower() == 'true'):
                         current_value = 100
                     elif (current_value is False or str(current_value).lower() == 'false'):
                         current_value = 0
                     if (self._key.replace("#2", "") == 'L_wireless_hum'):
                         current_value = int(current_value) / 10  
-        except:
-            pass
+                        
+        except Exception as e:
+            _LOGGER.error("An error occurred: %s", e)
         
-        self._state = current_value
+        return current_value
 
     @property
     def extra_state_attributes(self):
