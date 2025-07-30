@@ -456,10 +456,7 @@ class PellematicBinarySensor(BinarySensorEntity):
         try:
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
         except:
-            try:
-                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            except:
-                pass
+            pass
         
         if (current_value is True or str(current_value).lower() == 'true'):
             current_value = True
@@ -486,10 +483,7 @@ class PellematicBinarySensor(BinarySensorEntity):
         try:
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
         except:
-            try:
-                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            except:
-                self._attr_is_on = current_value
+            pass
         self._attr_is_on = current_value
 
     @property
