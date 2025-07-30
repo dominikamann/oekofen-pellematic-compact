@@ -646,7 +646,7 @@ class PellematicSensor(SensorEntity):
         
             if factor is None or not multiply_success:
                 # Der gesamte else-Block, den du hattest
-                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
                     current_value = int(current_value) * 60
@@ -657,7 +657,7 @@ class PellematicSensor(SensorEntity):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
-                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
                     if (current_value is True or str(current_value).lower() == 'true'):
                         current_value = 100
                     elif (current_value is False or str(current_value).lower() == 'false'):
@@ -721,7 +721,7 @@ class PellematicSensor(SensorEntity):
         
             if factor is None or not multiply_success:
                 # Der gesamte else-Block, den du hattest
-                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
                     current_value = int(current_value) * 60
@@ -732,7 +732,7 @@ class PellematicSensor(SensorEntity):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
-                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
+                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
                     if (current_value is True or str(current_value).lower() == 'true'):
                         current_value = 100
                     elif (current_value is False or str(current_value).lower() == 'false'):
