@@ -37,6 +37,7 @@ from .const import (
     ATTR_MANUFACTURER,
     ATTR_MODEL,
     WP_SENSOR_TYPES,
+    WP_DATA_SENSOR_TYPES,
     DEFAULT_NUM_OF_HEAT_PUMPS,
     DEFAULT_NUM_OF_HOT_WATER,
     DEFAULT_NUM_OF_PELLEMATIC_HEATER,
@@ -374,6 +375,18 @@ async def async_setup_entry(
                 hub,
                 device_info,
                 f"wp{heatpump_count+1}",
+                name.format(" " + str(heatpump_count + 1)),
+                key,
+                unit,
+                icon,
+            )
+            entities.append(sensor)
+        for name, key, unit, icon in WP_DATA_SENSOR_TYPES.values():
+            sensor = PellematicSensor(
+                hub_name,
+                hub,
+                device_info,
+                f"wp_data{heatpump_count+1}",
                 name.format(" " + str(heatpump_count + 1)),
                 key,
                 unit,

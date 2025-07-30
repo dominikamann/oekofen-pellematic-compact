@@ -182,8 +182,6 @@ def fetch_data(url: str):
 
     # Hotfix for pellematic update 4.02 (invalid json)
     str_response = str_response.replace("L_statetext:", 'L_statetext":')
-    # Hotfix for changed interface wp_data1 instead of wp1
-    str_response = str_response.replace("wp_data", "wp")
     result = json.loads(str_response, strict=False)
     return result
 

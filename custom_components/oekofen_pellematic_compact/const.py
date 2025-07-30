@@ -1223,6 +1223,45 @@ WP_SENSOR_TYPES = {
     ]
 }
 
+WP_DATA_SENSOR_TYPES = {
+    "L_jaz_all": [
+        "Heat Pump{0} JAZ",
+        "L_jaz_all",
+        None,
+        "mdi:numeric",
+    ],
+    "L_jaz_heat": [
+        "Heat Pump{0} JAZ Heat",
+        "L_jaz_heat",
+        None,
+        "mdi:numeric",
+    ],
+    "L_jaz_cool": [
+        "Heat Pump{0} JAZ Cool",
+        "L_jaz_cool",
+        None,
+        "mdi:numeric",
+    ],
+    "L_az_all": [
+        "Heat Pump{0} AZ",
+        "L_az_all",
+        None,
+        "mdi:numeric",
+    ],
+    "L_az_heat": [
+        "Heat Pump{0} AZ Heat",
+        "L_az_heat",
+        None,
+        "mdi:numeric",
+    ],
+    "L_az_cool": [
+        "Heat Pump{0} AZ Cool",
+        "L_az_cool",
+        None,
+        "mdi:numeric",
+    ]
+}
+
 WW_SENSOR_TYPES = {
     "L_temp_set": [
         "Hot Water Circuit{0} Temperature set ",
