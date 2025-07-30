@@ -484,6 +484,12 @@ class PellematicBinarySensor(BinarySensorEntity):
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
         except:
             pass
+        
+        if (current_value is True or str(current_value).lower() == 'true'):
+            current_value = True
+        elif (current_value is False or str(current_value).lower() == 'false'):
+            current_value = False
+            
         self._attr_is_on = current_value
 
     @property
@@ -608,17 +614,22 @@ class PellematicSensor(SensorEntity):
         current_value = None
 
         try:
-            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+             _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
             current_value = raw_data["val"]
-            factor = raw_data.get("factor")
         
             multiply_success = False
-            if factor is not None:
-                try:
-                    current_value = float(current_value) * float(factor)
-                    multiply_success = True
-                except ValueError:
-                    _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            factor = None
+            try:
+                factor = raw_data["factor"]
+                if factor is not None:
+                    try:
+                        current_value = float(current_value) * float(factor)
+                        multiply_success = True
+                    except ValueError:
+                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            except:
+                pass
         
             if factor is None or not multiply_success:
                 # Der gesamte else-Block, den du hattest
@@ -640,8 +651,8 @@ class PellematicSensor(SensorEntity):
                         current_value = 0
                     if (self._key.replace("#2", "") == 'L_wireless_hum'):
                         current_value = int(current_value) / 10  
-        except:
-            pass
+        except Exception as e:
+            _LOGGER.error("An error occurred: %s", e)
         
         self._state = current_value
 
@@ -666,16 +677,22 @@ class PellematicSensor(SensorEntity):
         current_value = None
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+             _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
             current_value = raw_data["val"]
-            factor = raw_data.get("factor")
-        
+
             multiply_success = False
-            if factor is not None:
-                try:
-                    current_value = float(current_value) * float(factor)
-                    multiply_success = True
-                except ValueError:
-                    _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            factor = None
+            try:
+                factor = raw_data["factor"]
+                if factor is not None:
+                    try:
+                        current_value = float(current_value) * float(factor)
+                        multiply_success = True
+                    except ValueError:
+                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
+            except:
+                pass
         
             if factor is None or not multiply_success:
                 # Der gesamte else-Block, den du hattest
@@ -697,8 +714,9 @@ class PellematicSensor(SensorEntity):
                         current_value = 0
                     if (self._key.replace("#2", "") == 'L_wireless_hum'):
                         current_value = int(current_value) / 10  
-        except:
-            pass
+                        
+        except Exception as e:
+            _LOGGER.error("An error occurred: %s", e)
         
         self._state = current_value
 
