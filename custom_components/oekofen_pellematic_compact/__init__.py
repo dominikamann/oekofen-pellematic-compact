@@ -167,6 +167,10 @@ def fetch_data(url: str):
     url = url.strip()
     # _LOGGER.debug("Fetching pellematic datas with REST API")
 
+    # Sicherstellen, dass die URL mit einem Fragezeichen endet
+    if not url.endswith('?'):
+        url += '?'
+        
     req = urllib.request.Request(url)
     response = None
     str_response = None
