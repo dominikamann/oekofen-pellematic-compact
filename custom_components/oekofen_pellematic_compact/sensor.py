@@ -614,8 +614,8 @@ class PellematicSensor(SensorEntity):
         current_value = None
 
         try:
-             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-             _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
+            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
             current_value = raw_data["val"]
         
             multiply_success = False
@@ -678,7 +678,7 @@ class PellematicSensor(SensorEntity):
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-             _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
+            _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
             current_value = raw_data["val"]
 
             multiply_success = False
