@@ -644,30 +644,7 @@ class PellematicSensor(SensorEntity):
                         #Humidity has factor 0.1 but battery has factor 1
                         current_value = int(current_value) / 10  
         except:
-            try:
-                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
-                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
-                    current_value = int(current_value) * 60
-                if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                    # SE1 need / 10 but POWER need / 10000
-                    if self._prefix.lower().startswith("se"):
-                        current_value = int(current_value) / 10
-                    else:
-                        current_value = int(current_value) / 10000
-                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if (current_value is True or str(current_value).lower() == 'true'):
-                        current_value = 100
-                    elif (current_value is False or str(current_value).lower() == 'false'):
-                        current_value = 0
-                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
-                        #Humidity has factor 0.1 but battery has factor 1
-                        current_value = int(current_value) / 10  
-            except:
-                self._state = current_value
+            pass 
         self._state = current_value
 
     @property
@@ -720,30 +697,7 @@ class PellematicSensor(SensorEntity):
                         #Humidity has factor 0.1 but battery has factor 1
                         current_value = int(current_value) / 10  
         except:
-            try:
-                current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]
-                if self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfPower.LITERS_PER_MINUTE:
-                    current_value = int(current_value) * 60   
-                if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10     
-                if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                    # SE1 need / 10 but POWER need / 10000
-                    if self._prefix.lower().startswith("se"):
-                        current_value = int(current_value) / 10
-                    else:
-                        current_value = int(current_value) / 10000
-                if self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if (current_value is True or str(current_value).lower() == 'true'):
-                        current_value = 100
-                    elif (current_value is False or str(current_value).lower() == 'false'):
-                        current_value = 0
-                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
-                        #Humidity has factor 0.1 but battery has factor 1
-                        current_value = int(current_value) / 10  
-            except:
-                pass
+            pass
         return current_value
 
     @property
