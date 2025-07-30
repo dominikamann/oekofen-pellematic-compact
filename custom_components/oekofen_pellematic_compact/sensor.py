@@ -455,13 +455,12 @@ class PellematicBinarySensor(BinarySensorEntity):
         current_value = None
         try:
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
+            if (current_value is True or str(current_value).lower() == 'true'):
+                current_value = True
+            elif (current_value is False or str(current_value).lower() == 'false'):
+                current_value = False
         except:
             pass
-        
-        if (current_value is True or str(current_value).lower() == 'true'):
-            current_value = True
-        elif (current_value is False or str(current_value).lower() == 'false'):
-            current_value = False
 
         return current_value
 
@@ -482,14 +481,13 @@ class PellematicBinarySensor(BinarySensorEntity):
 
         try:
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
+            if (current_value is True or str(current_value).lower() == 'true'):
+                current_value = True
+            elif (current_value is False or str(current_value).lower() == 'false'):
+                current_value = False
         except:
             pass
-        
-        if (current_value is True or str(current_value).lower() == 'true'):
-            current_value = True
-        elif (current_value is False or str(current_value).lower() == 'false'):
-            current_value = False
-            
+
         self._attr_is_on = current_value
 
     @property
@@ -612,11 +610,16 @@ class PellematicSensor(SensorEntity):
     @callback
     def _update_state(self):
         current_value = None
-
         try:
-            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
-
+            
+            raw_data = None
+            try:
+                raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            except KeyError as e:
+                # Not found so ok
+                self._state = current_value
+                return 
+                
             try:
                 current_value = raw_data["val"]
             except:
@@ -628,7 +631,12 @@ class PellematicSensor(SensorEntity):
                 factor = raw_data["factor"]
                 if factor is not None:
                     try:
-                        current_value = float(current_value) * float(factor)
+                        result = float(current_value) * float(factor)
+                        if result.is_integer():
+                            current_value = int(result)
+                        else:
+                            current_value = result
+                            
                         multiply_success = True
                     except ValueError:
                         _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
@@ -680,9 +688,12 @@ class PellematicSensor(SensorEntity):
         """Return the state of the sensor."""
         current_value = None
         try:
-            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            _LOGGER.warning("Rawvalue of %s %s is %s", self._prefix, self._key.replace("#2", ""), raw_data)
+            
+            raw_data = None
+            try:
+                raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            except KeyError as e:
+                return None
             
             try:
                 current_value = raw_data["val"]
@@ -695,7 +706,12 @@ class PellematicSensor(SensorEntity):
                 factor = raw_data["factor"]
                 if factor is not None:
                     try:
-                        current_value = float(current_value) * float(factor)
+                        result = float(current_value) * float(factor)
+                        if result.is_integer():
+                            current_value = int(result)
+                        else:
+                            current_value = result
+                            
                         multiply_success = True
                     except ValueError:
                         _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
@@ -726,7 +742,7 @@ class PellematicSensor(SensorEntity):
         except Exception as e:
             _LOGGER.error("An error occurred: %s", e)
         
-        self._state = current_value
+        return current_value
 
     @property
     def extra_state_attributes(self):
