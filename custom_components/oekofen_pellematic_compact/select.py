@@ -150,7 +150,8 @@ class PellematicSelect(SelectEntity):
 
     def _update_current_option(self):
         try:
-            current_value = self._hub.data[self._prefix][self._key]
+            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            current_value = raw_data["val"]
             return self._attr_options[int(current_value)]
         except:
             return None
