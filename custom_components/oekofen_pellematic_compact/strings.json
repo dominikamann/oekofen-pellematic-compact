@@ -45,7 +45,8 @@
         "state": {
           "0_off": "0 - Stop",
           "1_auto": "1 - Auto",
-          "2_force": "2 - Forced"
+          "2_force": "2 - Forced",
+          "2_hotwater": "2 - Hot water"
         }
       },
       "heat_once": {
