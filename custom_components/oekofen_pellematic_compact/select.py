@@ -13,6 +13,7 @@ from .const import (
     HK_SELECT_TYPES,
     WW_SELECT_TYPES,
     PE_SELECT_TYPES,
+    SYSTEM_SELECT_TYPES,
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
@@ -59,6 +60,7 @@ async def async_setup_entry(
         ("hk", HK_SELECT_TYPES, num_heating_circuit),
         ("ww", WW_SELECT_TYPES, num_hot_water),
         ("pe", PE_SELECT_TYPES, num_pellematic_heater),
+        ("system", SYSTEM_SELECT_TYPES, 1),
     ]
 
     for prefix, select_types, num_selects in selects_to_add:
@@ -68,8 +70,8 @@ async def async_setup_entry(
                     hub_name,
                     hub,
                     device_info,
-                    f"{prefix}{n}",
-                    name.format(f" {n}"),
+                    f"{prefix}{n}" if prefix != "system" else prefix,
+                    name.format(f" {n}") if prefix != "system" else name.format(""),
                     key,
                     options,
                     trname
@@ -189,3 +191,4 @@ class PellematicSelect(SelectEntity):
     def current_option(self) -> str | None:
         """Return the selected entity option to represent the entity state."""                
         return self._attr_current_option
+
