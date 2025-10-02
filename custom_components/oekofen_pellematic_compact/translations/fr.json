@@ -48,6 +48,12 @@
           "2_force": "2 - Marche forcée",
           "2_hotwater": "2 - Hot water"
         }
+      },
+      "heat_once": {
+        "state": {
+          "0_off": "0 - Off",
+          "1_on": "1 - On"
+        }
       }
     },
 	"switch": {
