@@ -64,6 +64,21 @@ SYSTEM_SENSOR_TYPES = {
         UnitOfTemperature.CELSIUS,
         None,
     ],
+    "mode": [
+        "Operating mode",
+        "mode",
+        None,
+        "mdi:numeric",
+    ],
+}
+
+SYSTEM_SELECT_TYPES = {
+    "mode": [
+        "Operating mode",
+        "mode",
+        "mode",
+        ["0_off","1_auto","2_hotwater"]
+    ],
 }
 
 SYSTEM_BINARY_SENSOR_TYPES = {
@@ -1220,42 +1235,84 @@ WP_SENSOR_TYPES = {
         "mode",
         None,
         "mdi:heat-pump",
+    ],
+    "ambient_mode": [
+        "Heat Pump{0} Ambient mode",
+        "ambient_mode",
+        None,
+        "mdi:heat-pump",
+    ],
+    "ambient_dhw_add_pwr": [
+        "Heater{0} Ambient DHW add pwr",
+        "ambient_dhw_add_pwr",
+        PERCENTAGE,
+        None,
+    ],
+    "ambient_pwr": [
+        "Heater{0} Ambient pwr",
+        "ambient_pwr",
+        PERCENTAGE,
+        None,
+    ],
+    "ambient_min_pwr_over": [
+        "Heat Pump{0} Ambient min pwr over",
+        "ambient_min_pwr_over",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "ambient_max_pwr_below": [
+        "Heat Pump{0} Ambient max pwr below",
+        "ambient_max_pwr_below",
+        UnitOfTemperature.CELSIUS,
+        None,
+    ],
+    "night_mode": [
+        "Heat Pump{0} Night mode",
+        "night_mode",
+        None,
+        "mdi:heat-pump",
+    ],
+    "heater": [
+        "Heat Pump{0} Heating rod mode",
+        "heater",
+        None,
+        "mdi:heat-pump",
     ]
 }
 
 WP_DATA_SENSOR_TYPES = {
     "L_jaz_all": [
-        "Heat Pump{0} JAZ",
+        "Heat Pump Data{0} JAZ",
         "L_jaz_all",
         None,
         "mdi:numeric",
     ],
     "L_jaz_heat": [
-        "Heat Pump{0} JAZ Heat",
+        "Heat Pump Data{0} JAZ Heat",
         "L_jaz_heat",
         None,
         "mdi:numeric",
     ],
     "L_jaz_cool": [
-        "Heat Pump{0} JAZ Cool",
+        "Heat Pump Data{0} JAZ Cool",
         "L_jaz_cool",
         None,
         "mdi:numeric",
     ],
     "L_az_all": [
-        "Heat Pump{0} AZ",
+        "Heat Pump Data{0} AZ",
         "L_az_all",
         None,
         "mdi:numeric",
     ],
     "L_az_heat": [
-        "Heat Pump{0} AZ Heat",
+        "Heat Pump Data{0} AZ Heat",
         "L_az_heat",
         None,
         "mdi:numeric",
     ],
     "L_az_cool": [
-        "Heat Pump{0} AZ Cool",
+        "Heat Pump Data{0} AZ Cool",
         "L_az_cool",
         None,
         "mdi:numeric",
