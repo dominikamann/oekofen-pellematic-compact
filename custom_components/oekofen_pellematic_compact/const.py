@@ -764,6 +764,12 @@ CIRC1_SENSOR_TYPES = {
         None,
         "mdi:numeric",
     ],
+    "time_prg": [
+        "Time program",
+        "time_prg",
+        None,
+        "mdi:numeric",
+    ],
     "name": [
         "Circulator Name",
         "name",
@@ -772,6 +778,17 @@ CIRC1_SENSOR_TYPES = {
     ],
 }
 
+CIRC1_NUMBER_TYPES = {
+    "time_prg": [
+        "Circulator Time program",
+        "time_prg",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        0,
+        1,
+        1
+    ],
+}
 
 SK1_SENSOR_TYPES = {
     "L_koll_temp": [
@@ -894,6 +911,12 @@ HK_SENSOR_TYPES = {
         None,
         "mdi:heating-coil",
     ],
+    "time_prg": [
+        "Time program",
+        "time_prg",
+        None,
+        "mdi:numeric",
+    ],
     "L_pump": [
         "Heating Circuit{0} Pump %",
         "L_pump#2",
@@ -929,6 +952,15 @@ HK_NUMBER_TYPES = {
         10,
         40,
         0.5
+    ],
+    "time_prg": [
+        "Heating Circuit{0} Time program",
+        "time_prg",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        0,
+        1,
+        1
     ],
 }
 
