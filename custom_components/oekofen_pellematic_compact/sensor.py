@@ -581,9 +581,22 @@ class PellematicSensor(SensorEntity):
         if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
             self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self._key.replace("#2", "") == 'L_state' or self._key.replace("#2", "") == 'mode_auto' or self._key.replace("#2", "") == 'oekomode' or self._key.replace("#2", "") == 'L_wireless_name' or self._key.replace("#2", "") == 'L_wireless_id':
+        if self._key.replace("#2", "") in (
+            'L_state',
+            'mode_auto',
+            'oekomode',
+            'L_wireless_name',
+            'L_wireless_id',
+            'L_jaz_all',
+            'L_jaz_heat',
+            'L_jaz_cool',
+            'L_az_all',
+            'L_az_heat',
+            'L_az_cool',
+            'L_COP',
+        ):
             self._attr_state_class = SensorStateClass.MEASUREMENT
-
+        
         _LOGGER.debug(
             "Adding a PellematicSensor : %s, %s, %s, %s, %s, %s, %s, %s, %s",
             str(self._platform_name),
