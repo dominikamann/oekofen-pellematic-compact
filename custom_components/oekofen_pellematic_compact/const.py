@@ -764,6 +764,12 @@ CIRC1_SENSOR_TYPES = {
         None,
         "mdi:numeric",
     ],
+    "time_prg": [
+        "Time program",
+        "time_prg",
+        None,
+        "mdi:numeric",
+    ],
     "name": [
         "Circulator Name",
         "name",
@@ -893,6 +899,12 @@ HK_SENSOR_TYPES = {
         "mode_auto",
         None,
         "mdi:heating-coil",
+    ],
+    "time_prg": [
+        "Time program",
+        "time_prg",
+        None,
+        "mdi:numeric",
     ],
     "L_pump": [
         "Heating Circuit{0} Pump %",
