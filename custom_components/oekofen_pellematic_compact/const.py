@@ -782,8 +782,8 @@ CIRC1_NUMBER_TYPES = {
     "time_prg": [
         "Circulator Time program",
         "time_prg",
-        NumberDeviceClass.TEMPERATURE,
-        UnitOfTemperature.CELSIUS,
+        None,
+        None,
         0,
         1,
         1
@@ -956,8 +956,8 @@ HK_NUMBER_TYPES = {
     "time_prg": [
         "Heating Circuit{0} Time program",
         "time_prg",
-        NumberDeviceClass.TEMPERATURE,
-        UnitOfTemperature.CELSIUS,
+        None,
+        None,
         0,
         1,
         1
