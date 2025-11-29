@@ -208,6 +208,8 @@ class PellematicNumber(NumberEntity):
             current_value = raw_data["val"]
             if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
                 return int(current_value) / 10
+            if isinstance(current_value, float) and current_value.is_integer():
+                return int(current_value)
             return float(current_value)
         except:
             return None
@@ -249,17 +251,19 @@ class PellematicNumber(NumberEntity):
     def native_max_value(self) -> float:
         """Return the maximum value."""
         return self._attr_native_max_value
-
+        
     @property
-    def native_step(self) -> float | None:
+    def native_step(self) -> int | float | None:
         """Return the increment/decrement step."""
-        return self._attr_native_step
-
+        step = self._attr_native_step
+        if isinstance(step, float) and step.is_integer():
+            return int(step)
+        return step
+        
     @property
     def mode(self) -> NumberMode:
         """Return the mode of the entity."""
         return self._attr_mode
-
 
     @property
     def native_unit_of_measurement(self) -> str | None:
@@ -267,9 +271,11 @@ class PellematicNumber(NumberEntity):
         return self._attr_native_unit_of_measurement
 
     @property
-    def native_value(self) -> float | None:
+    def native_value(self) -> int | float | None:
         """Return the value reported by the number."""
-        return self._attr_native_value
-
-
+        value = self._attr_native_value
+        if isinstance(value, float) and value is not None and value.is_integer():
+            # Nur wenn der Wert ein Float ist und ganzzahlig, dann als int zurückgeben
+            return int(value)
+        return value
 
