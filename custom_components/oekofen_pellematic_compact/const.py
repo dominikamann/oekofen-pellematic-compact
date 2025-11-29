@@ -765,7 +765,7 @@ CIRC1_SENSOR_TYPES = {
         "mdi:numeric",
     ],
     "time_prg": [
-        "Time program",
+        "Circulator Time program",
         "time_prg",
         None,
         "mdi:numeric",
@@ -912,7 +912,7 @@ HK_SENSOR_TYPES = {
         "mdi:heating-coil",
     ],
     "time_prg": [
-        "Time program",
+        "Heating Circuit{0} Time program",
         "time_prg",
         None,
         "mdi:numeric",
