@@ -780,7 +780,7 @@ CIRC1_SENSOR_TYPES = {
 
 CIRC1_NUMBER_TYPES = {
     "time_prg": [
-        "Heating Circuit{0} Time program",
+        "Circulator Time program",
         "time_prg",
         NumberDeviceClass.TEMPERATURE,
         UnitOfTemperature.CELSIUS,
