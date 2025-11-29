@@ -191,12 +191,12 @@ class PellematicNumber(NumberEntity):
 
     async def async_set_native_value(self, value) -> None:
         """Update the native value."""
-        self._attr_native_value = value
+        self._attr_native_value = int(value)
         if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
                 value = int(value * 10)
         await self.hass.async_add_executor_job(
             self._hub.send_pellematic_data,
-            value,
+            int(value),
             self._prefix,
             self._key
         )
@@ -270,4 +270,5 @@ class PellematicNumber(NumberEntity):
     def native_value(self) -> float | None:
         """Return the value reported by the number."""
         return self._attr_native_value
+
 
