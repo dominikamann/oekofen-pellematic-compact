@@ -942,6 +942,15 @@ HK_NUMBER_TYPES = {
         40,
         0.5
     ],
+    "time_prg": [
+        "Heating Circuit{0} Time program",
+        "time_prg",
+        NumberDeviceClass.TEMPERATURE,
+        UnitOfTemperature.CELSIUS,
+        0,
+        1,
+        1
+    ],
 }
 
 HK_BINARY_SENSOR_TYPES = {
