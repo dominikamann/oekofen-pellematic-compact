@@ -9,6 +9,8 @@ from homeassistant.components.number import NumberDeviceClass, NumberEntity, Num
 from .const import (
     CONF_NUM_OF_HEATING_CIRCUIT,
     CONF_NUM_OF_HOT_WATER,
+    CONF_CIRCULATOR,
+    CIRC1_NUMBER_TYPES,
     HK_NUMBER_TYPES,
     WW_NUMBER_TYPES,
     DOMAIN,
@@ -46,6 +48,10 @@ async def async_setup_entry(
         num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
     except:
         num_hot_water = DEFAULT_NUM_OF_HOT_WATER
+    try:
+        cirulator = entry.data[CONF_CIRCULATOR]
+    except:
+        cirulator = False
 
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
     
@@ -57,7 +63,24 @@ async def async_setup_entry(
     }
     
     entities = []
-    
+
+    if cirulator is True:
+        for name, key, device_class, unit, tmin, tmax, tstep  in CIRC1_NUMBER_TYPES.values():
+            number = PellematicNumber(
+                hub_name,
+                hub,
+                device_info,
+                f"circ1",
+                name.format(" " + str(0 + 1)),
+                key,
+                device_class=device_class,
+                mode=NumberMode.SLIDER,
+                native_min_value=tmin,
+                native_max_value=tmax,
+                native_step=tstep,
+                native_unit_of_measurement=unit
+            )
+            entities.append(number)    
     
     for heating_cir_count in range(num_heating_circuit):
 
@@ -247,3 +270,4 @@ class PellematicNumber(NumberEntity):
     def native_value(self) -> float | None:
         """Return the value reported by the number."""
         return self._attr_native_value
+
