@@ -1333,7 +1333,7 @@ WP_SENSOR_TYPES = {
         "L_heater_set",
         PERCENTAGE,
         None,
-    ]    
+    ],
 }
 
 WP_DATA_SENSOR_TYPES = {
@@ -1372,7 +1372,7 @@ WP_DATA_SENSOR_TYPES = {
         "L_az_cool",
         None,
         "mdi:numeric",
-    ]
+    ],
 }
 
 WW_SENSOR_TYPES = {
@@ -1435,7 +1435,7 @@ WW_SENSOR_TYPES = {
         "L_pump#2",
         None,
         "mdi:pump",
-    ]
+    ],
 }
 
 WW_SELECT_TYPES = {
@@ -1480,5 +1480,5 @@ WW_BINARY_SENSOR_TYPES = {
         "L_pump",
         None,
         "mdi:pump",
-    ]
+    ],
 }
