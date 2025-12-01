@@ -1303,7 +1303,7 @@ WP_SENSOR_TYPES = {
         "heater",
         None,
         "mdi:heat-pump",
-    ]
+    ],
     "heater_act": [
         "Heat Pump{0} Heating activation temperature",
         "heater_act",
