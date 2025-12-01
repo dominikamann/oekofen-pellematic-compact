@@ -1310,6 +1310,36 @@ WP_SENSOR_TYPES = {
         None,
         "mdi:heat-pump",
     ]
+    "heater_act": [
+        "Heat Pump{0} Heating activation temperature",
+        "heater_act",
+        UnitOfTemperature.CELSIUS,
+        "mdi:heat-pump",
+    ],
+    "L_heater_val": [
+        "Heat Pump{0} Electrical heater power",
+        "L_heater_val",
+        UnitOfPower.WATT,
+        None, 
+    ],
+    "L_heater_temp": [
+        "Heat Pump{0} Electrical heater temperature",
+        "L_heater_temp",
+        UnitOfTemperature.CELSIUS,
+        None, 
+    ],
+    "L_heater_steps": [
+        "Heat Pump{0} Electrical heater stage",
+        "L_heater_steps",
+        PERCENTAGE,
+        None,
+    ],
+    "L_heater_set": [
+        "Heat Pump{0} Electrical heater setpoint",
+        "L_heater_set",
+        PERCENTAGE,
+        None,
+    ]    
 }
 
 WP_DATA_SENSOR_TYPES = {
