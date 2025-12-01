@@ -295,15 +295,15 @@ POWER_SENSOR_TYPES = {
         UnitOfPower.WATT,
         None,
     ],
-    "L_p1": [
+    "L_p2": [
         "Power - P2",
-        "L_p1",
+        "L_p2",
         UnitOfPower.WATT,
         None,
     ],
-    "L_p1": [
+    "L_p3": [
         "Power - P3",
-        "L_p1",
+        "L_p3",
         UnitOfPower.WATT,
         None,
     ],
@@ -316,12 +316,6 @@ POWER_SENSOR_TYPES = {
     "L_batt_out": [
         "Power - Battery out",
         "L_batt_out",
-        UnitOfPower.WATT,
-        None,
-    ],
-    "L_batt_chg": [
-        "Power - Battery chg",
-        "L_batt_chg",
         UnitOfPower.WATT,
         None,
     ],
