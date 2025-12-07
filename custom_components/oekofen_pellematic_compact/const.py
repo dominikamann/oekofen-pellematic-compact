@@ -936,7 +936,7 @@ HK_NUMBER_TYPES = {
         UnitOfTemperature.CELSIUS,
         10,
         40,
-        0.5
+        0.1
     ],
     "temp_setback": [
         "Heating Circuit{0} Set Down Temp",
@@ -945,7 +945,7 @@ HK_NUMBER_TYPES = {
         UnitOfTemperature.CELSIUS,
         10,
         40,
-        0.5
+        0.1
     ],
     "time_prg": [
         "Heating Circuit{0} Time program",
