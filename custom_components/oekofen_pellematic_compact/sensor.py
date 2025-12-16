@@ -748,7 +748,7 @@ class PellematicSensor(SensorEntity):
                  current_value = raw_data
 
             current_value = _sanitize_oekofen_value(raw_data, current_value)
-            if current_value is None
+            if current_value is None:
                 return None
 
             multiply_success = False
