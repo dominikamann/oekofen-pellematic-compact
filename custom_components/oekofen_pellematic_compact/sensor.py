@@ -1,6 +1,7 @@
 """The Ökofen Pellematic Compact integration."""
 
 import logging
+import numbers
 from typing import Optional, Any
 
 from homeassistant.components.binary_sensor import (
@@ -75,6 +76,33 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 _LOGGER = logging.getLogger(__name__)
 
+async def _sanitize_oekofen_value(raw_data: dict, value: Any) -> Any:
+    # Drop clearly invalid/sentinel values coming from the Ökofen JSON API
+    if value is None:
+        return None
+
+    # Common HA string states
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in ("unknown", "unavailable", "none", ""):
+            return None
+        # try parsing numeric string
+        try:
+            value = float(value) if ("." in value or "e" in v) else int(value)
+        except Exception:
+            # keep non-numeric strings for text sensors
+            return value
+
+    # Filter sentinel/overflow values close to min/max (e.g. 32765, 32767, -32768)
+    if isinstance(value, numbers.Number):
+        min_v = raw_data.get("min")
+        max_v = raw_data.get("max")
+        if isinstance(max_v, numbers.Number) and value >= (max_v - 2):
+            return None
+        if isinstance(min_v, numbers.Number) and value <= (min_v + 2):
+            return None
+
+    return value
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -638,6 +666,11 @@ class PellematicSensor(SensorEntity):
                 current_value = raw_data["val"]
             except:
                  current_value = raw_data
+
+            current_value = _sanitize_oekofen_value(raw_data, current_value)
+            if current_value is None:
+                self._state = None
+                return
                 
             multiply_success = False
             factor = None
@@ -713,6 +746,10 @@ class PellematicSensor(SensorEntity):
                 current_value = raw_data["val"]
             except:
                  current_value = raw_data
+
+            current_value = _sanitize_oekofen_value(raw_data, current_value)
+            if current_value is None
+                return None
 
             multiply_success = False
             factor = None
