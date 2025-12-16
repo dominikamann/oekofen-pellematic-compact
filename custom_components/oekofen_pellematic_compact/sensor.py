@@ -76,7 +76,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 _LOGGER = logging.getLogger(__name__)
 
-async def _sanitize_oekofen_value(raw_data: dict, value: Any) -> Any:
+def _sanitize_oekofen_value(raw_data: dict, value: Any) -> Any:
     # Drop clearly invalid/sentinel values coming from the Ökofen JSON API
     if value is None:
         return None
