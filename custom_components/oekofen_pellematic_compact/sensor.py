@@ -667,10 +667,13 @@ class PellematicSensor(SensorEntity):
             except:
                  current_value = raw_data
 
-            current_value = _sanitize_oekofen_value(raw_data, current_value)
-            if current_value is None:
-                self._state = None
-                return
+            try:
+                current_value = _sanitize_oekofen_value(raw_data, current_value)
+                if current_value is None:
+                    self._state = None
+                    return
+            except:
+                pass
                 
             multiply_success = False
             factor = None
@@ -747,10 +750,14 @@ class PellematicSensor(SensorEntity):
             except:
                  current_value = raw_data
 
-            current_value = _sanitize_oekofen_value(raw_data, current_value)
-            if current_value is None:
-                return None
-
+            
+            try:
+                current_value = _sanitize_oekofen_value(raw_data, current_value)
+                if current_value is None:
+                    return None
+            except:
+                pass
+        
             multiply_success = False
             factor = None
             try:
