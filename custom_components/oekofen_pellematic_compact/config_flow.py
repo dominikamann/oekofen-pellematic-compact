@@ -1,5 +1,7 @@
 """Config flow for Ökofen Pellematic Compact integration."""
 import voluptuous as vol
+import urllib.request
+import json
 
 from homeassistant import config_entries
 from typing import Any, Dict
@@ -82,8 +84,61 @@ def pellematic_compact_entries(hass: HomeAssistant):
 class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Oekofen Pellematic Compact configflow."""
 
-    VERSION = 1
+    VERSION = 2  # Updated to version 2
     CONNECTION_CLASS = config_entries.CONN_CLASS_LOCAL_POLL
+
+    async def _async_discover_components(self, host: str) -> dict:
+        """Try to discover components from the API.
+        
+        Args:
+            host: The host URL to connect to
+            
+        Returns:
+            Dictionary with discovered component counts
+        """
+        try:
+            # Fetch data from API
+            data = await self.hass.async_add_executor_job(self._fetch_api_data, host)
+            
+            if not data:
+                return {}
+            
+            # Use the discovery function from __init__.py
+            from . import discover_components_from_api
+            discovered = discover_components_from_api(data)
+            
+            return discovered
+        except Exception as e:
+            import logging
+            _LOGGER = logging.getLogger(__name__)
+            _LOGGER.error("Failed to discover components: %s", e)
+            return {}
+    
+    def _fetch_api_data(self, host: str) -> dict:
+        """Fetch data from the Pellematic API (blocking).
+        
+        Args:
+            host: The host URL to connect to
+            
+        Returns:
+            Parsed JSON data from the API
+        """
+        url = host.strip()
+        if not url.endswith('?'):
+            url += '?'
+        
+        req = urllib.request.Request(url)
+        response = None
+        
+        try:
+            response = urllib.request.urlopen(req, timeout=5)
+            str_response = response.read().decode('iso-8859-1', 'ignore')
+            # Apply hotfix for invalid JSON
+            str_response = str_response.replace("L_statetext:", 'L_statetext":')
+            return json.loads(str_response, strict=False)
+        finally:
+            if response is not None:
+                response.close()
 
     def _host_in_configuration_exists(self, host) -> bool:
         """Return True if host exists in configuration."""
@@ -103,6 +158,21 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             elif not host_valid(user_input[CONF_HOST]):
                 errors[CONF_HOST] = "invalid host IP"
             else:
+                # Try to auto-discover components from API
+                try:
+                    discovered = await self._async_discover_components(host)
+                    if discovered:
+                        # Merge discovered values with user input
+                        # User input takes precedence if explicitly set
+                        for key, value in discovered.items():
+                            if key not in user_input or user_input[key] == 0:
+                                user_input[key] = value
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info("Auto-discovered components: %s", discovered)
+                except Exception as e:
+                    _LOGGER = logging.getLogger(__name__)
+                    _LOGGER.warning("Auto-discovery failed: %s. Using manual configuration.", e)
+                
                 await self.async_set_unique_id(user_input[CONF_HOST])
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(

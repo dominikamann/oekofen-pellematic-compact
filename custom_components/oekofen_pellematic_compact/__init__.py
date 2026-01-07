@@ -22,10 +22,33 @@ from .const import (
     DOMAIN,
     DEFAULT_NAME,
     DEFAULT_SCAN_INTERVAL,
+    CONF_NUM_OF_HEATING_CIRCUIT,
+    CONF_NUM_OF_HOT_WATER,
+    CONF_NUM_OF_PELLEMATIC_HEATER,
+    CONF_NUM_OF_SMART_PV_SE,
+    CONF_NUM_OF_SMART_PV_SK,
+    CONF_NUM_OF_HEAT_PUMPS,
+    CONF_NUM_OF_WIRELESS_SENSORS,
+    CONF_NUM_OF_BUFFER_STORAGE,
+    CONF_SOLAR_CIRCUIT,
+    CONF_CIRCULATOR,
+    CONF_SMART_PV,
+    CONF_STIRLING,
+    DEFAULT_NUM_OF_HEATING_CIRCUIT,
+    DEFAULT_NUM_OF_HOT_WATER,
+    DEFAULT_NUM_OF_PELLEMATIC_HEATER,
+    DEFAULT_NUM_OF_SMART_PV_SE,
+    DEFAULT_NUM_OF_SMART_PV_SK,
+    DEFAULT_NUM_OF_HEAT_PUMPS,
+    DEFAULT_NUM_OF_WIRELESS_SENSORS,
+    DEFAULT_NUM_OF_BUFFER_STORAGE,
 )
 
 _LOGGER = logging.getLogger(__name__)
 _CHARSET = DEFAULT_CHARSET
+
+# Current config version
+CONFIG_VERSION = 2
 
 PELLEMATIC_SCHEMA = vol.Schema(
     {
@@ -50,6 +73,111 @@ async def async_setup(hass: HomeAssistant, config):
     hass.data[DOMAIN] = {}
     return True
 
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old config entry to new version."""
+    _LOGGER.debug("Migrating config entry from version %s", entry.version)
+
+    if entry.version == 1:
+        # Migrate from version 1 to version 2
+        new_data = {**entry.data}
+        
+        # Add missing config values with defaults if not present
+        new_data.setdefault(CONF_STIRLING, False)
+        new_data.setdefault(CONF_SMART_PV, False)
+        new_data.setdefault(CONF_CIRCULATOR, False)
+        new_data.setdefault(CONF_NUM_OF_HOT_WATER, DEFAULT_NUM_OF_HOT_WATER)
+        new_data.setdefault(CONF_NUM_OF_PELLEMATIC_HEATER, DEFAULT_NUM_OF_PELLEMATIC_HEATER)
+        new_data.setdefault(CONF_NUM_OF_SMART_PV_SE, DEFAULT_NUM_OF_SMART_PV_SE)
+        new_data.setdefault(CONF_NUM_OF_SMART_PV_SK, DEFAULT_NUM_OF_SMART_PV_SK)
+        new_data.setdefault(CONF_NUM_OF_HEAT_PUMPS, DEFAULT_NUM_OF_HEAT_PUMPS)
+        new_data.setdefault(CONF_NUM_OF_WIRELESS_SENSORS, DEFAULT_NUM_OF_WIRELESS_SENSORS)
+        new_data.setdefault(CONF_NUM_OF_BUFFER_STORAGE, DEFAULT_NUM_OF_BUFFER_STORAGE)
+        new_data.setdefault(CONF_SOLAR_CIRCUIT, False)
+        
+        hass.config_entries.async_update_entry(entry, data=new_data, version=2)
+        _LOGGER.info("Migration to version 2 successful")
+
+    return True
+
+
+def discover_components_from_api(data: dict) -> dict:
+    """Auto-discover available components from API response.
+    
+    Args:
+        data: The API response data
+        
+    Returns:
+        Dictionary with discovered component counts
+    """
+    discovered = {}
+    
+    # Count heating circuits (hk1, hk2, ...)
+    hk_count = len([k for k in data.keys() if k.startswith('hk') and k[2:].isdigit()])
+    if hk_count > 0:
+        discovered[CONF_NUM_OF_HEATING_CIRCUIT] = hk_count
+        _LOGGER.debug("Discovered %d heating circuit(s)", hk_count)
+    
+    # Count hot water circuits (ww1, ww2, ...)
+    ww_count = len([k for k in data.keys() if k.startswith('ww') and k[2:].isdigit()])
+    if ww_count > 0:
+        discovered[CONF_NUM_OF_HOT_WATER] = ww_count
+        _LOGGER.debug("Discovered %d hot water circuit(s)", ww_count)
+    
+    # Count pellematic heaters (pe1, pe2, ...)
+    pe_count = len([k for k in data.keys() if k.startswith('pe') and k[2:].isdigit()])
+    if pe_count > 0:
+        discovered[CONF_NUM_OF_PELLEMATIC_HEATER] = pe_count
+        _LOGGER.debug("Discovered %d pellematic heater(s)", pe_count)
+    
+    # Count solar collectors SK (sk1, sk2, ...)
+    sk_count = len([k for k in data.keys() if k.startswith('sk') and k[2:].isdigit()])
+    if sk_count > 0:
+        discovered[CONF_NUM_OF_SMART_PV_SK] = sk_count
+        discovered[CONF_SOLAR_CIRCUIT] = True
+        _LOGGER.debug("Discovered %d solar collector(s) SK", sk_count)
+    
+    # Count solar collectors SE (se1, se2, ...)
+    se_count = len([k for k in data.keys() if k.startswith('se') and k[2:].isdigit()])
+    if se_count > 0:
+        discovered[CONF_NUM_OF_SMART_PV_SE] = se_count
+        if not discovered.get(CONF_SOLAR_CIRCUIT):
+            discovered[CONF_SOLAR_CIRCUIT] = True
+        _LOGGER.debug("Discovered %d solar collector(s) SE", se_count)
+    
+    # Count heat pumps (wp1, wp2, ...)
+    wp_count = len([k for k in data.keys() if k.startswith('wp') and k[2:].isdigit()])
+    if wp_count > 0:
+        discovered[CONF_NUM_OF_HEAT_PUMPS] = wp_count
+        _LOGGER.debug("Discovered %d heat pump(s)", wp_count)
+    
+    # Count buffer storage (pu1, pu2, ...)
+    pu_count = len([k for k in data.keys() if k.startswith('pu') and k[2:].isdigit()])
+    if pu_count > 0:
+        discovered[CONF_NUM_OF_BUFFER_STORAGE] = pu_count
+        _LOGGER.debug("Discovered %d buffer storage(s)", pu_count)
+    
+    # Count wireless sensors (wireless1, wireless2, ...)
+    wireless_count = len([k for k in data.keys() if k.startswith('wireless') and k[8:].isdigit()])
+    if wireless_count > 0:
+        discovered[CONF_NUM_OF_WIRELESS_SENSORS] = wireless_count
+        _LOGGER.debug("Discovered %d wireless sensor(s)", wireless_count)
+    
+    # Detect special components
+    if 'stirling' in data:
+        discovered[CONF_STIRLING] = True
+        _LOGGER.debug("Discovered Stirling engine")
+    
+    if 'circ1' in data:
+        discovered[CONF_CIRCULATOR] = True
+        _LOGGER.debug("Discovered circulator")
+    
+    if 'power' in data:
+        discovered[CONF_SMART_PV] = True
+        _LOGGER.debug("Discovered Smart PV")
+    
+    return discovered
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up a Ökofen Pellematic Component."""
     host = entry.data[CONF_HOST]
@@ -66,8 +194,65 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Register the hub.
     hass.data[DOMAIN][name] = {"hub": hub}
 
+    # Register services
+    await async_setup_services(hass)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def async_setup_services(hass: HomeAssistant):
+    """Set up services for the integration."""
+    
+    async def handle_rediscover_components(call):
+        """Handle the rediscover_components service call."""
+        config_entry_id = call.data.get("config_entry_id")
+        
+        if config_entry_id:
+            # Re-discover for specific entry
+            entry = hass.config_entries.async_get_entry(config_entry_id)
+            if entry and entry.domain == DOMAIN:
+                await rediscover_and_update_entry(hass, entry)
+        else:
+            # Re-discover for all entries
+            for entry in hass.config_entries.async_entries(DOMAIN):
+                await rediscover_and_update_entry(hass, entry)
+    
+    # Register service only once
+    if not hass.services.has_service(DOMAIN, "rediscover_components"):
+        hass.services.async_register(
+            DOMAIN,
+            "rediscover_components",
+            handle_rediscover_components,
+        )
+
+
+async def rediscover_and_update_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Re-discover components and update config entry."""
+    try:
+        hub_name = entry.data[CONF_NAME]
+        hub = hass.data[DOMAIN][hub_name]["hub"]
+        
+        # Fetch latest data
+        await hub.fetch_pellematic_data()
+        
+        # Discover components
+        discovered = hub.get_discovered_components()
+        
+        if discovered:
+            # Update config entry with discovered values
+            new_data = {**entry.data}
+            new_data.update(discovered)
+            
+            hass.config_entries.async_update_entry(entry, data=new_data)
+            _LOGGER.info("Re-discovered components for %s: %s", hub_name, discovered)
+            
+            # Reload the entry to apply changes
+            await hass.config_entries.async_reload(entry.entry_id)
+        else:
+            _LOGGER.warning("No components discovered for %s", hub_name)
+    except Exception as e:
+        _LOGGER.error("Failed to re-discover components: %s", e)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry):
@@ -159,6 +344,10 @@ class PellematicHub:
         result = await self._hass.async_add_executor_job(fetch_data, self._host)
         self.data = result
         return True
+    
+    def get_discovered_components(self) -> dict:
+        """Get auto-discovered components from current API data."""
+        return discover_components_from_api(self.data)
 
 
 def fetch_data(url: str):

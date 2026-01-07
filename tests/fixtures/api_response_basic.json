@@ -1,0 +1,243 @@
+{
+  "system": {
+    "system_info": "system global variables",
+    "L_ambient": {
+      "val": -69,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Außentemperatur"
+    },
+    "L_errors": {
+      "val": 0,
+      "factor": 1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Fehler"
+    },
+    "L_usb_stick": {
+      "val": 0,
+      "format": "0:Aus|1:Ein",
+      "text": "Usb Stick erkannt"
+    },
+    "L_existing_boiler": {
+      "val": 0,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Bestehender Kessel"
+    },
+    "mode": {
+      "val": 1,
+      "format": "0:Aus|1:Auto|2:Warmwasser",
+      "text": "Betriebsart"
+    }
+  },
+  "hk1": {
+    "hk_info": "heating circuit data",
+    "L_roomtemp_act": {
+      "val": 0,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Raumtemperatur"
+    },
+    "L_roomtemp_set": {
+      "val": 220,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "RT Soll"
+    },
+    "L_flowtemp_act": {
+      "val": 603,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "VL Ist"
+    },
+    "L_flowtemp_set": {
+      "val": 609,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "VL Soll"
+    },
+    "L_state": {
+      "val": 32,
+      "factor": 1,
+      "text": "Status"
+    },
+    "L_statetext": "Heizbetrieb aktiv",
+    "L_pump": {
+      "val": 1,
+      "format": "0:Aus|1:Ein",
+      "text": "HK Pumpe"
+    },
+    "temp_setback": {
+      "val": 170,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": 100,
+      "max": 400,
+      "text": "Raumtemp Absenken"
+    },
+    "temp_heat": {
+      "val": 220,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": 100,
+      "max": 400,
+      "text": "Raumtemp Heizen"
+    }
+  },
+  "pu1": {
+    "pu_info": "accu data",
+    "L_tpo_act": {
+      "val": 636,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Einschaltfühler"
+    },
+    "L_tpo_set": {
+      "val": 609,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "TPO Soll"
+    },
+    "L_state": {
+      "val": 384,
+      "factor": 1,
+      "text": "Status"
+    },
+    "L_statetext": "Quellentemp unterhalb Puffertemp|Anforderung Ein"
+  },
+  "ww1": {
+    "ww_info": "domestic hot water data",
+    "L_temp_set": {
+      "val": 370,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Wassertemp Soll"
+    },
+    "L_ontemp_act": {
+      "val": 626,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Ein Temperatur"
+    },
+    "L_pump": {
+      "val": 0,
+      "format": "0:Aus|1:Ein",
+      "text": "Pumpe"
+    },
+    "L_state": {
+      "val": 8208,
+      "factor": 1,
+      "text": "Status"
+    },
+    "L_statetext": "Zeit innerhalb Zeitprogramm|Anforderung Aus",
+    "temp_min_set": {
+      "val": 400,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": 80,
+      "max": 800,
+      "text": "Wassertemp Min"
+    },
+    "temp_max_set": {
+      "val": 450,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": 80,
+      "max": 800,
+      "text": "Wassertemp Soll"
+    }
+  },
+  "pe1": {
+    "pe_info": "pellematic data",
+    "L_temp_act": {
+      "val": 633,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Kesseltemperatur"
+    },
+    "L_temp_set": {
+      "val": 650,
+      "unit": "°C",
+      "factor": 0.1,
+      "min": -32768,
+      "max": 32767,
+      "text": "KT Soll"
+    },
+    "L_modulation": {
+      "val": 100,
+      "unit": "%",
+      "factor": 1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Modulationsstufe"
+    },
+    "L_state": {
+      "val": 268435472,
+      "factor": 1,
+      "text": "PE Kesselstatus"
+    },
+    "L_statetext": "Leistungsbrand|Kesseltemp grösser Wiedereinschalttemp.",
+    "L_type": {
+      "val": 9,
+      "format": "0:PE|1:PES|2:PEK|3:PESK|4:SMART V1|5:SMART V2|6:CONDENS|7:SMART XS|8:SMART V3|9:COMPACT|10:AIR|11:CONDENS XL",
+      "text": "Kesseltyp"
+    },
+    "L_starts": {
+      "val": 3525,
+      "factor": 1,
+      "text": "Brennerstarts"
+    },
+    "L_runtime": {
+      "val": 7209,
+      "unit": "h",
+      "factor": 1,
+      "text": "Brennerlaufzeit"
+    },
+    "L_storage_fill": {
+      "val": 2852,
+      "unit": "kg",
+      "factor": 1,
+      "text": "Füllstand Lager"
+    },
+    "storage_fill_today": {
+      "val": 30,
+      "unit": "kg",
+      "factor": 1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Pelletverbrauch heute"
+    },
+    "storage_fill_yesterday": {
+      "val": 40,
+      "unit": "kg",
+      "factor": 1,
+      "min": -32768,
+      "max": 32767,
+      "text": "Pelletverbrauch gestern"
+    }
+  },
+  "error": {}
+}

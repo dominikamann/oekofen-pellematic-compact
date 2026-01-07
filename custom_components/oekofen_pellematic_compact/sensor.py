@@ -113,53 +113,18 @@ async def async_setup_entry(
 
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
-    num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
-    solar_circuit = entry.data[CONF_SOLAR_CIRCUIT]
-    cirulator = False
-    smart_pv = False
-    stirling = False
-
-    # For already existing users it could be that the keys does not exists
-    try:
-        stirling = entry.data[CONF_STIRLING]
-    except:
-        stirling = False
-    try:
-        smart_pv = entry.data[CONF_SMART_PV]
-    except:
-        smart_pv = False
-    try:
-        cirulator = entry.data[CONF_CIRCULATOR]
-    except:
-        cirulator = False
-    try:
-        num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
-    except:
-        num_hot_water = DEFAULT_NUM_OF_HOT_WATER
-    try:
-        num_pellematic_heater = entry.data[CONF_NUM_OF_PELLEMATIC_HEATER]
-    except:
-        num_pellematic_heater = DEFAULT_NUM_OF_PELLEMATIC_HEATER
-    try:
-        num_smart_pv_se = entry.data[CONF_NUM_OF_SMART_PV_SE]
-    except:
-        num_smart_pv_se = DEFAULT_NUM_OF_SMART_PV_SE
-    try:
-        num_smart_pv_sk = entry.data[CONF_NUM_OF_SMART_PV_SK]
-    except:
-        num_smart_pv_sk = DEFAULT_NUM_OF_SMART_PV_SK    
-    try:
-        num_heat_pumps = entry.data[CONF_NUM_OF_HEAT_PUMPS]
-    except:
-        num_heat_pumps = DEFAULT_NUM_OF_HEAT_PUMPS 
-    try:
-        num_wireless_sensors = entry.data[CONF_NUM_OF_WIRELESS_SENSORS]
-    except:
-        num_wireless_sensors = DEFAULT_NUM_OF_WIRELESS_SENSORS 
-    try:
-        num_buffer_storage = entry.data[CONF_NUM_OF_BUFFER_STORAGE]
-    except:
-        num_buffer_storage = DEFAULT_NUM_OF_BUFFER_STORAGE
+    num_heating_circuit = entry.data.get(CONF_NUM_OF_HEATING_CIRCUIT, DEFAULT_NUM_OF_HEATING_CIRCUIT)
+    solar_circuit = entry.data.get(CONF_SOLAR_CIRCUIT, False)
+    cirulator = entry.data.get(CONF_CIRCULATOR, False)
+    smart_pv = entry.data.get(CONF_SMART_PV, False)
+    stirling = entry.data.get(CONF_STIRLING, False)
+    num_hot_water = entry.data.get(CONF_NUM_OF_HOT_WATER, DEFAULT_NUM_OF_HOT_WATER)
+    num_pellematic_heater = entry.data.get(CONF_NUM_OF_PELLEMATIC_HEATER, DEFAULT_NUM_OF_PELLEMATIC_HEATER)
+    num_smart_pv_se = entry.data.get(CONF_NUM_OF_SMART_PV_SE, DEFAULT_NUM_OF_SMART_PV_SE)
+    num_smart_pv_sk = entry.data.get(CONF_NUM_OF_SMART_PV_SK, DEFAULT_NUM_OF_SMART_PV_SK)
+    num_heat_pumps = entry.data.get(CONF_NUM_OF_HEAT_PUMPS, DEFAULT_NUM_OF_HEAT_PUMPS)
+    num_wireless_sensors = entry.data.get(CONF_NUM_OF_WIRELESS_SENSORS, DEFAULT_NUM_OF_WIRELESS_SENSORS)
+    num_buffer_storage = entry.data.get(CONF_NUM_OF_BUFFER_STORAGE, DEFAULT_NUM_OF_BUFFER_STORAGE)
 
 
             
