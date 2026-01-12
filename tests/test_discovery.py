@@ -62,6 +62,30 @@ def test_discovery_basic_setup():
     assert CONF_SMART_PV not in discovered
 
 
+def test_discovery_basic_yo_2():
+    """Test discovery with customer-provided api_response_basic_yo_2.json."""
+    import json
+    from pathlib import Path
+    fixture_path = Path(__file__).parent / "fixtures" / "api_response_basic_yo_2.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        api_data = json.load(f)
+
+    discovered = discover_components_from_api(api_data)
+
+    assert discovered[CONF_NUM_OF_HEATING_CIRCUIT] == 1
+    assert discovered[CONF_NUM_OF_HOT_WATER] == 1
+    assert discovered[CONF_NUM_OF_PELLEMATIC_HEATER] == 1
+    assert discovered[CONF_NUM_OF_BUFFER_STORAGE] == 1
+    assert discovered[CONF_CIRCULATOR] is True
+    # These should not be present
+    assert CONF_NUM_OF_SMART_PV_SE not in discovered
+    assert CONF_NUM_OF_SMART_PV_SK not in discovered
+    assert CONF_NUM_OF_HEAT_PUMPS not in discovered
+    assert CONF_SOLAR_CIRCUIT not in discovered
+    assert CONF_STIRLING not in discovered
+    assert CONF_SMART_PV not in discovered
+
+
 def test_discovery_multiple_heating_circuits():
     """Test discovery with multiple heating circuits."""
     api_data = {
