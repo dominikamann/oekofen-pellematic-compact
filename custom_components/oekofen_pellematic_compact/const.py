@@ -9,9 +9,11 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfElectricPotential,
     UnitOfVolumeFlowRate,
-    UnitOfPressure
+    UnitOfPressure,
+    UnitOfFrequency
 )
 from homeassistant.components.number import NumberDeviceClass, NumberMode
+from homeassistant.const import UnitOfFrequency
 
 
 DOMAIN = "oekofen_pellematic_compact"
@@ -1097,26 +1099,32 @@ WP_SENSOR_TYPES = {
     "L_overheat_is": [
         "Heat Pump{0} Overheat is",
         "L_overheat_is",
-        None,
+        UnitOfTemperature.CELSIUS,
         "mdi:heat-pump",
     ],
     "L_overheat_set": [
         "Heat Pump{0} Overheat set",
         "L_overheat_set",
-        None,
+        UnitOfTemperature.CELSIUS,
         "mdi:heat-pump",
     ],
     "L_eev": [
         "Heat Pump{0} EEV",
         "L_eev",
-        None,
+        "steps",
         "mdi:heat-pump",
     ],
     "L_overheat": [
         "Heat Pump{0} Overheat",
         "L_overheat",
-        None,
+        UnitOfTemperature.CELSIUS,
         "mdi:heat-pump",
+    ],
+    "L_compressor_act": [
+        "Heat Pump{0} Compressor Actual Speed",
+        "L_compressor_act",
+        "rps",
+        "mdi:engine",
     ],
     "L_compressor_in": [
          "Heat Pump{0} Compressor in",
@@ -1235,24 +1243,6 @@ WP_SENSOR_TYPES = {
     "L_jaz_cool": [
         "Heat Pump{0} JAZ Cool",
         "L_jaz_cool",
-        "JAZ",
-        "mdi:numeric",
-    ],
-    "L_az_all": [
-        "Heat Pump{0} AZ",
-        "L_az_all",
-        "JAZ",
-        "mdi:numeric",
-    ],
-    "L_az_heat": [
-        "Heat Pump{0} AZ Heat",
-        "L_az_heat",
-        "JAZ",
-        "mdi:numeric",
-    ],
-    "L_az_cool": [
-        "Heat Pump{0} AZ Cool",
-        "L_az_cool",
         "JAZ",
         "mdi:numeric",
     ],
