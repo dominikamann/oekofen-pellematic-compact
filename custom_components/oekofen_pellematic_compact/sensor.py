@@ -73,8 +73,58 @@ from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.const import UnitOfFrequency
+
 
 _LOGGER = logging.getLogger(__name__)
+HIGH_PRECISION_KEYS = {
+    "L_cop",
+    "L_jaz_all",
+    "L_jaz_heat",
+    "L_jaz_cool",
+    "L_az_all",
+    "L_az_heat",
+    "L_az_cool",
+}
+
+
+def _final_round(value, unit, device_class, key=None):
+    if value is None:
+        return None
+
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return value
+
+    # COP / JAZ / AZ → 3 Nachkommastellen
+    if key in HIGH_PRECISION_KEYS:
+        return round(v, 3)
+
+    # ✅ Laufzeit (h) → 2 Nachkommastellen (oder 3, wenn du willst)
+    if unit == UnitOfTime.HOURS:
+        return round(v, 2)
+
+    # Temperaturen → 1 Nachkommastelle
+    if device_class == SensorDeviceClass.TEMPERATURE:
+        return round(v, 1)
+
+    # Durchfluss → 2 Nachkommastellen
+    if unit == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
+        return round(v, 2)
+
+    # Leistung → ganze Zahl
+    if unit in (UnitOfPower.WATT, UnitOfPower.KILO_WATT):
+        return int(round(v, 0))
+
+    # Prozent → ganze Zahl
+    if unit == PERCENTAGE:
+        return int(round(v, 0))
+
+    # Default
+    return int(round(v, 0))
+
+
 
 def _sanitize_oekofen_value(raw_data: dict, value: Any) -> Any:
     # Drop clearly invalid/sentinel values coming from the Ökofen JSON API
@@ -473,10 +523,6 @@ class PellematicBinarySensor(BinarySensorEntity):
             str(self._attr_device_class),
         )
 
-    @callback
-    def _api_data_updated(self):
-        self.async_write_ha_state()
-
     @property
     def is_on(self) -> bool:
         """Return the state of the sensor."""
@@ -501,7 +547,9 @@ class PellematicBinarySensor(BinarySensorEntity):
 
     @callback
     def _api_data_updated(self):
+        self._update_state()
         self.async_write_ha_state()
+
 
     @callback
     def _update_state(self):
@@ -609,6 +657,10 @@ class PellematicSensor(SensorEntity):
         if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
             self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_state_class = SensorStateClass.MEASUREMENT
+        if self._unit_of_measurement in ("rps", UnitOfFrequency.HERTZ):
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_device_class = SensorDeviceClass.FREQUENCY
+
         if self._key.replace("#2", "") in (
             'L_state',
             'mode_auto',
@@ -621,7 +673,11 @@ class PellematicSensor(SensorEntity):
             'L_az_all',
             'L_az_heat',
             'L_az_cool',
-            'L_COP',
+            'L_cop',
+            'L_eev',
+            'L_overheat_set',
+            'L_overheat_is',
+            'L_overheat',
         ):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         
@@ -641,12 +697,14 @@ class PellematicSensor(SensorEntity):
     async def async_added_to_hass(self):
         """Register callbacks."""
         self._hub.async_add_pellematic_sensor(self._api_data_updated)
+        self._update_state()
 
     async def async_will_remove_from_hass(self) -> None:
         self._hub.async_remove_pellematic_sensor(self._api_data_updated)
 
     @callback
     def _api_data_updated(self):
+        self._update_state()
         self.async_write_ha_state()
 
     @callback
@@ -694,7 +752,6 @@ class PellematicSensor(SensorEntity):
                 pass
         
             if factor is None or not multiply_success:
-                # Der gesamte else-Block, den du hattest
                 if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
@@ -716,7 +773,32 @@ class PellematicSensor(SensorEntity):
         except Exception as e:
             _LOGGER.error("An error occurred: %s", e)
         
-        self._state = current_value
+        # Fix scaling for overheat values (Ökofen liefert hier scheinbar 0.1x)
+        if self._key.replace("#2", "") in ("L_overheat_set", "L_overheat_is", "L_overheat") and current_value is not None:
+            try:
+                current_value = float(current_value) * 10.0
+                # optional: schöne Anzeige statt 0.8000036
+                current_value = round(current_value, 1)
+            except Exception:
+                pass
+        
+        # Ökofen: L_uwp kommt als 0..1, soll aber 0..100 % sein
+        if self._key.replace("#2", "") == "L_uwp" and current_value is not None:
+            try:
+                current_value = float(current_value) * 100.0
+                # optional: Anzeige hübscher machen
+                current_value = round(current_value, 1)
+            except Exception:
+                pass
+
+
+        self._state = _final_round(
+            current_value,
+            self._unit_of_measurement,
+            getattr(self, "_attr_device_class", None),
+            self._key.replace("#2", ""),
+        )
+
 
     @property
     def name(self):
@@ -735,71 +817,7 @@ class PellematicSensor(SensorEntity):
 
     @property
     def state(self):
-        """Return the state of the sensor."""
-        current_value = None
-        try:
-            
-            raw_data = None
-            try:
-                raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            except KeyError as e:
-                return None
-            
-            try:
-                current_value = raw_data["val"]
-            except:
-                 current_value = raw_data
-
-            try:
-                current_value = _sanitize_oekofen_value(raw_data, current_value)
-                if current_value is None:
-                    return None
-            except:
-                pass
-        
-            multiply_success = False
-            factor = None
-            try:
-                factor = raw_data["factor"]
-                if factor is not None:
-                    try:
-                        result = float(current_value) * float(factor)
-                        if result.is_integer():
-                            current_value = int(result)
-                        else:
-                            current_value = result
-                            
-                        multiply_success = True
-                    except ValueError:
-                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
-            except:
-                pass
-        
-            if factor is None or not multiply_success:
-                # Der gesamte else-Block, den du hattest
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
-                    current_value = int(current_value) * 60
-                if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10                         
-                if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                    if self._prefix.lower().startswith("se"):
-                        current_value = int(current_value) / 10
-                    else:
-                        current_value = int(current_value) / 10000
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if (current_value is True or str(current_value).lower() == 'true'):
-                        current_value = 100
-                    elif (current_value is False or str(current_value).lower() == 'false'):
-                        current_value = 0
-                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
-                        current_value = int(current_value) / 10  
-                        
-        except Exception as e:
-            _LOGGER.error("An error occurred: %s", e)
-        
-        return current_value
+        return self._state
 
     @property
     def extra_state_attributes(self):
