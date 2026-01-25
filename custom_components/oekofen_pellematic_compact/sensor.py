@@ -8,6 +8,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+
 from .const import (
     CONF_NUM_OF_HEATING_CIRCUIT,
     CONF_NUM_OF_HOT_WATER,
@@ -48,7 +49,7 @@ from .const import (
     CONF_NUM_OF_WIRELESS_SENSORS,
     DEFAULT_NUM_OF_WIRELESS_SENSORS,
     CONF_NUM_OF_BUFFER_STORAGE,
-    DEFAULT_NUM_OF_BUFFER_STORAGE
+    DEFAULT_NUM_OF_BUFFER_STORAGE,
 )
 
 from homeassistant.const import (
@@ -60,7 +61,7 @@ from homeassistant.const import (
     UnitOfMass,
     UnitOfTime,
     UnitOfVolumeFlowRate,
-    UnitOfPressure
+    UnitOfPressure,
 )
 
 from homeassistant.components.sensor import (
@@ -73,10 +74,9 @@ from homeassistant.core import callback
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.const import UnitOfFrequency
-
 
 _LOGGER = logging.getLogger(__name__)
+
 HIGH_PRECISION_KEYS = {
     "L_cop",
     "L_jaz_all",
@@ -97,33 +97,39 @@ def _final_round(value, unit, device_class, key=None):
     except (TypeError, ValueError):
         return value
 
-    # COP / JAZ / AZ → 3 Nachkommastellen
+    # COP / JAZ / AZ - 3 Nachkommastellen
     if key in HIGH_PRECISION_KEYS:
         return round(v, 3)
 
-    # ✅ Laufzeit (h) → 2 Nachkommastellen (oder 3, wenn du willst)
+    # Laufzeit (h) - 2 Nachkommastellen
     if unit == UnitOfTime.HOURS:
         return round(v, 2)
 
-    # Temperaturen → 1 Nachkommastelle
+    # Temperaturen - 1 Nachkommastelle
     if device_class == SensorDeviceClass.TEMPERATURE:
         return round(v, 1)
 
-    # Durchfluss → 2 Nachkommastellen
+    # Durchfluss - 2 Nachkommastellen
     if unit == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
         return round(v, 2)
 
-    # Leistung → ganze Zahl
-    if unit in (UnitOfPower.WATT, UnitOfPower.KILO_WATT):
+    # Leistung:
+    # - W -> ganze Zahl
+    # - kW -> 3 Nachkommastellen (oder 2, wenn du lieber willst)
+    if unit == UnitOfPower.WATT:
         return int(round(v, 0))
+    
+    if unit == UnitOfPower.KILO_WATT:
+        return round(v, 3)   # oder round(v, 2)
 
-    # Prozent → ganze Zahl
+
+    # Prozent - ganze Zahl
     if unit == PERCENTAGE:
         return int(round(v, 0))
 
     # Default
+    # (für z.B. "steps" oder "rps" => Zahl ohne Nachkommastellen)
     return int(round(v, 0))
-
 
 
 def _sanitize_oekofen_value(raw_data: dict, value: Any) -> Any:
@@ -153,6 +159,7 @@ def _sanitize_oekofen_value(raw_data: dict, value: Any) -> Any:
             return None
 
     return value
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -197,22 +204,20 @@ async def async_setup_entry(
     try:
         num_smart_pv_sk = entry.data[CONF_NUM_OF_SMART_PV_SK]
     except:
-        num_smart_pv_sk = DEFAULT_NUM_OF_SMART_PV_SK    
+        num_smart_pv_sk = DEFAULT_NUM_OF_SMART_PV_SK
     try:
         num_heat_pumps = entry.data[CONF_NUM_OF_HEAT_PUMPS]
     except:
-        num_heat_pumps = DEFAULT_NUM_OF_HEAT_PUMPS 
+        num_heat_pumps = DEFAULT_NUM_OF_HEAT_PUMPS
     try:
         num_wireless_sensors = entry.data[CONF_NUM_OF_WIRELESS_SENSORS]
     except:
-        num_wireless_sensors = DEFAULT_NUM_OF_WIRELESS_SENSORS 
+        num_wireless_sensors = DEFAULT_NUM_OF_WIRELESS_SENSORS
     try:
         num_buffer_storage = entry.data[CONF_NUM_OF_BUFFER_STORAGE]
     except:
         num_buffer_storage = DEFAULT_NUM_OF_BUFFER_STORAGE
 
-
-            
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
 
     device_info = {
@@ -225,283 +230,242 @@ async def async_setup_entry(
     entities = []
 
     for name, key, unit, icon in SYSTEM_SENSOR_TYPES.values():
-        sensor = PellematicSensor(
-            hub_name, hub, device_info, "system", name, key, unit, icon
-        )
-        entities.append(sensor)
+        entities.append(PellematicSensor(hub_name, hub, device_info, "system", name, key, unit, icon))
 
     for name, key, unit, icon in SYSTEM_BINARY_SENSOR_TYPES.values():
-        sensor = PellematicBinarySensor(
-            hub_name, hub, device_info, "system", name, key, unit, icon
-        )
-        entities.append(sensor)
+        entities.append(PellematicBinarySensor(hub_name, hub, device_info, "system", name, key, unit, icon))
 
-    for num_wireless_sensors in range(num_wireless_sensors):
+    for idx in range(num_wireless_sensors):
         for name, key, unit, icon in WIRELESS_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"wireless{num_wireless_sensors +1}",
-                name.format(" " + str(num_wireless_sensors + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"wireless{idx + 1}",
+                    name.format(" " + str(idx + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
 
     for heating_cir_count in range(num_heating_circuit):
         for name, key, unit, icon in HK_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"hk{heating_cir_count +1}",
-                name.format(" " + str(heating_cir_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"hk{heating_cir_count + 1}",
+                    name.format(" " + str(heating_cir_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
 
         for name, key, unit, icon in HK_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
-                hub_name,
-                hub,
-                device_info,
-                f"hk{heating_cir_count +1}",
-                name.format(" " + str(heating_cir_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicBinarySensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"hk{heating_cir_count + 1}",
+                    name.format(" " + str(heating_cir_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
-    
+
     if stirling is True:
         for name, key, unit, icon in STIRLING_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "stirling",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+            entities.append(PellematicSensor(hub_name, hub, device_info, "stirling", name, key, unit, icon))
 
     if smart_pv is True:
         for name, key, unit, icon in POWER_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "power",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+            entities.append(PellematicSensor(hub_name, hub, device_info, "power", name, key, unit, icon))
 
     if cirulator is True:
         for name, key, unit, icon in CIRC1_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "circ1",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+            entities.append(PellematicSensor(hub_name, hub, device_info, "circ1", name, key, unit, icon))
 
     if solar_circuit is True:
-        
         for sk_count in range(num_smart_pv_sk):
-
             for name, key, unit, icon in SK1_SENSOR_TYPES.values():
-                sensor = PellematicSensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"sk{sk_count+1}",
-                    name.format("" if sk_count == 0 else " " + str(sk_count + 1)),
-                    key,
-                    unit,
-                    icon,
+                entities.append(
+                    PellematicSensor(
+                        hub_name,
+                        hub,
+                        device_info,
+                        f"sk{sk_count + 1}",
+                        name.format("" if sk_count == 0 else " " + str(sk_count + 1)),
+                        key,
+                        unit,
+                        icon,
+                    )
                 )
-                entities.append(sensor)
 
             for name, key, unit, icon in SK1_BINARY_SENSOR_TYPES.values():
-                sensor = PellematicBinarySensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"sk{sk_count+1}",
-                    name.format("" if sk_count == 0 else " " + str(sk_count + 1)),
-                    key,
-                    unit,
-                    icon,
+                entities.append(
+                    PellematicBinarySensor(
+                        hub_name,
+                        hub,
+                        device_info,
+                        f"sk{sk_count + 1}",
+                        name.format("" if sk_count == 0 else " " + str(sk_count + 1)),
+                        key,
+                        unit,
+                        icon,
+                    )
                 )
-                entities.append(sensor)
 
         for se_count in range(num_smart_pv_se):
-
             for name, key, unit, icon in SE1_SENSOR_TYPES.values():
-                sensor = PellematicSensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"se{se_count+1}",
-                    name.format("" if se_count == 0 else " " + str(se_count + 1)),
-                    key,
-                    unit,
-                    icon,
+                entities.append(
+                    PellematicSensor(
+                        hub_name,
+                        hub,
+                        device_info,
+                        f"se{se_count + 1}",
+                        name.format("" if se_count == 0 else " " + str(se_count + 1)),
+                        key,
+                        unit,
+                        icon,
+                    )
                 )
-                entities.append(sensor)
 
     for pe_count in range(num_pellematic_heater):
         for name, key, unit, icon in PE_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"pe{pe_count+1}",
-                name.format(" " + str(pe_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"pe{pe_count + 1}",
+                    name.format(" " + str(pe_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
 
     for pu_count in range(num_buffer_storage):
-
         for name, key, unit, icon in PU1_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"pu{pu_count+1}",
-                name.format("" if pu_count == 0 else " " + str(pu_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"pu{pu_count + 1}",
+                    name.format("" if pu_count == 0 else " " + str(pu_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
 
         for name, key, unit, icon in PU1_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
-                hub_name,
-                hub,
-                device_info,
-                f"pu{pu_count+1}",
-                name.format("" if pu_count == 0 else " " + str(pu_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicBinarySensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"pu{pu_count + 1}",
+                    name.format("" if pu_count == 0 else " " + str(pu_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
 
     for hot_water_count in range(num_hot_water):
         for name, key, unit, icon in WW_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"ww{hot_water_count+1}",
-                name.format(" " + str(hot_water_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"ww{hot_water_count + 1}",
+                    name.format(" " + str(hot_water_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
 
         for name, key, unit, icon in WW_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
+            entities.append(
+                PellematicBinarySensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"ww{hot_water_count + 1}",
+                    name.format(" " + str(hot_water_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
+            )
+
+    for error_count in range(1, 6):
+        entities.append(
+            PellematicSensor(
                 hub_name,
                 hub,
                 device_info,
-                f"ww{hot_water_count+1}",
-                name.format(" " + str(hot_water_count + 1)),
-                key,
-                unit,
-                icon,
+                "error",
+                f"Error {error_count}",
+                f"error_{error_count}",
+                None,
+                "mdi:alert-circle",
             )
-            entities.append(sensor)
-
-    for error_count in range(1, 6):
-        sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "error",
-            f"Error {error_count}",
-            f"error_{error_count}",
-            None,
-            "mdi:alert-circle",
         )
-        entities.append(sensor)
 
     for heatpump_count in range(num_heat_pumps):
         for name, key, unit, icon in WP_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"wp{heatpump_count+1}",
-                name.format(" " + str(heatpump_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"wp{heatpump_count + 1}",
+                    name.format(" " + str(heatpump_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
         for name, key, unit, icon in WP_DATA_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"wp_data{heatpump_count+1}",
-                name.format(" " + str(heatpump_count + 1)),
-                key,
-                unit,
-                icon,
+            entities.append(
+                PellematicSensor(
+                    hub_name,
+                    hub,
+                    device_info,
+                    f"wp_data{heatpump_count + 1}",
+                    name.format(" " + str(heatpump_count + 1)),
+                    key,
+                    unit,
+                    icon,
+                )
             )
-            entities.append(sensor)
 
     _LOGGER.debug("Entities added : %i", len(entities))
-
     async_add_entities(entities)
-
     return True
 
 
 class PellematicBinarySensor(BinarySensorEntity):
     """Representation of a binary sensor entity."""
 
-    def __init__(
-        self,
-        platform_name,
-        hub,
-        device_info,
-        prefix,
-        name,
-        key,
-        unit,
-        icon,
-    ) -> None:
-        """Initialize the sensor."""
+    def __init__(self, platform_name, hub, device_info, prefix, name, key, unit, icon) -> None:
         self._platform_name = platform_name
         self._hub = hub
         self._prefix = prefix
         self._key = key
         self._name = f"{self._platform_name} {name}"
-        self._attr_unique_id = (
-            f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
-        )
+        self._attr_unique_id = f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         self._unit_of_measurement = unit
         self._icon = icon
         self._device_info = device_info
@@ -509,37 +473,20 @@ class PellematicBinarySensor(BinarySensorEntity):
         if icon == "mdi:usb-flash-drive":
             self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
-        _LOGGER.debug(
-            "Adding a PellematicBinarySensor : %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
-            str(self._platform_name),
-            str(self._hub),
-            str(self._prefix),
-            str(self._key),
-            str(self._name),
-            str(self._attr_unique_id),
-            str(self._unit_of_measurement),
-            str(self._icon),
-            str(self._device_info),
-            str(self._attr_device_class),
-        )
-
     @property
     def is_on(self) -> bool:
-        """Return the state of the sensor."""
         current_value = None
         try:
             current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
-            if (current_value is True or str(current_value).lower() == 'true'):
+            if current_value is True or str(current_value).lower() == "true":
                 current_value = True
-            elif (current_value is False or str(current_value).lower() == 'false'):
+            elif current_value is False or str(current_value).lower() == "false":
                 current_value = False
         except:
             pass
-
         return current_value
 
     async def async_added_to_hass(self):
-        """Register callbacks."""
         self._hub.async_add_pellematic_sensor(self._api_data_updated)
 
     async def async_will_remove_from_hass(self) -> None:
@@ -547,33 +494,14 @@ class PellematicBinarySensor(BinarySensorEntity):
 
     @callback
     def _api_data_updated(self):
-        self._update_state()
         self.async_write_ha_state()
-
-
-    @callback
-    def _update_state(self):
-        current_value = None
-
-        try:
-            current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
-            if (current_value is True or str(current_value).lower() == 'true'):
-                current_value = True
-            elif (current_value is False or str(current_value).lower() == 'false'):
-                current_value = False
-        except:
-            pass
-
-        self._attr_is_on = current_value
 
     @property
     def name(self):
-        """Return the name."""
         return f"{self._name}"
 
     @property
     def icon(self):
-        """Return the sensor icon."""
         return self._icon
 
     @property
@@ -582,7 +510,6 @@ class PellematicBinarySensor(BinarySensorEntity):
 
     @property
     def should_poll(self) -> bool:
-        """Data is delivered by the hub"""
         return False
 
     @property
@@ -593,31 +520,28 @@ class PellematicBinarySensor(BinarySensorEntity):
 class PellematicSensor(SensorEntity):
     """Representation of an Pellematic sensor."""
 
-    def __init__(
-        self,
-        platform_name,
-        hub,
-        device_info,
-        prefix,
-        name,
-        key,
-        unit,
-        icon,
-    ) -> None:
-        """Initialize the sensor."""
+    def __init__(self, platform_name, hub, device_info, prefix, name, key, unit, icon) -> None:
         self._platform_name = platform_name
         self._hub = hub
         self._prefix = prefix
         self._key = key
         self._name = f"{self._platform_name} {name}"
-        self._attr_unique_id = (
-            f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
-        )
+        self._attr_unique_id = f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         self._unit_of_measurement = unit
         self._icon = icon
         self._device_info = device_info
         self._state = None
         self._attr_state_class = None
+        self._attr_suggested_display_precision = None
+
+        # Temperaturen (z.B. Overheat) - 1 Nachkommastelle
+        if unit == UnitOfTemperature.CELSIUS:
+            self._attr_suggested_display_precision = 1
+
+        # Leistung in kW - 3 Nachkommastellen
+        if unit == UnitOfPower.KILO_WATT:
+            self._attr_suggested_display_precision = 3
+
         if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
@@ -657,45 +581,31 @@ class PellematicSensor(SensorEntity):
         if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
             self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self._unit_of_measurement in ("rps", UnitOfFrequency.HERTZ):
+
+        if self._unit_of_measurement == "rps":
             self._attr_state_class = SensorStateClass.MEASUREMENT
-            self._attr_device_class = SensorDeviceClass.FREQUENCY
 
         if self._key.replace("#2", "") in (
-            'L_state',
-            'mode_auto',
-            'oekomode',
-            'L_wireless_name',
-            'L_wireless_id',
-            'L_jaz_all',
-            'L_jaz_heat',
-            'L_jaz_cool',
-            'L_az_all',
-            'L_az_heat',
-            'L_az_cool',
-            'L_cop',
-            'L_eev',
-            'L_overheat_set',
-            'L_overheat_is',
-            'L_overheat',
+            "L_state",
+            "mode_auto",
+            "oekomode",
+            "L_wireless_name",
+            "L_wireless_id",
+            "L_jaz_all",
+            "L_jaz_heat",
+            "L_jaz_cool",
+            "L_az_all",
+            "L_az_heat",
+            "L_az_cool",
+            "L_cop",
+            "L_eev",
+            "L_overheat_set",
+            "L_overheat_is",
+            "L_overheat",
         ):
             self._attr_state_class = SensorStateClass.MEASUREMENT
-        
-        _LOGGER.debug(
-            "Adding a PellematicSensor : %s, %s, %s, %s, %s, %s, %s, %s, %s",
-            str(self._platform_name),
-            str(self._hub),
-            str(self._prefix),
-            str(self._key),
-            str(self._name),
-            str(self._attr_unique_id),
-            str(self._unit_of_measurement),
-            str(self._icon),
-            str(self._device_info),
-        )
 
     async def async_added_to_hass(self):
-        """Register callbacks."""
         self._hub.async_add_pellematic_sensor(self._api_data_updated)
         self._update_state()
 
@@ -711,86 +621,74 @@ class PellematicSensor(SensorEntity):
     def _update_state(self):
         current_value = None
         try:
-            
-            raw_data = None
             try:
                 raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            except KeyError as e:
-                # Not found so ok
-                self._state = current_value
-                return 
-                
+            except KeyError:
+                self._state = None
+                return
+
             try:
                 current_value = raw_data["val"]
-            except:
-                 current_value = raw_data
+            except Exception:
+                current_value = raw_data
 
             try:
                 current_value = _sanitize_oekofen_value(raw_data, current_value)
                 if current_value is None:
                     self._state = None
                     return
-            except:
+            except Exception:
                 pass
-                
+
             multiply_success = False
             factor = None
             try:
-                factor = raw_data["factor"]
+                factor = raw_data.get("factor")
                 if factor is not None:
-                    try:
-                        result = float(current_value) * float(factor)
-                        if result.is_integer():
-                            current_value = int(result)
-                        else:
-                            current_value = result
-                            
-                        multiply_success = True
-                    except ValueError:
-                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
-            except:
+                    result = float(current_value) * float(factor)
+                    current_value = int(result) if result.is_integer() else result
+                    multiply_success = True
+            except Exception:
                 pass
-        
+
             if factor is None or not multiply_success:
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
+                if getattr(self, "_attr_device_class", None) == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
                     current_value = int(current_value) * 60
                 if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10                         
+                    current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                     if self._prefix.lower().startswith("se"):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if (current_value is True or str(current_value).lower() == 'true'):
+                if getattr(self, "_attr_device_class", None) == SensorDeviceClass.POWER_FACTOR:
+                    if current_value is True or str(current_value).lower() == "true":
                         current_value = 100
-                    elif (current_value is False or str(current_value).lower() == 'false'):
+                    elif current_value is False or str(current_value).lower() == "false":
                         current_value = 0
-                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
-                        current_value = int(current_value) / 10  
+                    if self._key.replace("#2", "") == "L_wireless_hum":
+                        current_value = int(current_value) / 10
+
         except Exception as e:
             _LOGGER.error("An error occurred: %s", e)
-        
+
         # Fix scaling for overheat values (Ökofen liefert hier scheinbar 0.1x)
         if self._key.replace("#2", "") in ("L_overheat_set", "L_overheat_is", "L_overheat") and current_value is not None:
             try:
                 current_value = float(current_value) * 10.0
-                # optional: schöne Anzeige statt 0.8000036
-                current_value = round(current_value, 1)
-            except Exception:
-                pass
-        
-        # Ökofen: L_uwp kommt als 0..1, soll aber 0..100 % sein
-        if self._key.replace("#2", "") == "L_uwp" and current_value is not None:
-            try:
-                current_value = float(current_value) * 100.0
-                # optional: Anzeige hübscher machen
                 current_value = round(current_value, 1)
             except Exception:
                 pass
 
+        # Ökofen: L_uwp kommt als 0..1, soll aber 0..100 % sein
+        if self._key.replace("#2", "") == "L_uwp" and current_value is not None:
+            try:
+                current_value = float(current_value) * 100.0
+                current_value = round(current_value, 1)
+            except Exception:
+                pass
 
         self._state = _final_round(
             current_value,
@@ -799,20 +697,16 @@ class PellematicSensor(SensorEntity):
             self._key.replace("#2", ""),
         )
 
-
     @property
     def name(self):
-        """Return the name."""
         return f"{self._name}"
 
     @property
     def unit_of_measurement(self):
-        """Return the unit of measurement."""
         return self._unit_of_measurement
 
     @property
     def icon(self):
-        """Return the sensor icon."""
         return self._icon
 
     @property
@@ -825,7 +719,6 @@ class PellematicSensor(SensorEntity):
 
     @property
     def should_poll(self) -> bool:
-        """Data is delivered by the hub"""
         return False
 
     @property
