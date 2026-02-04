@@ -242,10 +242,16 @@ class PellematicClimate(ClimateEntity):
                     "temp_heat"
                 )
             _LOGGER.info("Temperature set successfully")
-        except Exception as e:
-            _LOGGER.error("Error setting temperature: %s", str(e))
-            
-        self.async_write_ha_state()
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to set temperature to %s for %s: %s",
+                temperature,
+                self.entity_id,
+                err,
+            )
+            # Re-raise to let Home Assistant handle it properly
+            raise
 
     async def async_set_hvac_mode(self, hvac_mode):
         self._attr_hvac_mode = hvac_mode
@@ -278,22 +284,38 @@ class PellematicClimate(ClimateEntity):
                     "mode_auto"
                 )
             _LOGGER.info("HVAC mode set successfully")
-        except Exception as e:
-            _LOGGER.error("Error setting HVAC mode: %s", str(e))
-            
-        self.async_write_ha_state()
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to set HVAC mode to %s for %s: %s",
+                hvac_mode,
+                self.entity_id,
+                err,
+            )
+            # Re-raise to let Home Assistant handle it properly
+            raise
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         if preset_mode in self._attr_preset_modes:
-            self._attr_current_option = preset_mode
-            if preset_mode == PRESET_ECO:
-                await self.hass.async_add_executor_job(
-                    self._hub.send_pellematic_data,
-                    3,  # Eco mode
-                    self._prefix,
-                    "mode_auto"
+            try:
+                self._attr_current_option = preset_mode
+                if preset_mode == PRESET_ECO:
+                    await self.hass.async_add_executor_job(
+                        self._hub.send_pellematic_data,
+                        3,  # Eco mode
+                        self._prefix,
+                        "mode_auto"
+                    )
+                self.async_write_ha_state()
+            except Exception as err:
+                _LOGGER.error(
+                    "Failed to set preset mode to %s for %s: %s",
+                    preset_mode,
+                    self.entity_id,
+                    err,
                 )
-            self.async_write_ha_state()
+                # Re-raise to let Home Assistant handle it properly
+                raise
     
     @property
     def supported_features(self) -> ClimateEntityFeature:

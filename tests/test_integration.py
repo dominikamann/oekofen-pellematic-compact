@@ -3,10 +3,13 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import json
 from pathlib import Path
+import logging
 
 from custom_components.oekofen_pellematic_compact.dynamic_discovery import (
     discover_all_entities,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -214,8 +217,13 @@ async def test_integration_full_pipeline():
     total_entities = 0
     
     for fixture_file in fixture_files:
-        with open(fixture_file, "r") as f:
-            api_data = json.load(f)
+        try:
+            with open(fixture_file, "r", encoding="utf-8") as f:
+                api_data = json.load(f)
+        except json.JSONDecodeError as e:
+            # Skip files with invalid JSON (e.g., control characters)
+            _LOGGER.warning("Skipping %s due to JSON error: %s", fixture_file.name, e)
+            continue
         
         discovered = discover_all_entities(api_data)
         

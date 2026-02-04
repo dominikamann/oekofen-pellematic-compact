@@ -50,6 +50,30 @@ IGNORE_KEYS = {
 }
 
 
+def extract_key_suffix(key: str) -> str:
+    """Extract the meaningful part of a key for disambiguation.
+    
+    Examples:
+        mode_off -> off
+        mode_auto -> auto
+        mode_dhw -> dhw
+        temp_setback -> setback
+        solarheat_mode_off -> solarheat off
+    """
+    # Handle special prefixes that need special treatment
+    if key.startswith("solarheat_mode_"):
+        suffix = key.replace("solarheat_mode_", "")
+        return f"solarheat {suffix}"
+    
+    # For other keys, extract the part after the first underscore
+    parts = key.split("_")
+    if len(parts) >= 2:
+        # For keys like temp_setback, sensor_on, mode_auto
+        return "_".join(parts[1:])
+    
+    return key
+
+
 def is_binary_sensor(data: dict) -> bool:
     """Check if data represents a binary sensor."""
     if "format" not in data:
@@ -289,7 +313,8 @@ def create_sensor_definition(
     component: str,
     key: str,
     data: dict,
-    index: int = 0
+    index: int = 0,
+    keys_need_disambiguation: set = None
 ) -> dict:
     """Create sensor definition from API data.
     
@@ -298,12 +323,18 @@ def create_sensor_definition(
         key: Sensor key (e.g., "L_temp_act")
         data: API data for this sensor
         index: Index for numbered components (for display name)
+        keys_need_disambiguation: Set of keys that need disambiguation in this component
     
     Returns:
         Dictionary with sensor configuration
     """
-    # Get name from API or use key as fallback
+    # Get base name from API or use key as fallback
     base_name = data.get("text", key)
+    
+    # Check if this key needs disambiguation by appending the key part
+    if keys_need_disambiguation and key in keys_need_disambiguation:
+        key_suffix = extract_key_suffix(key)
+        base_name = f"{base_name} ({key_suffix})"
     
     # Add component prefix to name for clarity (except system-wide entities)
     if component == "system":
@@ -332,10 +363,11 @@ def create_number_definition(
     component: str,
     key: str,
     data: dict,
-    index: int = 0
+    index: int = 0,
+    keys_need_disambiguation: set = None
 ) -> dict:
     """Create number entity definition from API data."""
-    definition = create_sensor_definition(component, key, data, index)
+    definition = create_sensor_definition(component, key, data, index, keys_need_disambiguation)
     definition["device_class"] = infer_number_device_class(data, key)
     definition["step"] = 0.1 if definition["unit"] in (UnitOfTemperature.CELSIUS, UnitOfTemperature.KELVIN) else 1
     
@@ -346,10 +378,11 @@ def create_select_definition(
     component: str,
     key: str,
     data: dict,
-    index: int = 0
+    index: int = 0,
+    keys_need_disambiguation: set = None
 ) -> dict:
     """Create select entity definition from API data."""
-    definition = create_sensor_definition(component, key, data, index)
+    definition = create_sensor_definition(component, key, data, index, keys_need_disambiguation)
     definition["options"] = parse_select_options(data.get("format", ""))
     
     return definition
@@ -384,6 +417,31 @@ def discover_entities_from_component(
         if char.isdigit():
             index = index * 10 + int(char)
     
+    # First pass: Build a map of text values to keys to detect duplicates
+    text_to_keys = {}
+    for key, data in component_data.items():
+        if key in IGNORE_KEYS:
+            continue
+            
+        # Get the text value
+        if isinstance(data, dict):
+            text = data.get("text", "")
+        else:
+            continue
+        
+        if text:
+            if text not in text_to_keys:
+                text_to_keys[text] = []
+            text_to_keys[text].append(key)
+    
+    # Find keys that need disambiguation (same text appears multiple times)
+    keys_need_disambiguation = set()
+    for text, keys in text_to_keys.items():
+        if len(keys) > 1:
+            # Multiple keys share the same text - they all need disambiguation
+            keys_need_disambiguation.update(keys)
+    
+    # Second pass: Create entity definitions
     for key, data in component_data.items():
         # Skip info/metadata keys
         if key in IGNORE_KEYS:
@@ -406,18 +464,18 @@ def discover_entities_from_component(
         if key.startswith("L_"):
             # Read-only sensor
             if is_binary_sensor(data):
-                definition = create_sensor_definition(component_key, key, data, index)
+                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["binary_sensors"].append(definition)
             else:
-                definition = create_sensor_definition(component_key, key, data, index)
+                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["sensors"].append(definition)
         else:
             # Writable entity
             if is_select(data):
-                definition = create_select_definition(component_key, key, data, index)
+                definition = create_select_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["selects"].append(definition)
             elif is_number(data):
-                definition = create_number_definition(component_key, key, data, index)
+                definition = create_number_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["numbers"].append(definition)
     
     return entities

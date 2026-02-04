@@ -126,16 +126,31 @@ class PellematicNumber(NumberEntity):
 
     async def async_set_native_value(self, value) -> None:
         """Update the native value."""
-        self._attr_native_value = value
-        if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
-                value = int(value * 10)
-        await self.hass.async_add_executor_job(
-            self._hub.send_pellematic_data,
-            int(value),
-            self._prefix,
-            self._key
-        )
-        self.async_write_ha_state()
+        try:
+            # Prepare the value for sending
+            send_value = value
+            if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
+                send_value = int(value * 10)
+            
+            # Send the new value to the API
+            await self.hass.async_add_executor_job(
+                self._hub.send_pellematic_data,
+                int(send_value),
+                self._prefix,
+                self._key
+            )
+            # Only update state if send was successful
+            self._attr_native_value = value
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to set value '%s' for %s: %s",
+                value,
+                self.entity_id,
+                err,
+            )
+            # Re-raise to let Home Assistant handle it properly
+            raise
 
     def _update_native_value(self):
         try:

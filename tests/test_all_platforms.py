@@ -1,6 +1,7 @@
 """Test that all platforms (sensor, select, number) work with dynamic discovery."""
 
 import json
+import re
 import pytest
 from pathlib import Path
 
@@ -8,10 +9,39 @@ from custom_components.oekofen_pellematic_compact.dynamic_discovery import disco
 
 
 def load_fixture(filename: str) -> dict:
-    """Load a fixture file."""
+    """Load a fixture file.
+    
+    Handles JSON files from Ökofen API which may contain control characters
+    (newlines, tabs) in string values, which is technically invalid JSON.
+    """
     fixture_path = Path(__file__).parent / "fixtures" / filename
-    with open(fixture_path, "r", encoding="utf-8") as file:
-        return json.load(file)
+    
+    # Read as binary first to handle encoding properly
+    with open(fixture_path, "rb") as f:
+        data = f.read()
+    
+    # Try UTF-8 first, fallback to iso-8859-1 for files with special encoding
+    # Files like api_response_base_da.json use iso-8859-1
+    try:
+        str_response = data.decode("utf-8")
+    except UnicodeDecodeError:
+        str_response = data.decode("iso-8859-1", "ignore")
+    
+    # Hotfix for pellematic update 4.02 (invalid json)
+    str_response = str_response.replace("L_statetext:", 'L_statetext":')
+    
+    # Fix for control characters (newlines, tabs) in string values
+    def escape_control_chars(match):
+        string_content = match.group(1)
+        string_content = string_content.replace('\n', '\\n')
+        string_content = string_content.replace('\r', '\\r')
+        string_content = string_content.replace('\t', '\\t')
+        return f'"{string_content}"'
+    
+    # Match strings in JSON (handling escaped quotes)
+    str_response = re.sub(r'"((?:[^"\\]|\\.)*)"', escape_control_chars, str_response)
+    
+    return json.loads(str_response, strict=False)
 
 
 def test_all_platforms_basic():
@@ -173,6 +203,7 @@ def test_total_entities_all_fixtures():
         ("api_response_with_sk_dash.json", 90),
         ("api_response_base_csta.json", 174),
         ("api_response_base_srqu.json", 258),
+        ("api_response_base_da.json", 81),  # With control characters in error messages
     ]
     
     total_entities = 0
@@ -187,5 +218,5 @@ def test_total_entities_all_fixtures():
         assert count == expected_count, f"{filename}: expected {expected_count}, got {count}"
         total_entities += count
     
-    # Total should be 1308 entities
-    assert total_entities == 1308
+    # Total should be 1389 entities (1308 + 81 from api_response_base_da.json)
+    assert total_entities == 1389

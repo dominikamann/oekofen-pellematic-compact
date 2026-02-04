@@ -118,14 +118,26 @@ class PellematicSelect(SelectEntity):
 
     async def async_select_option(self, option) -> None:
         """Update the current selected option."""
-        self._attr_current_option = option
-        await self.hass.async_add_executor_job(
-            self._hub.send_pellematic_data,
-            option[:1],
-            self._prefix,
-            self._key
-        )
-        self.async_write_ha_state()
+        try:
+            # Send the new option value to the API
+            await self.hass.async_add_executor_job(
+                self._hub.send_pellematic_data,
+                option[:1],
+                self._prefix,
+                self._key
+            )
+            # Only update state if send was successful
+            self._attr_current_option = option
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to set option '%s' for %s: %s",
+                option,
+                self.entity_id,
+                err,
+            )
+            # Re-raise to let Home Assistant handle it properly
+            raise
 
     def _update_current_option(self):
         try:

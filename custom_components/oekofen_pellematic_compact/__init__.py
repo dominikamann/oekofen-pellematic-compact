@@ -1,6 +1,7 @@
 """The Ökofen Pellematic Compact Integration."""
 import asyncio
 import logging
+import re
 from datetime import timedelta
 from typing import Optional
 import json
@@ -420,6 +421,22 @@ def fetch_data(url: str, charset: str = DEFAULT_CHARSET) -> dict:
 
     # Hotfix for pellematic update 4.02 (invalid json)
     str_response = str_response.replace("L_statetext:", 'L_statetext":')
+    
+    # Fix for control characters (newlines, tabs) in string values from Ökofen API
+    # The API sometimes returns error messages with actual newlines in JSON strings
+    # which is invalid JSON. We need to escape them before parsing.
+    # Find all string values and escape control characters within them
+    def escape_control_chars(match):
+        string_content = match.group(1)
+        # Escape newlines, tabs, carriage returns
+        string_content = string_content.replace('\n', '\\n')
+        string_content = string_content.replace('\r', '\\r')
+        string_content = string_content.replace('\t', '\\t')
+        return f'"{string_content}"'
+    
+    # Match strings in JSON (handling escaped quotes)
+    str_response = re.sub(r'"((?:[^"\\]|\\.)*)(?<!\\)"', escape_control_chars, str_response)
+    
     result = json.loads(str_response, strict=False)
     return result
 
@@ -433,6 +450,10 @@ def send_data(url: str, charset: str = DEFAULT_CHARSET) -> str:
         
     Returns:
         Response text from API
+        
+    Raises:
+        urllib.error.HTTPError: When API returns an error (e.g., 401 Unauthorized)
+        Exception: For other network or communication errors
     """
     # Strip any leading/trailing whitespace
     url = url.strip()
@@ -445,6 +466,17 @@ def send_data(url: str, charset: str = DEFAULT_CHARSET) -> str:
             req, timeout=3
         )  # Ökofen API recommended timeout is 2.5s
         str_response = response.read().decode(charset, "ignore")
+    except urllib.error.HTTPError as err:
+        _LOGGER.error(
+            "HTTP Error %s when sending data to %s: %s",
+            err.code,
+            url,
+            err.reason,
+        )
+        raise
+    except Exception as err:
+        _LOGGER.error("Error sending data to %s: %s", url, err)
+        raise
     finally:
         if response is not None:
             response.close()
