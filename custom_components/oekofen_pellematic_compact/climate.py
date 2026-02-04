@@ -48,6 +48,9 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    from datetime import timedelta
+    from homeassistant.helpers.event import async_track_time_interval
+    
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
     
@@ -62,27 +65,79 @@ async def async_setup_entry(
         "model": ATTR_MODEL,
     }
     
-    entities = []
+    # Track which entities have been added to avoid duplicates
+    added_entity_ids = set()
     
-    climates_to_add = [
-        ("hk", num_heating_circuit),
-    ]
+    async def setup_entities_from_data():
+        """Create climate entities."""
+        entities = []
+        
+        # Check if we have API data
+        data = await hub.async_get_data()
+        
+        if not data:
+            _LOGGER.debug("No API data available yet for climate discovery")
+            return False
+        
+        try:
+            climates_to_add = [
+                ("hk", num_heating_circuit),
+            ]
 
-    for prefix, num_climate in climates_to_add:
-        for n in range(1, num_climate + 1):
-            climate = PellematicClimate(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"{prefix}{n}",
-                    n
-                )
-            entities.append(climate)
+            for prefix, num_climate in climates_to_add:
+                for n in range(1, num_climate + 1):
+                    entity_id = f"{prefix}{n}_climate"
+                    if entity_id in added_entity_ids:
+                        continue
+                        
+                    try:
+                        climate = PellematicClimate(
+                                hub_name,
+                                hub,
+                                device_info,
+                                f"{prefix}{n}",
+                                n
+                            )
+                        entities.append(climate)
+                        added_entity_ids.add(entity_id)
+                    except Exception as e:
+                        _LOGGER.error("Failed to create climate %s: %s", entity_id, e)
+            
+            if entities:
+                _LOGGER.debug("Adding %i new climate entities", len(entities))
+                async_add_entities(entities)
+                return True
+            else:
+                _LOGGER.debug("No new climate entities to add")
+                return False
                 
+        except Exception as e:
+            _LOGGER.error("Error during climate setup: %s", e)
+            return False
     
-    _LOGGER.debug("Entities added : %i", len(entities))
+    # Try initial setup
+    success = await setup_entities_from_data()
     
-    async_add_entities(entities)
+    if not success:
+        _LOGGER.warning(
+            "Initial climate setup incomplete. Will retry every 60 seconds until successful. "
+            "You can also manually trigger rediscovery using the 'oekofen_pellematic_compact.rediscover_components' service."
+        )
+        
+        # Set up retry mechanism - try again every 60 seconds until successful
+        async def retry_setup(now):
+            """Retry entity setup periodically."""
+            success = await setup_entities_from_data()
+            if success:
+                _LOGGER.info("Climate entity setup completed successfully after retry")
+                # Cancel further retries
+                if hasattr(retry_setup, 'cancel'):
+                    retry_setup.cancel()
+        
+        # Track the interval so we can cancel it later
+        retry_setup.cancel = async_track_time_interval(
+            hass, retry_setup, timedelta(seconds=60)
+        )
 
 class PellematicClimate(ClimateEntity):
     def __init__(

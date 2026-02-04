@@ -74,6 +74,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Setup entry using dynamic discovery"""
+    from datetime import timedelta
+    from homeassistant.helpers.event import async_track_time_interval
 
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
@@ -87,62 +89,122 @@ async def async_setup_entry(
         "model": ATTR_MODEL,
     }
 
-    entities = []
-
-    # Discover all entities dynamically from API data
-    data = await hub.async_get_data()
+    # Track which entities have been added to avoid duplicates
+    added_entity_ids = set()
     
-    if not data:
-        _LOGGER.warning("No API data available during sensor setup. Entities will be created on first successful poll.")
-        # Return empty list - entities will be created later via discovery
-        async_add_entities([])
-        return
+    async def setup_entities_from_data():
+        """Discover and add entities from current API data."""
+        entities = []
+        
+        # Discover all entities dynamically from API data
+        data = await hub.async_get_data()
+        
+        if not data:
+            _LOGGER.debug("No API data available yet for sensor discovery")
+            return False
+        
+        try:
+            discovered = discover_all_entities(data)
+            
+            _LOGGER.info("Dynamically discovered %d sensors, %d binary sensors", 
+                         len(discovered['sensors']), len(discovered['binary_sensors']))
+
+            # Create sensor entities with error handling
+            for sensor_def in discovered['sensors']:
+                entity_id = f"{sensor_def['component']}_{sensor_def['key']}"
+                if entity_id in added_entity_ids:
+                    continue
+                    
+                try:
+                    sensor = PellematicSensor(
+                        hub_name=hub_name,
+                        hub=hub,
+                        device_info=device_info,
+                        sensor_definition=sensor_def,
+                    )
+                    entities.append(sensor)
+                    added_entity_ids.add(entity_id)
+                except Exception as e:
+                    _LOGGER.error("Failed to create sensor %s: %s", entity_id, e)
+
+            # Create binary sensor entities with error handling
+            for sensor_def in discovered['binary_sensors']:
+                entity_id = f"{sensor_def['component']}_{sensor_def['key']}"
+                if entity_id in added_entity_ids:
+                    continue
+                    
+                try:
+                    sensor = PellematicBinarySensor(
+                        hub_name=hub_name,
+                        hub=hub,
+                        device_info=device_info,
+                        sensor_definition=sensor_def,
+                    )
+                    entities.append(sensor)
+                    added_entity_ids.add(entity_id)
+                except Exception as e:
+                    _LOGGER.error("Failed to create binary sensor %s: %s", entity_id, e)
+
+            # Add legacy error sensors (not in API metadata)
+            for error_count in range(1, 6):
+                entity_id = f"error_error_{error_count}"
+                if entity_id in added_entity_ids:
+                    continue
+                    
+                try:
+                    sensor = PellematicSensor(
+                        hub_name=hub_name,
+                        hub=hub,
+                        device_info=device_info,
+                        sensor_definition={
+                            'component': 'error',
+                            'key': f'error_{error_count}',
+                            'name': f'Error {error_count}',
+                            'unit': None,
+                            'icon': 'mdi:alert-circle',
+                            'device_class': None,
+                        }
+                    )
+                    entities.append(sensor)
+                    added_entity_ids.add(entity_id)
+                except Exception as e:
+                    _LOGGER.error("Failed to create error sensor %d: %s", error_count, e)
+
+            if entities:
+                _LOGGER.debug("Adding %i new sensor entities", len(entities))
+                async_add_entities(entities)
+                return True
+            else:
+                _LOGGER.debug("No new sensor entities to add")
+                return False
+                
+        except Exception as e:
+            _LOGGER.error("Error during sensor discovery: %s", e)
+            return False
     
-    discovered = discover_all_entities(data)
+    # Try initial setup
+    success = await setup_entities_from_data()
     
-    _LOGGER.info("Dynamically discovered %d sensors, %d binary sensors", 
-                 len(discovered['sensors']), len(discovered['binary_sensors']))
-
-    # Create sensor entities
-    for sensor_def in discovered['sensors']:
-        sensor = PellematicSensor(
-            hub_name=hub_name,
-            hub=hub,
-            device_info=device_info,
-            sensor_definition=sensor_def,
+    if not success:
+        _LOGGER.warning(
+            "Initial sensor setup incomplete. Will retry every 60 seconds until successful. "
+            "You can also manually trigger rediscovery using the 'oekofen_pellematic_compact.rediscover_components' service."
         )
-        entities.append(sensor)
-
-    # Create binary sensor entities
-    for sensor_def in discovered['binary_sensors']:
-        sensor = PellematicBinarySensor(
-            hub_name=hub_name,
-            hub=hub,
-            device_info=device_info,
-            sensor_definition=sensor_def,
+        
+        # Set up retry mechanism - try again every 60 seconds until successful
+        async def retry_setup(now):
+            """Retry entity setup periodically."""
+            success = await setup_entities_from_data()
+            if success:
+                _LOGGER.info("Sensor entity setup completed successfully after retry")
+                # Cancel further retries
+                if hasattr(retry_setup, 'cancel'):
+                    retry_setup.cancel()
+        
+        # Track the interval so we can cancel it later
+        retry_setup.cancel = async_track_time_interval(
+            hass, retry_setup, timedelta(seconds=60)
         )
-        entities.append(sensor)
-
-    # Add legacy error sensors (not in API metadata)
-    for error_count in range(1, 6):
-        sensor = PellematicSensor(
-            hub_name=hub_name,
-            hub=hub,
-            device_info=device_info,
-            sensor_definition={
-                'component': 'error',
-                'key': f'error_{error_count}',
-                'name': f'Error {error_count}',
-                'unit': None,
-                'icon': 'mdi:alert-circle',
-                'device_class': None,
-            }
-        )
-        entities.append(sensor)
-
-    _LOGGER.debug("Entities added : %i", len(entities))
-
-    async_add_entities(entities)
 
     return True
 
