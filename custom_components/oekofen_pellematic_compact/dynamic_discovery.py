@@ -16,37 +16,46 @@ from homeassistant.components.number import NumberDeviceClass
 
 _LOGGER = logging.getLogger(__name__)
 
-# Component name translations for better entity names
+# Component name translations for better entity names (international/English)
 COMPONENT_NAMES = {
     "system": "System",
-    "hk": "Heizkreis",  # Heating Circuit
-    "pe": "Pellematic",  # Pellematic Heater
-    "pu": "Pufferspeicher",  # Buffer Storage
-    "ww": "Warmwasser",  # Hot Water
-    "sk": "Solar SK",  # Solar Collector SK
-    "se": "Solar SE",  # Solar Collector SE
-    "wp": "Wärmepumpe",  # Heat Pump
-    "circ": "Zirkulation",  # Circulator
-    "weather": "Wetter",  # Weather
-    "forecast": "Prognose",  # Forecast
-    "power": "Smart PV",  # Smart PV
-    "stirling": "Stirling",  # Stirling Engine
+    "hk": "Heating Circuit",
+    "autocomfort_hk": "Auto Comfort Heating Circuit",
+    "pe": "Pellematic",
+    "pu": "Buffer Storage",
+    "ww": "Hot Water",
+    "sk": "Solar Collector",
+    "se": "Solar Gain",
+    "wp": "Heat Pump",
+    "wp_data": "Heat Pump Data",
+    "circ": "Circulation",
+    "weather": "Weather",
+    "forecast": "Forecast",
+    "power": "Smart PV",
+    "stirling": "Stirling",
+    "wireless": "Wireless Sensor",
+    "thirdparty": "Third Party Sensor",
 }
 
 # Keys to ignore (metadata/info fields)
 IGNORE_KEYS = {
     "system_info",
     "hk_info",
+    "autocomfort_hk_info",
     "pe_info",
     "pu_info",
     "ww_info",
     "sk_info",
     "se_info",
     "wp_info",
+    "wp_data_info",
     "circ_info",
     "weather_info",
     "forecast_info",
     "power_info",
+    "stirling_info",
+    "wireless_info",
+    "thirdparty_info",
 }
 
 
@@ -111,6 +120,40 @@ def is_number(data: dict) -> bool:
     """Check if data represents a number entity."""
     # Numbers have min and max values and are writable (no L_ prefix)
     return "min" in data and "max" in data
+
+
+def is_read_only_statistic(key: str) -> bool:
+    """Check if a key represents a read-only statistic/counter value.
+    
+    Even though these keys don't have L_ prefix, they are conceptually
+    read-only (historical data, statistics, counters) and should not be
+    writable number entities.
+    
+    Args:
+        key: The key to check
+        
+    Returns:
+        True if the key represents read-only statistics
+    """
+    key_lower = key.lower()
+    
+    # Historical/time-based statistics
+    if any(word in key_lower for word in ['_yesterday', '_today', '_last_', '_prev_']):
+        return True
+    
+    # Totals and accumulated values
+    if any(word in key_lower for word in ['_total', '_consumed', '_consumption']):
+        return True
+    
+    # Counters
+    if any(word in key_lower for word in ['_runtime', '_starts', '_count', '_cycles']):
+        return True
+    
+    # Storage fill is a calculated/measured value, not a setting
+    if 'storage_fill' in key_lower:
+        return True
+    
+    return False
 
 
 def parse_select_options(format_str: str) -> list[str]:
@@ -462,21 +505,44 @@ def discover_entities_from_component(
         
         # Determine entity type and create definition
         if key.startswith("L_"):
-            # Read-only sensor
+            # Read-only sensor (API convention: L_ prefix = read-only)
             if is_binary_sensor(data):
                 definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["binary_sensors"].append(definition)
             else:
                 definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["sensors"].append(definition)
+        elif is_read_only_statistic(key):
+            # Even without L_ prefix, this is a read-only statistic/counter
+            # (e.g., storage_fill_yesterday, runtime_total, starts_count)
+            _LOGGER.debug(
+                "Key '%s.%s' identified as read-only statistic, creating sensor instead of number",
+                component_key, key
+            )
+            definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
+            entities["sensors"].append(definition)
         else:
-            # Writable entity
+            # Writable entity (no L_ prefix and not a statistic = writable per API spec)
             if is_select(data):
+                definition = create_select_definition(component_key, key, data, index, keys_need_disambiguation)
+                entities["selects"].append(definition)
+            elif is_binary_sensor(data):
+                # Writable binary option (e.g., night_mode with "0:Off|1:On")
+                # Treat as select with 2 options instead of binary_sensor
                 definition = create_select_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["selects"].append(definition)
             elif is_number(data):
                 definition = create_number_definition(component_key, key, data, index, keys_need_disambiguation)
                 entities["numbers"].append(definition)
+            else:
+                # Fallback: treat as read-only sensor
+                # (e.g., text fields with 'length' property, or other unsupported writable types)
+                _LOGGER.debug(
+                    "Writable key '%s.%s' not recognized as select/number, treating as read-only sensor",
+                    component_key, key
+                )
+                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
+                entities["sensors"].append(definition)
     
     return entities
 

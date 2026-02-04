@@ -169,9 +169,9 @@ def test_discover_entities_from_component():
     assert len(entities["selects"]) == 1
     assert len(entities["numbers"]) == 1
     
-    # Check sensor - now includes component name
+    # Check sensor - now includes component name (in English)
     assert entities["sensors"][0]["key"] == "L_roomtemp_act"
-    assert entities["sensors"][0]["name"] == "Heizkreis 1 Raumtemperatur"
+    assert entities["sensors"][0]["name"] == "Heating Circuit 1 Raumtemperatur"
     
     # Check binary sensor
     assert entities["binary_sensors"][0]["key"] == "L_pump"

@@ -92,6 +92,8 @@ class PellematicNumber(NumberEntity):
         self._key = number_definition['key']
         self._name = f"{self._platform_name} {number_definition['name']}"
         self._attr_unique_id = f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
+        # Use component_key for entity_id instead of long human-readable name
+        self._attr_object_id = f"{self._prefix}_{self._key}"
         self._device_info = device_info
         self._attr_assumed_state = False
         self._state = None

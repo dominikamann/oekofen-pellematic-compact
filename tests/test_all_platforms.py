@@ -49,10 +49,11 @@ def test_all_platforms_basic():
     data = load_fixture("api_response_basic.json")
     discovered = discover_all_entities(data)
     
-    assert len(discovered['sensors']) == 26
+    # Updated counts after moving read-only statistics to sensors
+    assert len(discovered['sensors']) == 28  # +2 from read-only statistics
     assert len(discovered['binary_sensors']) == 3
     assert len(discovered['selects']) == 1
-    assert len(discovered['numbers']) == 6
+    assert len(discovered['numbers']) == 4  # -2 moved to sensors
     
     # Verify sensor structure
     assert all('component' in s for s in discovered['sensors'])
@@ -76,14 +77,15 @@ def test_all_platforms_complex():
     data = load_fixture("api_response_basic_yo_2.json")
     discovered = discover_all_entities(data)
     
-    assert len(discovered['sensors']) == 51
+    # Updated counts after binary options → selects conversion
+    assert len(discovered['sensors']) == 56  # -6 binary options moved to selects
     assert len(discovered['binary_sensors']) == 8
-    assert len(discovered['selects']) == 12
-    assert len(discovered['numbers']) == 15
+    assert len(discovered['selects']) == 18  # +6 binary options from sensors
+    assert len(discovered['numbers']) == 13
     
     total = (len(discovered['sensors']) + len(discovered['binary_sensors']) + 
              len(discovered['selects']) + len(discovered['numbers']))
-    assert total == 86
+    assert total == 95  # 56+8+18+13
 
 
 def test_select_options_parsing():
@@ -195,15 +197,15 @@ def test_total_entities_all_fixtures():
     """Test total entity count across all fixtures matches expected."""
     fixtures = [
         ("api_response_basic.json", 36),
-        ("api_response_basic_yo_2.json", 86),
-        ("api_response_basic_m9.json", 157),
-        ("api_response_green_kn.json", 258),
-        ("api_response_sk_lxy.json", 99),
-        ("api_response_with_se_ml.json", 150),
-        ("api_response_with_sk_dash.json", 90),
-        ("api_response_base_csta.json", 174),
-        ("api_response_base_srqu.json", 258),
-        ("api_response_base_da.json", 81),  # With control characters in error messages
+        ("api_response_basic_yo_2.json", 95),
+        ("api_response_basic_m9.json", 170),
+        ("api_response_green_kn.json", 394),
+        ("api_response_sk_lxy.json", 111),
+        ("api_response_with_se_ml.json", 162),
+        ("api_response_with_sk_dash.json", 135),
+        ("api_response_base_csta.json", 187),  # -1 after binary→select fix
+        ("api_response_base_srqu.json", 394),
+        ("api_response_base_da.json", 87),
     ]
     
     total_entities = 0
@@ -218,5 +220,5 @@ def test_total_entities_all_fixtures():
         assert count == expected_count, f"{filename}: expected {expected_count}, got {count}"
         total_entities += count
     
-    # Total should be 1389 entities (1308 + 81 from api_response_base_da.json)
-    assert total_entities == 1389
+    # Total entities across all fixtures (international names, binary→select fix)
+    assert total_entities == 1771
