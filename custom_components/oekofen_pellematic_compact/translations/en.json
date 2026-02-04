@@ -3,29 +3,37 @@
     "title": "\u00d6kofen Pellematic",
     "step": {
       "user": {
-        "title": "Define your \u00d6kofen Pellematic JSON-Interface connection",
+        "title": "Connect to your \u00d6kofen Pellematic",
+        "description": "Enter the JSON API URL (e.g., {example_url}). The system will automatically discover your configuration.",
         "data": {
-          "host": "The url including password",
-          "name": "The name of the device",
-          "scan_interval": "The polling frequency of the API in seconds",
-          "solar_circuit": "Solar & Sun Sensors support yes/no (SE1, SK1)",
-          "circulator": "Circulator support yes/no (CIRC1)",
-          "smart_pv": "Smart PV support yes/no (POWER)",
-          "stirling": "Stirling engine generator support yes/no (stirling)",
-          "num_of_heating_circuits": "Num of heating circuits (HKx)",
-          "num_of_hot_water": "Num of hot water circuits (HWx)",
-          "num_of_pellematic_heaters": "Num of Pellematic heaters (PEx)",
-          "num_of_smart_pv_se_count" : "Num of Smart PV (SEx)",
-          "num_of_smart_pv_sk_count" : "Num of Smart PV (SKx)",
-          "num_of_heat_pumps_count" : "Num of Heat Pumps (WPx)",
-          "num_of_wireless_sensors" : "Num of wireless sensors (WIRELESSx)",
-          "num_of_buffer_storage" : "Num of buffer storages (PUx)",
-          "charset": "Character set for decoding (try iso-8859-1 or utf-8)"     
+          "host": "JSON API URL (including password)",
+          "name": "Integration name",
+          "charset": "Character set (iso-8859-1 or utf-8)"
+        }
+      },
+      "advanced": {
+        "title": "Configure discovered components",
+        "description": "Auto-discovery found:\n{discovered}\n\nYou can adjust these values if needed.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "solar_circuit": "Solar & Sun Sensors (SE1, SK1)",
+          "circulator": "Circulator (CIRC1)",
+          "smart_pv": "Smart PV (POWER)",
+          "stirling": "Stirling engine (stirling)",
+          "num_of_heating_circuits": "Heating circuits (HKx)",
+          "num_of_hot_water": "Hot water circuits (HWx)",
+          "num_of_pellematic_heaters": "Pellematic heaters (PELx)",
+          "num_of_smart_pv_se_count": "Smart PV modules (SEx)",
+          "num_of_smart_pv_sk_count": "Thermal solar collectors (SKx)",
+          "num_of_heat_pumps_count": "Heat pumps (WPx)",
+          "num_of_wireless_sensors": "Wireless sensors (WIRELESSx)",
+          "num_of_buffer_storage": "Buffer storages (PUx)"
         }
       }
     },
     "error": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "cannot_connect": "Failed to connect to the API. Check the URL and password."
     },
     "abort": {
       "already_configured": "Device is already configured"

@@ -1,0 +1,30 @@
+[tool.pytest.ini_options]
+# Pytest configuration
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Logging
+log_cli = false
+log_cli_level = "INFO"
+
+# Warnings filter
+filterwarnings = [
+    "ignore::DeprecationWarning:homeassistant.components.http",
+    "ignore::DeprecationWarning",
+]
+
+# Coverage options (optional)
+# [tool.coverage.run]
+# source = ["custom_components/oekofen_pellematic_compact"]
+# omit = ["tests/*", "**/__pycache__/*"]
+
+# [tool.coverage.report]
+# exclude_lines = [
+#     "pragma: no cover",
+#     "def __repr__",
+#     "raise AssertionError",
+#     "raise NotImplementedError",
+#     "if __name__ == .__main__.:",
+# ]

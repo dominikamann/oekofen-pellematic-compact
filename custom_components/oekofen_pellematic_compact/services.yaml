@@ -1,0 +1,11 @@
+# Services for Ökofen Pellematic Compact Integration
+
+rediscover_components:
+  name: Re-discover components
+  description: Automatically detect and update the number of connected components (heating circuits, hot water, etc.) from the Pellematic API.
+  fields:
+    config_entry_id:
+      name: Config Entry ID
+      description: The configuration entry ID to update (optional, updates all if not specified)
+      required: false
+      example: "abc123def456"

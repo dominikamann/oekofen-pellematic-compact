@@ -7,20 +7,11 @@ from typing import Any, Optional
 from homeassistant.components.select import SelectEntity
 
 from .const import (
-    CONF_NUM_OF_HEATING_CIRCUIT,
-    CONF_NUM_OF_HOT_WATER,
-    CONF_NUM_OF_PELLEMATIC_HEATER,
-    HK_SELECT_TYPES,
-    WW_SELECT_TYPES,
-    PE_SELECT_TYPES,
-    SYSTEM_SELECT_TYPES,
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
-    DEFAULT_NUM_OF_HEATING_CIRCUIT,
-    DEFAULT_NUM_OF_HOT_WATER,
-    DEFAULT_NUM_OF_PELLEMATIC_HEATER
 )
+from .dynamic_discovery import discover_all_entities
 
 from homeassistant.const import (
     CONF_NAME,
@@ -37,13 +28,12 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the select platform."""
+    """Set up the select platform using dynamic discovery."""
+    from datetime import timedelta
+    from homeassistant.helpers.event import async_track_time_interval
+    
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
-    
-    num_heating_circuit = entry.data.get(CONF_NUM_OF_HEATING_CIRCUIT, DEFAULT_NUM_OF_HEATING_CIRCUIT)
-    num_hot_water = entry.data.get(CONF_NUM_OF_HOT_WATER, DEFAULT_NUM_OF_HOT_WATER)
-    num_pellematic_heater = entry.data.get(CONF_NUM_OF_PELLEMATIC_HEATER, DEFAULT_NUM_OF_PELLEMATIC_HEATER)
 
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
     
@@ -54,33 +44,78 @@ async def async_setup_entry(
         "model": ATTR_MODEL,
     }
     
-    entities = []
+    # Track which entities have been added to avoid duplicates
+    added_entity_ids = set()
     
-    selects_to_add = [
-        ("hk", HK_SELECT_TYPES, num_heating_circuit),
-        ("ww", WW_SELECT_TYPES, num_hot_water),
-        ("pe", PE_SELECT_TYPES, num_pellematic_heater),
-        ("system", SYSTEM_SELECT_TYPES, 1),
-    ]
-
-    for prefix, select_types, num_selects in selects_to_add:
-        for n in range(1, num_selects + 1):
-            for name, key, trname, options  in select_types.values():
-                select = PellematicSelect(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"{prefix}{n}" if prefix != "system" else prefix,
-                    name.format(f" {n}") if prefix != "system" else name.format(""),
-                    key,
-                    options,
-                    trname
-                )
-                entities.append(select)
+    async def setup_entities_from_data():
+        """Discover and add entities from current API data."""
+        entities = []
+        
+        # Discover all entities dynamically from API data
+        data = await hub.async_get_data()
+        
+        if not data:
+            _LOGGER.debug("No API data available yet for select discovery")
+            return False
+        
+        try:
+            discovered = discover_all_entities(data)
+            
+            _LOGGER.info("Dynamically discovered %d select entities", len(discovered['selects']))
+            
+            # Create select entities with error handling
+            for select_def in discovered['selects']:
+                entity_id = f"{select_def['component']}_{select_def['key']}"
+                if entity_id in added_entity_ids:
+                    continue
+                    
+                try:
+                    select = PellematicSelect(
+                        hub_name=hub_name,
+                        hub=hub,
+                        device_info=device_info,
+                        select_definition=select_def,
+                    )
+                    entities.append(select)
+                    added_entity_ids.add(entity_id)
+                except Exception as e:
+                    _LOGGER.error("Failed to create select %s: %s", entity_id, e)
+            
+            if entities:
+                _LOGGER.debug("Adding %i new select entities", len(entities))
+                async_add_entities(entities)
+                return True
+            else:
+                _LOGGER.debug("No new select entities to add")
+                return False
+                
+        except Exception as e:
+            _LOGGER.error("Error during select discovery: %s", e)
+            return False
     
-    _LOGGER.debug("Entities added : %i", len(entities))
+    # Try initial setup
+    success = await setup_entities_from_data()
     
-    async_add_entities(entities)
+    if not success:
+        _LOGGER.warning(
+            "Initial select setup incomplete. Will retry every 60 seconds until successful. "
+            "You can also manually trigger rediscovery using the 'oekofen_pellematic_compact.rediscover_components' service."
+        )
+        
+        # Set up retry mechanism - try again every 60 seconds until successful
+        async def retry_setup(now):
+            """Retry entity setup periodically."""
+            success = await setup_entities_from_data()
+            if success:
+                _LOGGER.info("Select entity setup completed successfully after retry")
+                # Cancel further retries
+                if hasattr(retry_setup, 'cancel'):
+                    retry_setup.cancel()
+        
+        # Track the interval so we can cancel it later
+        retry_setup.cancel = async_track_time_interval(
+            hass, retry_setup, timedelta(seconds=60)
+        )
 
 
 class PellematicSelect(SelectEntity):
@@ -92,38 +127,30 @@ class PellematicSelect(SelectEntity):
 
     def __init__(
         self,
-        platform_name,
+        hub_name,
         hub,
         device_info,
-        prefix,
-        name,
-        key,
-        options,
-        translation_key,
+        select_definition,
     ) -> None:
-        """Initialize the select."""
-        self._platform_name = platform_name
-        self._hub = hub        
-        self._prefix = prefix
-        self._key = key
-        self._name = f"{self._platform_name} {name}"
+        """Initialize the select from dynamic definition."""
+        self._platform_name = hub_name
+        self._hub = hub
+        self._prefix = select_definition['component']
+        self._key = select_definition['key']
+        self._name = f"{self._platform_name} {select_definition['name']}"
         self._attr_unique_id = f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
+        # Use component_key for entity_id instead of long human-readable name
+        self._attr_object_id = f"{self._prefix}_{self._key}"
         self._attr_current_option = None
-        self._attr_options = options
+        self._attr_options = select_definition['options']
         self._device_info = device_info
-        self._attr_translation_key = translation_key
+        self._attr_translation_key = None
         
         _LOGGER.debug(
-            "Adding a PellematicSelect : %s, %s, %s, %s, %s, %s, %s, %s, %s",
-            str(self._platform_name),
-            str(self._hub),
-            str(self._prefix),
-            str(self._key),
-            str(self._name),
-            str(self._attr_unique_id),
-            str(self._attr_current_option),
-            str(self._attr_options),
-            str(self._device_info),
+            "Adding dynamic PellematicSelect: %s, %s, options: %s",
+            self._name,
+            self._attr_unique_id,
+            self._attr_options,
         )
 
     @callback
@@ -141,14 +168,26 @@ class PellematicSelect(SelectEntity):
 
     async def async_select_option(self, option) -> None:
         """Update the current selected option."""
-        self._attr_current_option = option
-        await self.hass.async_add_executor_job(
-            self._hub.send_pellematic_data,
-            option[:1],
-            self._prefix,
-            self._key
-        )
-        self.async_write_ha_state()
+        try:
+            # Send the new option value to the API
+            await self.hass.async_add_executor_job(
+                self._hub.send_pellematic_data,
+                option[:1],
+                self._prefix,
+                self._key
+            )
+            # Only update state if send was successful
+            self._attr_current_option = option
+            self.async_write_ha_state()
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to set option '%s' for %s: %s",
+                option,
+                self.entity_id,
+                err,
+            )
+            # Re-raise to let Home Assistant handle it properly
+            raise
 
     def _update_current_option(self):
         try:
