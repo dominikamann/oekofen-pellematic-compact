@@ -330,7 +330,9 @@ class PellematicHub:
             prefix: Component prefix (e.g., 'hk1')
             key: Parameter key
         """
-        urlsent = f"{self._host[:-3]}{prefix}_{key}={val}"
+        # Remove '/all' or '/all?' from the end of the host URL
+        base_url = self._host.replace('/all?', '/').replace('/all', '/')
+        urlsent = f"{base_url}{prefix}_{key}={val}"
         _LOGGER.debug("Sending API update: %s", urlsent)
         result = send_data(urlsent, self._charset)
 
