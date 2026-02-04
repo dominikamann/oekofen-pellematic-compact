@@ -7,18 +7,11 @@ from typing import Any, Optional
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 
 from .const import (
-    CONF_NUM_OF_HEATING_CIRCUIT,
-    CONF_NUM_OF_HOT_WATER,
-    CONF_CIRCULATOR,
-    CIRC1_NUMBER_TYPES,
-    HK_NUMBER_TYPES,
-    WW_NUMBER_TYPES,
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
-    DEFAULT_NUM_OF_HEATING_CIRCUIT,
-    DEFAULT_NUM_OF_HOT_WATER
 )
+from .dynamic_discovery import discover_all_entities
 
 from homeassistant.const import (
     CONF_NAME,
@@ -36,22 +29,9 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the number platform."""
+    """Set up the number platform using dynamic discovery."""
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
-    
-    try:
-        num_heating_circuit = entry.data[CONF_NUM_OF_HEATING_CIRCUIT]
-    except:
-        num_heating_circuit = DEFAULT_NUM_OF_HEATING_CIRCUIT
-    try:
-        num_hot_water = entry.data[CONF_NUM_OF_HOT_WATER]
-    except:
-        num_hot_water = DEFAULT_NUM_OF_HOT_WATER
-    try:
-        cirulator = entry.data[CONF_CIRCULATOR]
-    except:
-        cirulator = False
 
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
     
@@ -63,60 +43,28 @@ async def async_setup_entry(
     }
     
     entities = []
-
-    if cirulator is True:
-        for name, key, device_class, unit, tmin, tmax, tstep  in CIRC1_NUMBER_TYPES.values():
-            number = PellematicNumber(
-                hub_name,
-                hub,
-                device_info,
-                f"circ1",
-                name.format(" " + str(0 + 1)),
-                key,
-                device_class=device_class,
-                mode=NumberMode.SLIDER,
-                native_min_value=tmin,
-                native_max_value=tmax,
-                native_step=tstep,
-                native_unit_of_measurement=unit
-            )
-            entities.append(number)    
     
-    for heating_cir_count in range(num_heating_circuit):
-
-        for name, key, device_class, unit, tmin, tmax, tstep  in HK_NUMBER_TYPES.values():
-            number = PellematicNumber(
-                hub_name,
-                hub,
-                device_info,
-                f"hk{heating_cir_count +1}",
-                name.format(" " + str(heating_cir_count + 1)),
-                key,
-                device_class=device_class,
-                mode=NumberMode.SLIDER,
-                native_min_value=tmin,
-                native_max_value=tmax,
-                native_step=tstep,
-                native_unit_of_measurement=unit
-            )
-            entities.append(number)    
-    for hot_water_count in range(num_hot_water):
-        for name, key, device_class, unit, tmin, tmax, tstep in WW_NUMBER_TYPES.values():
-            number = PellematicNumber(
-                hub_name,
-                hub,
-                device_info,
-                f"ww{hot_water_count +1}",
-                name.format(" " + str(hot_water_count + 1)),
-                key,
-                device_class=device_class,
-                mode=NumberMode.SLIDER,
-                native_min_value=tmin,
-                native_max_value=tmax,
-                native_step=tstep,
-                native_unit_of_measurement=unit
-            )
-            entities.append(number)
+    # Discover all entities dynamically from API data
+    data = await hub.async_get_data()
+    
+    if not data:
+        _LOGGER.warning("No API data available during number setup. Entities will be created on first successful poll.")
+        async_add_entities([])
+        return
+    
+    discovered = discover_all_entities(data)
+    
+    _LOGGER.info("Dynamically discovered %d number entities", len(discovered['numbers']))
+    
+    # Create number entities
+    for number_def in discovered['numbers']:
+        number = PellematicNumber(
+            hub_name=hub_name,
+            hub=hub,
+            device_info=device_info,
+            number_definition=number_def,
+        )
+        entities.append(number)
     
     _LOGGER.debug("Entities added : %i", len(entities))
     
@@ -132,49 +80,36 @@ class PellematicNumber(NumberEntity):
 
     def __init__(
         self,
-        platform_name,
+        hub_name,
         hub,
         device_info,
-        prefix,
-        name,
-        key,
-        *,
-        device_class: NumberDeviceClass | None = None,
-        mode: NumberMode = NumberMode.AUTO,
-        native_min_value: float | None = None,
-        native_max_value: float | None = None,
-        native_step: float | None = None,
-        native_unit_of_measurement: str | None = None,
+        number_definition,
     ) -> None:
-        """Initialize the number."""
-        self._platform_name = platform_name
-        self._hub = hub        
-        self._prefix = prefix
-        self._key = key
-        self._name = f"{self._platform_name} {name}"
+        """Initialize the number from dynamic definition."""
+        self._platform_name = hub_name
+        self._hub = hub
+        self._prefix = number_definition['component']
+        self._key = number_definition['key']
+        self._name = f"{self._platform_name} {number_definition['name']}"
         self._attr_unique_id = f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         self._device_info = device_info
         self._attr_assumed_state = False
         self._state = None
-        self._attr_device_class = device_class
-        self._attr_mode = mode
-        self._attr_native_unit_of_measurement = native_unit_of_measurement
-        self._attr_native_min_value = native_min_value
-        self._attr_native_max_value = native_max_value
-        self._attr_native_step = native_step
+        self._attr_device_class = number_definition.get('device_class')
+        self._attr_mode = NumberMode.SLIDER
+        self._attr_native_unit_of_measurement = number_definition.get('unit')
+        self._attr_native_min_value = number_definition.get('min', 0)
+        self._attr_native_max_value = number_definition.get('max', 100)
+        self._attr_native_step = number_definition.get('step', 0.5)
         self._attr_native_value = None
         
         _LOGGER.debug(
-            "Adding a PellematicNumber : %s, %s, %s, %s, %s, %s, %s, %s, %s",
-            str(self._platform_name),
-            str(self._hub),
-            str(self._prefix),
-            str(self._key),
-            str(self._name),
-            str(self._attr_unique_id),
-            str(self._attr_native_value),
-            str(self._attr_mode),
-            str(self._device_info),
+            "Adding dynamic PellematicNumber: %s, %s, min=%s, max=%s, step=%s",
+            self._name,
+            self._attr_unique_id,
+            self._attr_native_min_value,
+            self._attr_native_max_value,
+            self._attr_native_step,
         )
 
     @callback

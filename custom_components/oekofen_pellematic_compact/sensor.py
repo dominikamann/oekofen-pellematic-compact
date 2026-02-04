@@ -9,47 +9,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from .const import (
-    CONF_NUM_OF_HEATING_CIRCUIT,
-    CONF_NUM_OF_HOT_WATER,
-    CONF_NUM_OF_PELLEMATIC_HEATER,
-    CONF_NUM_OF_SMART_PV_SE,
-    CONF_NUM_OF_SMART_PV_SK,
-    CONF_NUM_OF_HEAT_PUMPS,
-    CONF_SOLAR_CIRCUIT,
-    CONF_CIRCULATOR,
-    CONF_SMART_PV,
-    CONF_STIRLING,
-    HK_BINARY_SENSOR_TYPES,
-    PU1_BINARY_SENSOR_TYPES,
-    SYSTEM_SENSOR_TYPES,
-    SYSTEM_BINARY_SENSOR_TYPES,
-    HK_SENSOR_TYPES,
-    SE1_SENSOR_TYPES,
-    SK1_BINARY_SENSOR_TYPES,
-    SK1_SENSOR_TYPES,
-    PE_SENSOR_TYPES,
-    PU1_SENSOR_TYPES,
-    POWER_SENSOR_TYPES,
-    STIRLING_SENSOR_TYPES,
-    WW_BINARY_SENSOR_TYPES,
-    WW_SENSOR_TYPES,
-    CIRC1_SENSOR_TYPES,
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
-    WP_SENSOR_TYPES,
-    WP_DATA_SENSOR_TYPES,
-    DEFAULT_NUM_OF_HEAT_PUMPS,
-    DEFAULT_NUM_OF_HOT_WATER,
-    DEFAULT_NUM_OF_PELLEMATIC_HEATER,
-    DEFAULT_NUM_OF_SMART_PV_SE,
-    DEFAULT_NUM_OF_SMART_PV_SK,
-    WIRELESS_SENSOR_TYPES,
-    CONF_NUM_OF_WIRELESS_SENSORS,
-    DEFAULT_NUM_OF_WIRELESS_SENSORS,
-    CONF_NUM_OF_BUFFER_STORAGE,
-    DEFAULT_NUM_OF_BUFFER_STORAGE
 )
+from .dynamic_discovery import discover_all_entities
 
 from homeassistant.const import (
     CONF_NAME,
@@ -109,24 +73,10 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Setup entry"""
+    """Setup entry using dynamic discovery"""
 
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
-    num_heating_circuit = entry.data.get(CONF_NUM_OF_HEATING_CIRCUIT, DEFAULT_NUM_OF_HEATING_CIRCUIT)
-    solar_circuit = entry.data.get(CONF_SOLAR_CIRCUIT, False)
-    cirulator = entry.data.get(CONF_CIRCULATOR, False)
-    smart_pv = entry.data.get(CONF_SMART_PV, False)
-    stirling = entry.data.get(CONF_STIRLING, False)
-    num_hot_water = entry.data.get(CONF_NUM_OF_HOT_WATER, DEFAULT_NUM_OF_HOT_WATER)
-    num_pellematic_heater = entry.data.get(CONF_NUM_OF_PELLEMATIC_HEATER, DEFAULT_NUM_OF_PELLEMATIC_HEATER)
-    num_smart_pv_se = entry.data.get(CONF_NUM_OF_SMART_PV_SE, DEFAULT_NUM_OF_SMART_PV_SE)
-    num_smart_pv_sk = entry.data.get(CONF_NUM_OF_SMART_PV_SK, DEFAULT_NUM_OF_SMART_PV_SK)
-    num_heat_pumps = entry.data.get(CONF_NUM_OF_HEAT_PUMPS, DEFAULT_NUM_OF_HEAT_PUMPS)
-    num_wireless_sensors = entry.data.get(CONF_NUM_OF_WIRELESS_SENSORS, DEFAULT_NUM_OF_WIRELESS_SENSORS)
-    num_buffer_storage = entry.data.get(CONF_NUM_OF_BUFFER_STORAGE, DEFAULT_NUM_OF_BUFFER_STORAGE)
-
-
             
     _LOGGER.debug("Setup entry %s %s", hub_name, hub)
 
@@ -139,253 +89,56 @@ async def async_setup_entry(
 
     entities = []
 
-    for name, key, unit, icon in SYSTEM_SENSOR_TYPES.values():
-        sensor = PellematicSensor(
-            hub_name, hub, device_info, "system", name, key, unit, icon
-        )
-        entities.append(sensor)
-
-    for name, key, unit, icon in SYSTEM_BINARY_SENSOR_TYPES.values():
-        sensor = PellematicBinarySensor(
-            hub_name, hub, device_info, "system", name, key, unit, icon
-        )
-        entities.append(sensor)
-
-    for num_wireless_sensors in range(num_wireless_sensors):
-        for name, key, unit, icon in WIRELESS_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"wireless{num_wireless_sensors +1}",
-                name.format(" " + str(num_wireless_sensors + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
-    for heating_cir_count in range(num_heating_circuit):
-        for name, key, unit, icon in HK_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"hk{heating_cir_count +1}",
-                name.format(" " + str(heating_cir_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
-        for name, key, unit, icon in HK_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
-                hub_name,
-                hub,
-                device_info,
-                f"hk{heating_cir_count +1}",
-                name.format(" " + str(heating_cir_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+    # Discover all entities dynamically from API data
+    data = await hub.async_get_data()
     
-    if stirling is True:
-        for name, key, unit, icon in STIRLING_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "stirling",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+    if not data:
+        _LOGGER.warning("No API data available during sensor setup. Entities will be created on first successful poll.")
+        # Return empty list - entities will be created later via discovery
+        async_add_entities([])
+        return
+    
+    discovered = discover_all_entities(data)
+    
+    _LOGGER.info("Dynamically discovered %d sensors, %d binary sensors", 
+                 len(discovered['sensors']), len(discovered['binary_sensors']))
 
-    if smart_pv is True:
-        for name, key, unit, icon in POWER_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "power",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+    # Create sensor entities
+    for sensor_def in discovered['sensors']:
+        sensor = PellematicSensor(
+            hub_name=hub_name,
+            hub=hub,
+            device_info=device_info,
+            sensor_definition=sensor_def,
+        )
+        entities.append(sensor)
 
-    if cirulator is True:
-        for name, key, unit, icon in CIRC1_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                "circ1",
-                name,
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
+    # Create binary sensor entities
+    for sensor_def in discovered['binary_sensors']:
+        sensor = PellematicBinarySensor(
+            hub_name=hub_name,
+            hub=hub,
+            device_info=device_info,
+            sensor_definition=sensor_def,
+        )
+        entities.append(sensor)
 
-    if solar_circuit is True:
-        
-        for sk_count in range(num_smart_pv_sk):
-
-            for name, key, unit, icon in SK1_SENSOR_TYPES.values():
-                sensor = PellematicSensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"sk{sk_count+1}",
-                    name.format("" if sk_count == 0 else " " + str(sk_count + 1)),
-                    key,
-                    unit,
-                    icon,
-                )
-                entities.append(sensor)
-
-            for name, key, unit, icon in SK1_BINARY_SENSOR_TYPES.values():
-                sensor = PellematicBinarySensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"sk{sk_count+1}",
-                    name.format("" if sk_count == 0 else " " + str(sk_count + 1)),
-                    key,
-                    unit,
-                    icon,
-                )
-                entities.append(sensor)
-
-        for se_count in range(num_smart_pv_se):
-
-            for name, key, unit, icon in SE1_SENSOR_TYPES.values():
-                sensor = PellematicSensor(
-                    hub_name,
-                    hub,
-                    device_info,
-                    f"se{se_count+1}",
-                    name.format("" if se_count == 0 else " " + str(se_count + 1)),
-                    key,
-                    unit,
-                    icon,
-                )
-                entities.append(sensor)
-
-    for pe_count in range(num_pellematic_heater):
-        for name, key, unit, icon in PE_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"pe{pe_count+1}",
-                name.format(" " + str(pe_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
-    for pu_count in range(num_buffer_storage):
-
-        for name, key, unit, icon in PU1_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"pu{pu_count+1}",
-                name.format("" if pu_count == 0 else " " + str(pu_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
-        for name, key, unit, icon in PU1_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
-                hub_name,
-                hub,
-                device_info,
-                f"pu{pu_count+1}",
-                name.format("" if pu_count == 0 else " " + str(pu_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
-    for hot_water_count in range(num_hot_water):
-        for name, key, unit, icon in WW_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"ww{hot_water_count+1}",
-                name.format(" " + str(hot_water_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
-        for name, key, unit, icon in WW_BINARY_SENSOR_TYPES.values():
-            sensor = PellematicBinarySensor(
-                hub_name,
-                hub,
-                device_info,
-                f"ww{hot_water_count+1}",
-                name.format(" " + str(hot_water_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-
+    # Add legacy error sensors (not in API metadata)
     for error_count in range(1, 6):
         sensor = PellematicSensor(
-            hub_name,
-            hub,
-            device_info,
-            "error",
-            f"Error {error_count}",
-            f"error_{error_count}",
-            None,
-            "mdi:alert-circle",
+            hub_name=hub_name,
+            hub=hub,
+            device_info=device_info,
+            sensor_definition={
+                'component': 'error',
+                'key': f'error_{error_count}',
+                'name': f'Error {error_count}',
+                'unit': None,
+                'icon': 'mdi:alert-circle',
+                'device_class': None,
+            }
         )
         entities.append(sensor)
-
-    for heatpump_count in range(num_heat_pumps):
-        for name, key, unit, icon in WP_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"wp{heatpump_count+1}",
-                name.format(" " + str(heatpump_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
-        for name, key, unit, icon in WP_DATA_SENSOR_TYPES.values():
-            sensor = PellematicSensor(
-                hub_name,
-                hub,
-                device_info,
-                f"wp_data{heatpump_count+1}",
-                name.format(" " + str(heatpump_count + 1)),
-                key,
-                unit,
-                icon,
-            )
-            entities.append(sensor)
 
     _LOGGER.debug("Entities added : %i", len(entities))
 
@@ -399,43 +152,36 @@ class PellematicBinarySensor(BinarySensorEntity):
 
     def __init__(
         self,
-        platform_name,
+        hub_name,
         hub,
         device_info,
-        prefix,
-        name,
-        key,
-        unit,
-        icon,
+        sensor_definition,
     ) -> None:
-        """Initialize the sensor."""
-        self._platform_name = platform_name
+        """Initialize the binary sensor from dynamic definition."""
+        self._platform_name = hub_name
         self._hub = hub
-        self._prefix = prefix
-        self._key = key
-        self._name = f"{self._platform_name} {name}"
+        self._prefix = sensor_definition['component']
+        self._key = sensor_definition['key']
+        self._name = f"{self._platform_name} {sensor_definition['name']}"
         self._attr_unique_id = (
             f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         )
-        self._unit_of_measurement = unit
-        self._icon = icon
+        self._unit_of_measurement = sensor_definition.get('unit')
+        self._icon = sensor_definition.get('icon')
         self._device_info = device_info
-        self._attr_device_class = BinarySensorDeviceClass.POWER
-        if icon == "mdi:usb-flash-drive":
-            self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+        
+        # Set device class from definition, default to POWER
+        device_class = sensor_definition.get('device_class')
+        if device_class:
+            self._attr_device_class = device_class
+        else:
+            self._attr_device_class = BinarySensorDeviceClass.POWER
+            if self._icon == "mdi:usb-flash-drive":
+                self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
         _LOGGER.debug(
-            "Adding a PellematicBinarySensor : %s, %s, %s, %s, %s, %s, %s, %s, %s, %s",
-            str(self._platform_name),
-            str(self._hub),
-            str(self._prefix),
-            str(self._key),
-            str(self._name),
-            str(self._attr_unique_id),
-            str(self._unit_of_measurement),
-            str(self._icon),
-            str(self._device_info),
-            str(self._attr_device_class),
+            "Adding dynamic PellematicBinarySensor: %s, %s",
+            self._name, self._attr_unique_id,
         )
 
     @callback
@@ -512,95 +258,57 @@ class PellematicSensor(SensorEntity):
 
     def __init__(
         self,
-        platform_name,
+        hub_name,
         hub,
         device_info,
-        prefix,
-        name,
-        key,
-        unit,
-        icon,
+        sensor_definition,
     ) -> None:
-        """Initialize the sensor."""
-        self._platform_name = platform_name
+        """Initialize the sensor from dynamic definition."""
+        self._platform_name = hub_name
         self._hub = hub
-        self._prefix = prefix
-        self._key = key
-        self._name = f"{self._platform_name} {name}"
+        self._prefix = sensor_definition['component']
+        self._key = sensor_definition['key']
+        self._name = f"{self._platform_name} {sensor_definition['name']}"
         self._attr_unique_id = (
             f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         )
-        self._unit_of_measurement = unit
-        self._icon = icon
+        self._unit_of_measurement = sensor_definition.get('unit')
+        self._icon = sensor_definition.get('icon')
         self._device_info = device_info
         self._state = None
-        self._attr_state_class = None
-        if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-            self._attr_device_class = SensorDeviceClass.VOLUME_FLOW_RATE
-        if self._unit_of_measurement == UnitOfPressure.BAR:
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-            self._attr_device_class = SensorDeviceClass.PRESSURE
-        if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-            self._attr_device_class = SensorDeviceClass.POWER
-        if self._unit_of_measurement == UnitOfPower.WATT:
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-            self._attr_device_class = SensorDeviceClass.POWER
-        if self._unit_of_measurement == UnitOfEnergy.WATT_HOUR:
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-            self._attr_device_class = SensorDeviceClass.ENERGY
-        if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-            self._attr_device_class = SensorDeviceClass.ENERGY
-        if self._unit_of_measurement == UnitOfTemperature.CELSIUS:
-            self._attr_device_class = SensorDeviceClass.TEMPERATURE
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self._unit_of_measurement == UnitOfMass.KILOGRAMS:
-            self._attr_device_class = SensorDeviceClass.WEIGHT
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self.unit_of_measurement == PERCENTAGE:
-            self._attr_device_class = SensorDeviceClass.POWER_FACTOR
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self.unit_of_measurement == UnitOfTime.HOURS:
-            self._attr_device_class = SensorDeviceClass.DURATION
-            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        if self.unit_of_measurement == UnitOfTime.MINUTES:
-            self._attr_device_class = SensorDeviceClass.DURATION
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self.unit_of_measurement == UnitOfTime.SECONDS:
-            self._attr_device_class = SensorDeviceClass.DURATION
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-        if self.unit_of_measurement == UnitOfTime.MILLISECONDS:
-            self._attr_device_class = SensorDeviceClass.DURATION
-            self._attr_state_class = SensorStateClass.MEASUREMENT
+        
+        # Set device class and state class from definition
+        device_class = sensor_definition.get('device_class')
+        if device_class:
+            self._attr_device_class = device_class
+            
+            # Set appropriate state class based on device class
+            if device_class in (SensorDeviceClass.TEMPERATURE, SensorDeviceClass.PRESSURE, 
+                               SensorDeviceClass.POWER, SensorDeviceClass.VOLUME_FLOW_RATE,
+                               SensorDeviceClass.WEIGHT, SensorDeviceClass.POWER_FACTOR):
+                self._attr_state_class = SensorStateClass.MEASUREMENT
+            elif device_class in (SensorDeviceClass.ENERGY, SensorDeviceClass.DURATION):
+                # Energy should be total_increasing, but duration depends on the key
+                if device_class == SensorDeviceClass.ENERGY:
+                    self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+                else:
+                    # For duration, hours are total_increasing, others are measurement
+                    if self._unit_of_measurement == UnitOfTime.HOURS:
+                        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+                    else:
+                        self._attr_state_class = SensorStateClass.MEASUREMENT
+        
+        # Some keys need special handling for state class
         if self._key.replace("#2", "") in (
-            'L_state',
-            'mode_auto',
-            'oekomode',
-            'L_wireless_name',
-            'L_wireless_id',
-            'L_jaz_all',
-            'L_jaz_heat',
-            'L_jaz_cool',
-            'L_az_all',
-            'L_az_heat',
-            'L_az_cool',
-            'L_COP',
+            'L_state', 'mode_auto', 'oekomode', 'L_wireless_name', 'L_wireless_id',
+            'L_jaz_all', 'L_jaz_heat', 'L_jaz_cool', 'L_az_all', 'L_az_heat', 
+            'L_az_cool', 'L_COP',
         ):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         
         _LOGGER.debug(
-            "Adding a PellematicSensor : %s, %s, %s, %s, %s, %s, %s, %s, %s",
-            str(self._platform_name),
-            str(self._hub),
-            str(self._prefix),
-            str(self._key),
-            str(self._name),
-            str(self._attr_unique_id),
-            str(self._unit_of_measurement),
-            str(self._icon),
-            str(self._device_info),
+            "Adding dynamic PellematicSensor: %s, %s, %s, %s",
+            self._name, self._attr_unique_id, self._unit_of_measurement, self._icon,
         )
 
     async def async_added_to_hass(self):

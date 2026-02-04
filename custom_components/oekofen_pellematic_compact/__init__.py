@@ -191,6 +191,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     hub = PellematicHub(hass, name, host, scan_interval)
 
+    # Pre-fetch API data before setting up platforms
+    # This ensures all platforms have data available immediately
+    try:
+        _LOGGER.debug("Pre-fetching API data for %s", name)
+        await hub.fetch_pellematic_data()
+        _LOGGER.info("Successfully pre-fetched API data for %s", name)
+    except Exception as e:
+        _LOGGER.error("Failed to pre-fetch API data for %s: %s", name, e)
+        # Continue anyway - platforms will retry later
+
     # Register the hub.
     hass.data[DOMAIN][name] = {"hub": hub}
 
@@ -341,9 +351,31 @@ class PellematicHub:
 
     async def fetch_pellematic_data(self):
         """Get data from api"""
-        result = await self._hass.async_add_executor_job(fetch_data, self._host)
-        self.data = result
-        return True
+        try:
+            result = await self._hass.async_add_executor_job(fetch_data, self._host)
+            self.data = result
+            return True
+        except Exception as e:
+            _LOGGER.error("Failed to fetch Pellematic data: %s", e)
+            # Keep existing data if available
+            return False
+    
+    async def async_get_data(self, force_refresh=False):
+        """Get current API data, fetch if not available or forced.
+        
+        Args:
+            force_refresh: If True, always fetch new data even if cached data exists
+            
+        Returns:
+            Current API data dictionary or None if fetch fails
+        """
+        if force_refresh or not self.data:
+            success = await self.fetch_pellematic_data()
+            if not success and not self.data:
+                # No cached data and fetch failed
+                _LOGGER.warning("No data available and fetch failed")
+                return None
+        return self.data
     
     def get_discovered_components(self) -> dict:
         """Get auto-discovered components from current API data."""

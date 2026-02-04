@@ -348,3 +348,12 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+# Home Assistant Development Environment
+config/
+homeassistant.log
+*.log
+.storage/
+*.db
+*.db-shm
+*.db-wal

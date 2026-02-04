@@ -259,3 +259,123 @@ def test_discovery_ignores_non_numeric_suffixes():
     assert discovered[CONF_NUM_OF_HEATING_CIRCUIT] == 1
     assert discovered[CONF_NUM_OF_HOT_WATER] == 1
     assert discovered[CONF_NUM_OF_PELLEMATIC_HEATER] == 1
+
+
+def test_discovery_basic_m9():
+    """Test discovery with api_response_basic_m9.json."""
+    import json
+    from pathlib import Path
+    fixture_path = Path(__file__).parent / "fixtures" / "api_response_basic_m9.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        api_data = json.load(f)
+
+    discovered = discover_components_from_api(api_data)
+
+    assert discovered[CONF_NUM_OF_HEATING_CIRCUIT] == 2
+    assert discovered[CONF_NUM_OF_HOT_WATER] == 1
+    assert discovered[CONF_NUM_OF_PELLEMATIC_HEATER] == 1
+    assert discovered[CONF_NUM_OF_BUFFER_STORAGE] == 1
+    assert discovered[CONF_CIRCULATOR] is True
+    assert discovered[CONF_SMART_PV] is True
+    # These should not be present
+    assert CONF_NUM_OF_SMART_PV_SE not in discovered
+    assert CONF_NUM_OF_SMART_PV_SK not in discovered
+    assert CONF_NUM_OF_HEAT_PUMPS not in discovered
+    assert CONF_SOLAR_CIRCUIT not in discovered
+    assert CONF_STIRLING not in discovered
+
+
+def test_discovery_green_kn():
+    """Test discovery with api_response_green_kn.json (with heat pump and green mode)."""
+    import json
+    from pathlib import Path
+    fixture_path = Path(__file__).parent / "fixtures" / "api_response_green_kn.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        api_data = json.load(f)
+
+    discovered = discover_components_from_api(api_data)
+
+    assert discovered[CONF_NUM_OF_HEATING_CIRCUIT] == 4
+    assert discovered[CONF_NUM_OF_HOT_WATER] == 1
+    assert discovered[CONF_NUM_OF_BUFFER_STORAGE] == 1
+    assert discovered[CONF_NUM_OF_SMART_PV_SK] == 3
+    assert discovered[CONF_NUM_OF_HEAT_PUMPS] == 1
+    assert discovered[CONF_SOLAR_CIRCUIT] is True
+    assert discovered[CONF_CIRCULATOR] is True
+    assert discovered[CONF_SMART_PV] is True
+    # These should not be present
+    assert CONF_NUM_OF_PELLEMATIC_HEATER not in discovered
+    assert CONF_NUM_OF_SMART_PV_SE not in discovered
+    assert CONF_STIRLING not in discovered
+
+
+def test_discovery_sk_lxy():
+    """Test discovery with api_response_sk_lxy.json (with solar circuits)."""
+    import json
+    from pathlib import Path
+    fixture_path = Path(__file__).parent / "fixtures" / "api_response_sk_lxy.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        api_data = json.load(f)
+
+    discovered = discover_components_from_api(api_data)
+
+    assert discovered[CONF_NUM_OF_HEATING_CIRCUIT] == 1
+    assert discovered[CONF_NUM_OF_HOT_WATER] == 1
+    assert discovered[CONF_NUM_OF_BUFFER_STORAGE] == 1
+    assert discovered[CONF_NUM_OF_SMART_PV_SK] == 2
+    assert discovered[CONF_SOLAR_CIRCUIT] is True
+    # These should not be present
+    assert CONF_NUM_OF_PELLEMATIC_HEATER not in discovered
+    assert CONF_NUM_OF_SMART_PV_SE not in discovered
+    assert CONF_NUM_OF_HEAT_PUMPS not in discovered
+    assert CONF_CIRCULATOR not in discovered
+    assert CONF_STIRLING not in discovered
+    assert CONF_SMART_PV not in discovered
+
+
+def test_discovery_with_se_ml():
+    """Test discovery with api_response_with_se_ml.json (with solar energy meter)."""
+    import json
+    from pathlib import Path
+    fixture_path = Path(__file__).parent / "fixtures" / "api_response_with_se_ml.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        api_data = json.load(f)
+
+    discovered = discover_components_from_api(api_data)
+
+    assert discovered[CONF_NUM_OF_HEATING_CIRCUIT] == 2
+    assert discovered[CONF_NUM_OF_HOT_WATER] == 1
+    assert discovered[CONF_NUM_OF_PELLEMATIC_HEATER] == 1
+    assert discovered[CONF_NUM_OF_BUFFER_STORAGE] == 1
+    assert discovered[CONF_NUM_OF_SMART_PV_SK] == 1
+    assert discovered[CONF_NUM_OF_SMART_PV_SE] == 1
+    assert discovered[CONF_SOLAR_CIRCUIT] is True
+    # These should not be present
+    assert CONF_NUM_OF_HEAT_PUMPS not in discovered
+    assert CONF_CIRCULATOR not in discovered
+    assert CONF_STIRLING not in discovered
+    assert CONF_SMART_PV not in discovered
+
+
+def test_discovery_with_sk_dash():
+    """Test discovery with api_response_with_sk_dash.json (solar circuit with special naming)."""
+    import json
+    from pathlib import Path
+    fixture_path = Path(__file__).parent / "fixtures" / "api_response_with_sk_dash.json"
+    with open(fixture_path, encoding="utf-8") as f:
+        api_data = json.load(f)
+
+    discovered = discover_components_from_api(api_data)
+
+    assert discovered[CONF_NUM_OF_HEATING_CIRCUIT] == 1
+    assert discovered[CONF_NUM_OF_HOT_WATER] == 1
+    assert discovered[CONF_NUM_OF_PELLEMATIC_HEATER] == 1
+    assert discovered[CONF_NUM_OF_BUFFER_STORAGE] == 1
+    assert discovered[CONF_NUM_OF_SMART_PV_SK] == 1
+    assert discovered[CONF_SOLAR_CIRCUIT] is True
+    assert discovered[CONF_CIRCULATOR] is True
+    # These should not be present
+    assert CONF_NUM_OF_SMART_PV_SE not in discovered
+    assert CONF_NUM_OF_HEAT_PUMPS not in discovered
+    assert CONF_STIRLING not in discovered
+    assert CONF_SMART_PV not in discovered
