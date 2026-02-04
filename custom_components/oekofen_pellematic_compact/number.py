@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 from homeassistant.components.number import NumberDeviceClass, NumberEntity, NumberMode
 
@@ -30,9 +30,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the number platform using dynamic discovery."""
-    from datetime import timedelta
-    from homeassistant.helpers.event import async_track_time_interval
-    
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
 
@@ -45,78 +42,36 @@ async def async_setup_entry(
         "model": ATTR_MODEL,
     }
     
-    # Track which entities have been added to avoid duplicates
-    added_entity_ids = set()
-    
-    async def setup_entities_from_data():
-        """Discover and add entities from current API data."""
+    def create_number_entities(data: Dict[str, Any]) -> list:
+        """Factory function to create number entities from discovery data."""
         entities = []
+        discovered = discover_all_entities(data)
         
-        # Discover all entities dynamically from API data
-        data = await hub.async_get_data()
+        _LOGGER.info("Dynamically discovered %d number entities", len(discovered['numbers']))
         
-        if not data:
-            _LOGGER.debug("No API data available yet for number discovery")
-            return False
+        # Create number entities with error handling
+        for number_def in discovered['numbers']:
+            try:
+                number = PellematicNumber(
+                    hub_name=hub_name,
+                    hub=hub,
+                    device_info=device_info,
+                    number_definition=number_def,
+                )
+                number._entity_id_key = f"{number_def['component']}_{number_def['key']}"
+                entities.append(number)
+            except Exception as e:
+                _LOGGER.error("Failed to create number %s_%s: %s", 
+                            number_def['component'], number_def['key'], e)
         
-        try:
-            discovered = discover_all_entities(data)
-            
-            _LOGGER.info("Dynamically discovered %d number entities", len(discovered['numbers']))
-            
-            # Create number entities with error handling
-            for number_def in discovered['numbers']:
-                entity_id = f"{number_def['component']}_{number_def['key']}"
-                if entity_id in added_entity_ids:
-                    continue
-                    
-                try:
-                    number = PellematicNumber(
-                        hub_name=hub_name,
-                        hub=hub,
-                        device_info=device_info,
-                        number_definition=number_def,
-                    )
-                    entities.append(number)
-                    added_entity_ids.add(entity_id)
-                except Exception as e:
-                    _LOGGER.error("Failed to create number %s: %s", entity_id, e)
-            
-            if entities:
-                _LOGGER.debug("Adding %i new number entities", len(entities))
-                async_add_entities(entities)
-                return True
-            else:
-                _LOGGER.debug("No new number entities to add")
-                return False
-                
-        except Exception as e:
-            _LOGGER.error("Error during number discovery: %s", e)
-            return False
+        return entities
     
-    # Try initial setup
-    success = await setup_entities_from_data()
-    
-    if not success:
-        _LOGGER.warning(
-            "Initial number setup incomplete. Will retry every 60 seconds until successful. "
-            "You can also manually trigger rediscovery using the 'oekofen_pellematic_compact.rediscover_components' service."
-        )
-        
-        # Set up retry mechanism - try again every 60 seconds until successful
-        async def retry_setup(now):
-            """Retry entity setup periodically."""
-            success = await setup_entities_from_data()
-            if success:
-                _LOGGER.info("Number entity setup completed successfully after retry")
-                # Cancel further retries
-                if hasattr(retry_setup, 'cancel'):
-                    retry_setup.cancel()
-        
-        # Track the interval so we can cancel it later
-        retry_setup.cancel = async_track_time_interval(
-            hass, retry_setup, timedelta(seconds=60)
-        )
+    # Use common setup logic with retry mechanism
+    from . import setup_platform_with_retry
+    await setup_platform_with_retry(
+        hass, hub, hub_name, device_info, "number",
+        create_number_entities, async_add_entities
+    )
 
 
 class PellematicNumber(NumberEntity):

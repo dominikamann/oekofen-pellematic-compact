@@ -3,7 +3,8 @@ import asyncio
 import logging
 import re
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, Callable, Any, Dict, Set
+from collections.abc import Awaitable
 import json
 import urllib
 
@@ -100,7 +101,102 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-def discover_components_from_api(data: dict) -> dict:
+# Constants for retry setup
+RETRY_INTERVAL_SECONDS = 60
+RETRY_WARNING_MESSAGE = (
+    "Initial {platform} setup incomplete. Will retry every {interval} seconds until successful. "
+    "You can also manually trigger rediscovery using the 'oekofen_pellematic_compact.rediscover_components' service."
+)
+
+
+async def setup_platform_with_retry(
+    hass: HomeAssistant,
+    hub: 'PellematicHub',
+    hub_name: str,
+    device_info: Dict[str, Any],
+    platform_name: str,
+    entity_factory: Callable[[Dict[str, Any]], Any],
+    async_add_entities: Callable[[list], None],
+) -> None:
+    """Common setup logic for all platforms with retry mechanism.
+    
+    Args:
+        hass: Home Assistant instance
+        hub: PellematicHub instance
+        hub_name: Name of the hub
+        device_info: Device information dictionary
+        platform_name: Platform name for logging (e.g., "sensor", "number")
+        entity_factory: Function that creates entities from discovery data
+        async_add_entities: Callback to add entities to Home Assistant
+    """
+    # Track which entities have been added to avoid duplicates
+    added_entity_ids: Set[str] = set()
+    
+    async def setup_entities_from_data() -> bool:
+        """Discover and add entities from current API data."""
+        entities = []
+        
+        # Get API data
+        data = await hub.async_get_data()
+        
+        if not data:
+            _LOGGER.debug("No API data available yet for %s discovery", platform_name)
+            return False
+        
+        try:
+            # Create entities using the provided factory function
+            new_entities = entity_factory(data)
+            
+            # Track and add only new entities
+            for entity in new_entities:
+                entity_id = getattr(entity, '_entity_id_key', None)
+                if entity_id and entity_id in added_entity_ids:
+                    continue
+                
+                entities.append(entity)
+                if entity_id:
+                    added_entity_ids.add(entity_id)
+            
+            if entities:
+                _LOGGER.debug("Adding %i new %s entities", len(entities), platform_name)
+                async_add_entities(entities)
+                return True
+            else:
+                _LOGGER.debug("No new %s entities to add", platform_name)
+                return len(added_entity_ids) > 0  # Success if we added entities before
+                
+        except Exception as e:
+            _LOGGER.error("Error during %s discovery: %s", platform_name, e)
+            return False
+    
+    # Try initial setup
+    success = await setup_entities_from_data()
+    
+    if not success and len(added_entity_ids) == 0:
+        _LOGGER.warning(
+            RETRY_WARNING_MESSAGE.format(
+                platform=platform_name,
+                interval=RETRY_INTERVAL_SECONDS
+            )
+        )
+        
+        # Set up retry mechanism
+        async def retry_setup(now: Any) -> None:
+            """Retry entity setup periodically."""
+            success = await setup_entities_from_data()
+            if success:
+                _LOGGER.info("%s entity setup completed successfully after retry", platform_name.capitalize())
+                # Cancel further retries
+                if hasattr(retry_setup, 'cancel'):
+                    retry_setup.cancel()
+        
+        # Track the interval so we can cancel it later
+        retry_setup.cancel = async_track_time_interval(
+            hass, retry_setup, timedelta(seconds=RETRY_INTERVAL_SECONDS)
+        )
+
+
+def discover_components_from_api(data: Dict[str, Any]) -> Dict[str, Any]:
     """Auto-discover available components from API response.
     
     Args:
@@ -322,7 +418,7 @@ class PellematicHub:
             self._unsub_interval_method()
             self._unsub_interval_method = None
             
-    def send_pellematic_data(self, val: any, prefix: str, key: str) -> None:
+    def send_pellematic_data(self, val: Any, prefix: str, key: str) -> None:
         """Send data update to API.
         
         Args:
@@ -369,7 +465,7 @@ class PellematicHub:
             # Keep existing data if available
             return False
     
-    async def async_get_data(self, force_refresh: bool = False) -> Optional[dict]:
+    async def async_get_data(self, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
         """Get current API data, fetch if not available or forced.
         
         Args:
@@ -391,7 +487,7 @@ class PellematicHub:
         return discover_components_from_api(self.data)
 
 
-def fetch_data(url: str, charset: str = DEFAULT_CHARSET) -> dict:
+def fetch_data(url: str, charset: str = DEFAULT_CHARSET) -> Dict[str, Any]:
     """Get data from API.
     
     Args:

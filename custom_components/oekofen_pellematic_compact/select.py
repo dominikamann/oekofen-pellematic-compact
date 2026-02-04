@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 from homeassistant.components.select import SelectEntity
 
@@ -29,9 +29,6 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the select platform using dynamic discovery."""
-    from datetime import timedelta
-    from homeassistant.helpers.event import async_track_time_interval
-    
     hub_name = entry.data[CONF_NAME]
     hub = hass.data[DOMAIN][hub_name]["hub"]
 
@@ -44,78 +41,36 @@ async def async_setup_entry(
         "model": ATTR_MODEL,
     }
     
-    # Track which entities have been added to avoid duplicates
-    added_entity_ids = set()
-    
-    async def setup_entities_from_data():
-        """Discover and add entities from current API data."""
+    def create_select_entities(data: Dict[str, Any]) -> list:
+        """Factory function to create select entities from discovery data."""
         entities = []
+        discovered = discover_all_entities(data)
         
-        # Discover all entities dynamically from API data
-        data = await hub.async_get_data()
+        _LOGGER.info("Dynamically discovered %d select entities", len(discovered['selects']))
         
-        if not data:
-            _LOGGER.debug("No API data available yet for select discovery")
-            return False
+        # Create select entities with error handling
+        for select_def in discovered['selects']:
+            try:
+                select = PellematicSelect(
+                    hub_name=hub_name,
+                    hub=hub,
+                    device_info=device_info,
+                    select_definition=select_def,
+                )
+                select._entity_id_key = f"{select_def['component']}_{select_def['key']}"
+                entities.append(select)
+            except Exception as e:
+                _LOGGER.error("Failed to create select %s_%s: %s", 
+                            select_def['component'], select_def['key'], e)
         
-        try:
-            discovered = discover_all_entities(data)
-            
-            _LOGGER.info("Dynamically discovered %d select entities", len(discovered['selects']))
-            
-            # Create select entities with error handling
-            for select_def in discovered['selects']:
-                entity_id = f"{select_def['component']}_{select_def['key']}"
-                if entity_id in added_entity_ids:
-                    continue
-                    
-                try:
-                    select = PellematicSelect(
-                        hub_name=hub_name,
-                        hub=hub,
-                        device_info=device_info,
-                        select_definition=select_def,
-                    )
-                    entities.append(select)
-                    added_entity_ids.add(entity_id)
-                except Exception as e:
-                    _LOGGER.error("Failed to create select %s: %s", entity_id, e)
-            
-            if entities:
-                _LOGGER.debug("Adding %i new select entities", len(entities))
-                async_add_entities(entities)
-                return True
-            else:
-                _LOGGER.debug("No new select entities to add")
-                return False
-                
-        except Exception as e:
-            _LOGGER.error("Error during select discovery: %s", e)
-            return False
+        return entities
     
-    # Try initial setup
-    success = await setup_entities_from_data()
-    
-    if not success:
-        _LOGGER.warning(
-            "Initial select setup incomplete. Will retry every 60 seconds until successful. "
-            "You can also manually trigger rediscovery using the 'oekofen_pellematic_compact.rediscover_components' service."
-        )
-        
-        # Set up retry mechanism - try again every 60 seconds until successful
-        async def retry_setup(now):
-            """Retry entity setup periodically."""
-            success = await setup_entities_from_data()
-            if success:
-                _LOGGER.info("Select entity setup completed successfully after retry")
-                # Cancel further retries
-                if hasattr(retry_setup, 'cancel'):
-                    retry_setup.cancel()
-        
-        # Track the interval so we can cancel it later
-        retry_setup.cancel = async_track_time_interval(
-            hass, retry_setup, timedelta(seconds=60)
-        )
+    # Use common setup logic with retry mechanism
+    from . import setup_platform_with_retry
+    await setup_platform_with_retry(
+        hass, hub, hub_name, device_info, "select",
+        create_select_entities, async_add_entities
+    )
 
 
 class PellematicSelect(SelectEntity):
