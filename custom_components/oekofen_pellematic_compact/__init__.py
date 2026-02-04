@@ -1,7 +1,6 @@
 """The Ökofen Pellematic Compact Integration."""
 import asyncio
 import logging
-import threading
 from datetime import timedelta
 from typing import Optional
 import json
@@ -45,7 +44,6 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-_CHARSET = DEFAULT_CHARSET
 
 # Current config version
 CONFIG_VERSION = 2
@@ -68,7 +66,7 @@ CONFIG_SCHEMA = vol.Schema(
 PLATFORMS = ["sensor","select","number","climate"]
 
 
-async def async_setup(hass: HomeAssistant, config):
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Ökofen Pellematic component."""
     hass.data[DOMAIN] = {}
     return True
@@ -178,18 +176,16 @@ def discover_components_from_api(data: dict) -> dict:
     
     return discovered
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a Ökofen Pellematic Component."""
     host = entry.data[CONF_HOST]
     name = entry.data[CONF_NAME]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
-
-    global _CHARSET
-    _CHARSET = entry.data.get(CONF_CHARSET, DEFAULT_CHARSET)
+    charset = entry.data.get(CONF_CHARSET, DEFAULT_CHARSET)
 
     _LOGGER.debug("Setup Pellematic Hub %s, %s", DOMAIN, name)
 
-    hub = PellematicHub(hass, name, host, scan_interval)
+    hub = PellematicHub(hass, name, host, scan_interval, charset)
 
     # Pre-fetch API data before setting up platforms
     # This ensures all platforms have data available immediately
@@ -211,10 +207,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 
-async def async_setup_services(hass: HomeAssistant):
+async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up services for the integration."""
     
-    async def handle_rediscover_components(call):
+    async def handle_rediscover_components(call) -> None:
         """Handle the rediscover_components service call."""
         config_entry_id = call.data.get("config_entry_id")
         
@@ -237,7 +233,7 @@ async def async_setup_services(hass: HomeAssistant):
         )
 
 
-async def rediscover_and_update_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def rediscover_and_update_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Re-discover components and update config entry."""
     try:
         hub_name = entry.data[CONF_NAME]
@@ -265,7 +261,7 @@ async def rediscover_and_update_entry(hass: HomeAssistant, entry: ConfigEntry):
         _LOGGER.error("Failed to re-discover components: %s", e)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry):
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Pellematic entry."""
     unload_ok = all(
         await asyncio.gather(
@@ -288,14 +284,16 @@ class PellematicHub:
     def __init__(
         self,
         hass: HomeAssistant,
-        name,
-        host,
-        scan_interval,
+        name: str,
+        host: str,
+        scan_interval: int,
+        charset: str = DEFAULT_CHARSET,
     ) -> None:
         """Initialize the hub."""
         self._hass = hass
         self._host = host
-        self._lock = threading.Lock()
+        self._charset = charset
+        self._lock = asyncio.Lock()
         self._name = name
         self._scan_interval = timedelta(seconds=scan_interval)
         self._unsub_interval_method = None
@@ -303,7 +301,7 @@ class PellematicHub:
         self.data = {}
 
     @callback
-    def async_add_pellematic_sensor(self, update_callback):
+    def async_add_pellematic_sensor(self, update_callback) -> None:
         """Listen for data updates."""
         # This is the first sensor, set up interval.
         if not self._sensors:
@@ -314,7 +312,7 @@ class PellematicHub:
         self._sensors.append(update_callback)
 
     @callback
-    def async_remove_pellematic_sensor(self, update_callback):
+    def async_remove_pellematic_sensor(self, update_callback) -> None:
         """Remove data update."""
         self._sensors.remove(update_callback)
 
@@ -323,11 +321,17 @@ class PellematicHub:
             self._unsub_interval_method()
             self._unsub_interval_method = None
             
-    def send_pellematic_data(self, val, prefix, key) -> None:
-        """Call data update."""
-        urlsent=f"{self._host[:-3]}{prefix}_{key}={val}"
-        _LOGGER.debug("URL maj : %s",urlsent)
-        result = send_data(urlsent)
+    def send_pellematic_data(self, val: any, prefix: str, key: str) -> None:
+        """Send data update to API.
+        
+        Args:
+            val: Value to set
+            prefix: Component prefix (e.g., 'hk1')
+            key: Parameter key
+        """
+        urlsent = f"{self._host[:-3]}{prefix}_{key}={val}"
+        _LOGGER.debug("Sending API update: %s", urlsent)
+        result = send_data(urlsent, self._charset)
 
     async def async_refresh_api_data(self, _now: Optional[int] = None) -> None:
         """Time to update."""
@@ -345,14 +349,16 @@ class PellematicHub:
                 update_callback()
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the name of this hub."""
         return self._name
 
-    async def fetch_pellematic_data(self):
+    async def fetch_pellematic_data(self) -> bool:
         """Get data from api"""
         try:
-            result = await self._hass.async_add_executor_job(fetch_data, self._host)
+            result = await self._hass.async_add_executor_job(
+                fetch_data, self._host, self._charset
+            )
             self.data = result
             return True
         except Exception as e:
@@ -360,7 +366,7 @@ class PellematicHub:
             # Keep existing data if available
             return False
     
-    async def async_get_data(self, force_refresh=False):
+    async def async_get_data(self, force_refresh: bool = False) -> Optional[dict]:
         """Get current API data, fetch if not available or forced.
         
         Args:
@@ -382,13 +388,20 @@ class PellematicHub:
         return discover_components_from_api(self.data)
 
 
-def fetch_data(url: str):
-    """Get data"""
+def fetch_data(url: str, charset: str = DEFAULT_CHARSET) -> dict:
+    """Get data from API.
+    
+    Args:
+        url: API endpoint URL
+        charset: Character encoding for response
+        
+    Returns:
+        Parsed JSON data from API
+    """
     # Strip any leading/trailing whitespace
     url = url.strip()
-    # _LOGGER.debug("Fetching pellematic datas with REST API")
 
-    # Sicherstellen, dass die URL mit einem Fragezeichen endet
+    # Ensure URL ends with '?' for full API response
     if not url.endswith('?'):
         url += '?'
         
@@ -399,8 +412,8 @@ def fetch_data(url: str):
     try:
         response = urllib.request.urlopen(
             req, timeout=3
-        )  # okofen api recommanded timeout is 2,5s
-        str_response = response.read().decode(_CHARSET, "ignore")
+        )  # Ökofen API recommended timeout is 2.5s
+        str_response = response.read().decode(charset, "ignore")
     finally:
         if response is not None:
             response.close()
@@ -410,11 +423,19 @@ def fetch_data(url: str):
     result = json.loads(str_response, strict=False)
     return result
 
-def send_data(url: str):
-    """Put data"""
+
+def send_data(url: str, charset: str = DEFAULT_CHARSET) -> str:
+    """Send data to API.
+    
+    Args:
+        url: API endpoint URL
+        charset: Character encoding for response
+        
+    Returns:
+        Response text from API
+    """
     # Strip any leading/trailing whitespace
     url = url.strip()
-    # _LOGGER.debug("Sending pellematic datas with REST API")
 
     req = urllib.request.Request(url)
     response = None
@@ -422,10 +443,9 @@ def send_data(url: str):
     try:
         response = urllib.request.urlopen(
             req, timeout=3
-        )  # okofen api recommanded timeout is 2,5s
-        str_response = response.read().decode(_CHARSET, "ignore")
+        )  # Ökofen API recommended timeout is 2.5s
+        str_response = response.read().decode(charset, "ignore")
     finally:
         if response is not None:
-            response.close()    
-    #_LOGGER.debug("Sending pellematic datas with REST API %s",str_response)
+            response.close()
     return str_response
