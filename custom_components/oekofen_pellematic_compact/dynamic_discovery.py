@@ -259,7 +259,8 @@ def infer_state_class(data: dict) -> Optional[str]:
         return SensorStateClass.TOTAL_INCREASING
     
     # Measurement sensors (temperature, power, energy, frequency, etc.)
-    if "val" in data and unit_fixed:
+    # All sensors with numeric units should have state_class for long-term statistics
+    if unit_fixed:
         # These are typically measurement sensors
         if unit_fixed in ("°C", "K", "W", "kW", "kWh", "kg", "Pa", "bar", "EH", "V", "A", "Hz", "rps", "%", "h", "min", "s", "zs", "l/min", "km/h"):
             return SensorStateClass.MEASUREMENT
