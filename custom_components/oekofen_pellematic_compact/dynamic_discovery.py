@@ -187,8 +187,11 @@ def infer_device_class(data: dict, key: str) -> Optional[str]:
     text = data.get("text", "").lower()
     key_lower = key.lower()
     
+    # Fix common encoding issues where ° becomes ?
+    unit_fixed = unit.replace('?C', '°C').replace('?c', '°C') if unit else ""
+    
     # Temperature
-    if unit in ("°C", "K"):
+    if unit_fixed in ("°C", "K"):
         return SensorDeviceClass.TEMPERATURE
     
     # Energy
@@ -248,14 +251,17 @@ def infer_state_class(data: dict) -> Optional[str]:
     key_lower = data.get("text", "").lower()
     unit = data.get("unit", "")
     
+    # Fix common encoding issues where ° becomes ?
+    unit_fixed = unit.replace('?C', '°C').replace('?c', '°C') if unit else ""
+    
     # Total/Counter sensors
     if any(word in key_lower for word in ["total", "gesamt", "counter", "starts", "runtime", "laufzeit"]):
         return SensorStateClass.TOTAL_INCREASING
     
     # Measurement sensors (temperature, power, energy, frequency, etc.)
-    if "val" in data and unit:
+    if "val" in data and unit_fixed:
         # These are typically measurement sensors
-        if unit in ("°C", "K", "W", "kW", "kWh", "kg", "Pa", "bar", "EH", "V", "A", "Hz", "rps", "%", "h", "min", "s", "zs", "l/min", "km/h"):
+        if unit_fixed in ("°C", "K", "W", "kW", "kWh", "kg", "Pa", "bar", "EH", "V", "A", "Hz", "rps", "%", "h", "min", "s", "zs", "l/min", "km/h"):
             return SensorStateClass.MEASUREMENT
         # Most sensors with units are measurements
         return SensorStateClass.MEASUREMENT
@@ -313,6 +319,10 @@ def normalize_unit(unit: str) -> str:
     if not unit:
         return None
     
+    # Fix common encoding issues where ° (degree symbol) becomes ?
+    # This happens when UTF-8 data is misinterpreted as ISO-8859-1 or similar
+    unit_fixed = unit.replace('?C', '°C').replace('?c', '°C')
+    
     # Map common units
     unit_map = {
         "Â°C": UnitOfTemperature.CELSIUS,
@@ -334,7 +344,7 @@ def normalize_unit(unit: str) -> str:
         "km/h": "km/h",  # Kilometers per hour
     }
     
-    return unit_map.get(unit, unit)
+    return unit_map.get(unit_fixed, unit_fixed)
 
 
 def get_component_display_name(component: str, index: int = 0) -> str:
