@@ -11,6 +11,27 @@
           "charset": "Zeichensatz (iso-8859-1 oder utf-8)"
         }
       },
+      "reconfigure": {
+        "title": "Ökofen Pellematic neu konfigurieren",
+        "description": "Passen Sie Ihre Integrationseinstellungen an. Falls Sie verstümmelte Zeichen (ü→Ã¼, ö→Ã¶) in Entitätsnamen sehen, erkennt das System automatisch den korrekten Zeichensatz und schlägt ihn vor.\n\nNach Änderung des Zeichensatzes wird die Integration neu geladen und die Entitätsnamen werden aktualisiert.",
+        "data": {
+          "host": "JSON-API URL (inkl. Passwort)",
+          "scan_interval": "Aktualisierungsintervall (Sekunden)",
+          "solar_circuit": "Solar & Sonnensensoren (SE1, SK1)",
+          "circulator": "Zirkulation (CIRC1)",
+          "smart_pv": "Smart PV (POWER)",
+          "stirling": "Stirling Motor (stirling)",
+          "num_of_heating_circuits": "Heizkreise (HKx)",
+          "num_of_hot_water": "Warmwasserkreise (HWx)",
+          "num_of_pellematic_heaters": "Pellematic Heizungen (PELx)",
+          "num_of_smart_pv_se_count": "Smart PV Module (SEx)",
+          "num_of_smart_pv_sk_count": "Thermische Solarkollektoren (SKx)",
+          "num_of_heat_pumps_count": "Wärmepumpen (WPx)",
+          "num_of_wireless_sensors": "Funksensoren (WIRELESSx)",
+          "num_of_buffer_storage": "Pufferspeicher (PUx)",
+          "charset": "Zeichensatz (iso-8859-1 oder utf-8)"
+        }
+      },
       "advanced": {
         "title": "Erkannte Komponenten konfigurieren",
         "description": "Auto-Erkennung hat gefunden:\n{discovered}\n\nSie können diese Werte bei Bedarf anpassen.",

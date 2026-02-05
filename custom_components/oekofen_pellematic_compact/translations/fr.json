@@ -2,6 +2,27 @@
   "config": {
     "title": "\u00d6kofen Pellematic",
     "step": {
+      "reconfigure": {
+        "title": "Reconfigurer \u00d6kofen Pellematic",
+        "description": "Mettez \u00e0 jour les param\u00e8tres d'int\u00e9gration. Si vous voyez des caract\u00e8res corrompus (\u00fc\u2192\u00c3\u00bc, \u00f6\u2192\u00c3\u00b6) dans les noms d'entit\u00e9s, le syst\u00e8me d\u00e9tectera automatiquement le jeu de caract\u00e8res correct.\\n\\nApr\u00e8s modification du charset, l'int\u00e9gration sera recharg\u00e9e et les noms d'entit\u00e9s seront mis \u00e0 jour.",
+        "data": {
+          "host": "URL de l'API JSON (mot de passe inclus)",
+          "scan_interval": "Fr\u00e9quence de rafra\u00eechissement (secondes)",
+          "solar_circuit": "Capteurs solaires (SE1, SK1)",
+          "circulator": "Circulateur (CIRC1)",
+          "smart_pv": "Smart PV (POWER)",
+          "stirling": "Moteur Stirling (stirling)",
+          "num_of_heating_circuits": "Circuits de chauffage (HKx)",
+          "num_of_hot_water": "Circuits d'eau chaude (HWx)",
+          "num_of_pellematic_heaters": "Chaudi\u00e8res Pellematic (PELx)",
+          "num_of_smart_pv_se_count": "Modules Smart PV (SEx)",
+          "num_of_smart_pv_sk_count": "Collecteurs solaires (SKx)",
+          "num_of_heat_pumps_count": "Pompes \u00e0 chaleur (WPx)",
+          "num_of_wireless_sensors": "Capteurs sans fil (WIRELESSx)",
+          "num_of_buffer_storage": "Stockages tampon (PUx)",
+          "charset": "Jeu de caract\u00e8res (iso-8859-1 ou utf-8)"
+        }
+      },
       "user": {
         "title": "Configurer la connexion à l'interface JSON de votre chaudière \u00d6kofen Pellematic",
         "data": {

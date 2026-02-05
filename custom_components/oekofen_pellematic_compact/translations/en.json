@@ -11,6 +11,27 @@
           "charset": "Character set (iso-8859-1 or utf-8)"
         }
       },
+      "reconfigure": {
+        "title": "Reconfigure Ökofen Pellematic",
+        "description": "Update your integration settings. If you see garbled characters (ü→Ã¼, ö→Ã¶) in entity names, the system will auto-detect and suggest the correct charset.\n\nAfter changing charset, the integration will reload and entity names will be updated.",
+        "data": {
+          "host": "JSON API URL (including password)",
+          "scan_interval": "Polling interval (seconds)",
+          "solar_circuit": "Solar & Sun Sensors (SE1, SK1)",
+          "circulator": "Circulator (CIRC1)",
+          "smart_pv": "Smart PV (POWER)",
+          "stirling": "Stirling engine (stirling)",
+          "num_of_heating_circuits": "Heating circuits (HKx)",
+          "num_of_hot_water": "Hot water circuits (HWx)",
+          "num_of_pellematic_heaters": "Pellematic heaters (PELx)",
+          "num_of_smart_pv_se_count": "Smart PV modules (SEx)",
+          "num_of_smart_pv_sk_count": "Thermal solar collectors (SKx)",
+          "num_of_heat_pumps_count": "Heat pumps (WPx)",
+          "num_of_wireless_sensors": "Wireless sensors (WIRELESSx)",
+          "num_of_buffer_storage": "Buffer storages (PUx)",
+          "charset": "Character set (iso-8859-1 or utf-8)"
+        }
+      },
       "advanced": {
         "title": "Configure discovered components",
         "description": "Auto-discovery found:\n{discovered}\n\nYou can adjust these values if needed.",

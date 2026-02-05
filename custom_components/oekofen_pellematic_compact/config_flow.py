@@ -383,6 +383,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
     async def async_step_reconfigure(self, user_input: Dict[str, Any] | None = None):
         """Handle reconfiguration."""
         errors = {}
+        description_placeholders = {}
     
         # Ensure the context contains the entry ID
         if "entry_id" not in self.context:
@@ -406,14 +407,44 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             elif not host_valid(host):
                 errors[CONF_HOST] = "invalid_host_ip"
             else:
-                # Merge new input with current config
-                updated_config = {**current_config, **user_input}
-                self.hass.config_entries.async_update_entry(
-                    config_entry,
-                    data=updated_config,
-                )
-                await self.hass.config_entries.async_reload(config_entry.entry_id)
-                return self.async_abort(reason="reconfiguration_successful")
+                # Normalize URL (add '?' if needed)
+                normalized_host = self._normalize_url(host)
+                
+                # Auto-detect optimal charset and warn if mismatch
+                try:
+                    data, suggested_charset = await self.hass.async_add_executor_job(
+                        self._fetch_api_data, normalized_host, True
+                    )
+                    
+                    # Warn if detected charset differs from user input
+                    if suggested_charset != charset:
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.warning(
+                            "Reconfigure: Charset mismatch - user selected '%s' but API appears to use '%s'. "
+                            "This may cause encoding issues with special characters (ü, ö, ä, etc.)",
+                            charset, suggested_charset
+                        )
+                        description_placeholders["detected_charset"] = suggested_charset
+                        description_placeholders["user_charset"] = charset
+                        errors[CONF_CHARSET] = "charset_mismatch"
+                    else:
+                        # No error - proceed with update
+                        user_input[CONF_HOST] = normalized_host
+                        # Merge new input with current config
+                        updated_config = {**current_config, **user_input}
+                        self.hass.config_entries.async_update_entry(
+                            config_entry,
+                            data=updated_config,
+                        )
+                        await self.hass.config_entries.async_reload(config_entry.entry_id)
+                        return self.async_abort(reason="reconfiguration_successful")
+                        
+                except Exception as e:
+                    import logging
+                    _LOGGER = logging.getLogger(__name__)
+                    _LOGGER.error("Failed to connect during reconfigure: %s", e)
+                    errors["base"] = "cannot_connect"
     
         # Create a schema with current configuration as defaults
         data_schema = vol.Schema(
@@ -441,4 +472,5 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             step_id="reconfigure",
             data_schema=data_schema,
             errors=errors,
+            description_placeholders=description_placeholders,
         )
