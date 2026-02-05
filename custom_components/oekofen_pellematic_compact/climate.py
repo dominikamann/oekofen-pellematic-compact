@@ -152,51 +152,81 @@ class PellematicClimate(ClimateEntity):
             
         data = self._hub.data[self._prefix]
         if "L_roomtemp_act" in data:
-            self._attr_current_temperature = float(get_api_value(data["L_roomtemp_act"], 0)) / 10
+            # Convert to float, handling both numeric and string values
+            try:
+                self._attr_current_temperature = float(get_api_value(data["L_roomtemp_act"], 0)) / 10
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid L_roomtemp_act value: %s", data["L_roomtemp_act"])
             
         # Get the remote override value (if any)
-        remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
+        try:
+            remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
+        except (ValueError, TypeError):
+            remote_override = 0.0
+            _LOGGER.warning("Invalid remote_override value: %s", data.get("remote_override"))
             
         if "temp_heat" in data:
             # Base comfort temperature without override
-            self._attr_target_temperature_comfort = float(get_api_value(data["temp_heat"], 0)) / 10
+            try:
+                self._attr_target_temperature_comfort = float(get_api_value(data["temp_heat"], 0)) / 10
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid temp_heat value: %s", data["temp_heat"])
             
         if "temp_setback" in data:
-            self._attr_target_temperature_slow = float(get_api_value(data["temp_setback"], 0)) / 10
+            try:
+                self._attr_target_temperature_slow = float(get_api_value(data["temp_setback"], 0)) / 10
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid temp_setback value: %s", data["temp_setback"])
         
         if "temp_vacation" in data:
-            self._attr_target_temperature_vacation = float(get_api_value(data["temp_vacation"], 0)) / 10
+            try:
+                self._attr_target_temperature_vacation = float(get_api_value(data["temp_vacation"], 0)) / 10
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid temp_vacation value: %s", data["temp_vacation"])
             
         if "L_roomtemp_set" in data and "temp_heat" in data:
             # For Auto mode, L_roomtemp_set includes the remote_override adjustment
             # We need to subtract remote_override to get the base temperature
-            l_roomtemp_set = float(get_api_value(data["L_roomtemp_set"], 0)) / 10
-            base_temp = l_roomtemp_set - remote_override
-            self._attr_target_temperature_auto = base_temp
+            try:
+                l_roomtemp_set = float(get_api_value(data["L_roomtemp_set"], 0)) / 10
+                base_temp = l_roomtemp_set - remote_override
+                self._attr_target_temperature_auto = base_temp
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid L_roomtemp_set value: %s", data["L_roomtemp_set"])
             
         if "mode_auto" in data:
-            mode_auto_val = int(get_api_value(data["mode_auto"], 1))
-            if mode_auto_val == 2:
-                self._attr_hvac_mode = HVACMode.HEAT
-            elif mode_auto_val == 3:
-                self._attr_hvac_mode = HVACMode.OFF
-            elif mode_auto_val == 1:
-                self._attr_hvac_mode = HVACMode.AUTO
+            try:
+                # Convert to int, handling both numeric and string values
+                mode_auto_val = int(get_api_value(data["mode_auto"], 1))
+                if mode_auto_val == 2:
+                    self._attr_hvac_mode = HVACMode.HEAT
+                elif mode_auto_val == 3:
+                    self._attr_hvac_mode = HVACMode.OFF
+                elif mode_auto_val == 1:
+                    self._attr_hvac_mode = HVACMode.AUTO
+                elif mode_auto_val == 0:
+                    self._attr_hvac_mode = HVACMode.OFF
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid mode_auto value: %s", data["mode_auto"])
         
         # Read oekomode for preset mode
         # 0:Arrêt|1:Confort|2:Intermédiaire|3:Ecologique
         if "oekomode" in data:
-            oekomode_val = int(get_api_value(data["oekomode"], 2))
-            if oekomode_val == 0:
-                self._attr_preset_mode = PRESET_AWAY  # Arrêt = Away/Vacation
-            elif oekomode_val == 1:
-                self._attr_preset_mode = PRESET_COMFORT  # Confort
-            elif oekomode_val == 2:
-                self._attr_preset_mode = PRESET_NONE  # Intermédiaire
-            elif oekomode_val == 3:
-                self._attr_preset_mode = PRESET_ECO  # Ecologique
-            else:
-                self._attr_preset_mode = PRESET_NONE
+            try:
+                # Convert to int, handling both numeric and string values
+                oekomode_val = int(get_api_value(data["oekomode"], 2))
+                if oekomode_val == 0:
+                    self._attr_preset_mode = PRESET_AWAY  # Arrêt = Away/Vacation
+                elif oekomode_val == 1:
+                    self._attr_preset_mode = PRESET_COMFORT  # Confort
+                elif oekomode_val == 2:
+                    self._attr_preset_mode = PRESET_NONE  # Intermédiaire
+                elif oekomode_val == 3:
+                    self._attr_preset_mode = PRESET_ECO  # Ecologique
+                else:
+                    self._attr_preset_mode = PRESET_NONE
+            except (ValueError, TypeError):
+                _LOGGER.warning("Invalid oekomode value: %s", data["oekomode"])
 
     async def async_added_to_hass(self):
         self._hub.async_add_pellematic_sensor(self._api_data_updated)
@@ -218,8 +248,16 @@ class PellematicClimate(ClimateEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        """Return target temperature based on preset mode."""
-        # Preset mode takes precedence over HVAC mode for target temperature
+        """Return target temperature based on preset mode.
+        
+        The oekomode (preset) determines which temperature profile is active.
+        When in AUTO mode, the time program switches between heating and setback,
+        but always using the temperatures defined by the current oekomode.
+        
+        For example: oekomode=ECO means lower temperatures are used,
+        even when the time program says "heating phase".
+        """
+        # Preset mode determines the temperature profile
         if self._attr_preset_mode == PRESET_AWAY:
             # Away/Vacation mode uses temp_vacation
             return self._attr_target_temperature_vacation
@@ -230,15 +268,9 @@ class PellematicClimate(ClimateEntity):
             # Comfort mode uses temp_heat
             return self._attr_target_temperature_comfort
         
-        # Fallback to HVAC mode if no preset or PRESET_NONE
-        if self._attr_hvac_mode == HVACMode.OFF:
-            return self._attr_target_temperature_slow
-        elif self._attr_hvac_mode == HVACMode.HEAT:
-            return self._attr_target_temperature_comfort
-        elif self._attr_hvac_mode == HVACMode.AUTO:
-            return self._attr_target_temperature_auto
-        
-        return None
+        # Fallback: use the auto temperature (L_roomtemp_set)
+        # This is what Ökofen is currently targeting
+        return self._attr_target_temperature_auto
     
     @property
     def hvac_mode(self) -> HVACMode:

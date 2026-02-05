@@ -44,22 +44,50 @@ ATTR_MODEL = "Pellematic Compact"
 def get_api_value(data_field, default=None):
     """Extract value from API data field.
     
-    Supports both API formats:
-    - New format: {"val": 123, "unit": "°C", "factor": 0.1, ...}
-    - Old format: 123 (direct value as int/string)
+    Supports multiple API formats:
+    - New format with dict: {"val": 123, "unit": "°C", "factor": 0.1, ...}
+    - New format with string values: {"val": "123", ...}
+    - Old format: 123 (direct value as int/float)
+    - Old old format: "123" (direct string value)
     
     Args:
         data_field: The API data field (dict or direct value)
         default: Default value if field is None or missing "val" key
         
     Returns:
-        The extracted value or default
+        The extracted value (converted to int/float if string), or default
     """
     if data_field is None:
         return default
+        
+    # New format: {"val": ..., ...}
     if isinstance(data_field, dict):
-        return data_field.get("val", default)
-    # Old format: direct value (int, float, or string)
+        val = data_field.get("val", default)
+        if isinstance(val, str):
+            # Try to convert string to number
+            try:
+                return int(val)
+            except ValueError:
+                try:
+                    return float(val)
+                except ValueError:
+                    # Return as string if conversion fails
+                    return val
+        return val
+    
+    # Old format: direct value (could be int, float, or string)
+    if isinstance(data_field, str):
+        # Try to convert string to number
+        try:
+            return int(data_field)
+        except ValueError:
+            try:
+                return float(data_field)
+            except ValueError:
+                # Return as string if conversion fails (e.g., "true", "false")
+                return data_field
+    
+    # Already a number or other type
     return data_field
 
 # Data coordinator
