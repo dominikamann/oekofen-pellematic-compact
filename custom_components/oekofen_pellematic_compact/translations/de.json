@@ -33,7 +33,8 @@
     },
     "error": {
       "already_configured": "Gerät ist bereits konfiguriert",
-      "cannot_connect": "Verbindung zur API fehlgeschlagen. Überprüfen Sie URL und Passwort."
+      "cannot_connect": "Verbindung zur API fehlgeschlagen. Überprüfen Sie URL und Passwort.",
+      "invalid_charset": "Ungültiger Zeichensatz. Verwenden Sie einen gültigen Python-Codec (z.B. iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert"

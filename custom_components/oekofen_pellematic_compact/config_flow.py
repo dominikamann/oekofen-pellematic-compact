@@ -80,6 +80,23 @@ def host_valid(host):
     return True
 
 
+def charset_valid(charset: str) -> bool:
+    """Return True if charset is a valid Python codec.
+    
+    Args:
+        charset: Character encoding name
+        
+    Returns:
+        True if charset is valid, False otherwise
+    """
+    import codecs
+    try:
+        codecs.lookup(charset)
+        return True
+    except LookupError:
+        return False
+
+
 @callback
 def pellematic_compact_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
@@ -98,6 +115,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         """Initialize the config flow."""
         self._discovered_data = {}
         self._user_input = {}
+        self._charset = DEFAULT_CHARSET
 
     def _normalize_url(self, host: str) -> str:
         """Normalize the URL by ensuring it ends with '?' for full API response.
@@ -156,7 +174,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         
         try:
             response = urllib.request.urlopen(req, timeout=5)
-            str_response = response.read().decode('iso-8859-1', 'ignore')
+            str_response = response.read().decode(self._charset, 'ignore')
             # Apply hotfix for invalid JSON
             str_response = str_response.replace("L_statetext:", 'L_statetext":')
             return json.loads(str_response, strict=False)
@@ -177,12 +195,18 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         if user_input is not None:
             host = user_input[CONF_HOST]
 
+            # Validate charset
+            charset = user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
+            if not charset_valid(charset):
+                errors[CONF_CHARSET] = "invalid_charset"
             # Check if already configured
-            if self._host_in_configuration_exists(host):
+            elif self._host_in_configuration_exists(host):
                 errors[CONF_HOST] = "already_configured"
             elif not host_valid(host):
                 errors[CONF_HOST] = "invalid_host_ip"
             else:
+                # Store charset for API fetch
+                self._charset = charset
                 # Normalize URL (add '?' if needed)
                 normalized_host = self._normalize_url(host)
                 user_input[CONF_HOST] = normalized_host
