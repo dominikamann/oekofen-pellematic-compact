@@ -17,9 +17,9 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           issue_message: |
               Hello! Thank you for filing an issue.
-  
+          
               If this is a bug report, please include relevant logs and JSON-result of the Ökofen-Interface to help us debug the problem.
-              See here for JSON-result generation: https://github.com/dominikamann/oekofen-pellematic-compact/discussions/150
+              [How To: JSON-result generation](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/150).
           pr_message: |
               Hello! Thank you for your contribution.
               
