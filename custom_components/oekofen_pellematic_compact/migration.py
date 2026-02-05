@@ -8,7 +8,6 @@ import logging
 from typing import Dict, List, Tuple
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.components.persistent_notification import async_create
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -128,8 +127,7 @@ async def async_migrate_entity_ids(
         )
         
         # Create a persistent notification to inform the user
-        await async_create(
-            hass,
+        hass.components.persistent_notification.async_create(
             f"**Ökofen Pellematic: Entity ID Migration Complete**\n\n"
             f"Successfully preserved {migrated_count} entity ID(s) for backwards compatibility.\n\n"
             f"Your existing automations and dashboards should continue working without changes.\n\n"
@@ -203,8 +201,7 @@ async def async_check_and_warn_entity_changes(
         if len(warnings) > 5:
             warning_text += f"\n\n...and {len(warnings) - 5} more warnings (check logs for details)"
         
-        await async_create(
-            hass,
+        hass.components.persistent_notification.async_create(
             f"**Ökofen Pellematic: Entity ID Warning**\n\n"
             f"Some entity IDs contain translated text which may cause issues:\n\n"
             f"{warning_text}\n\n"
