@@ -348,26 +348,55 @@ class PellematicClimate(ClimateEntity):
             raise
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        if preset_mode in self._attr_preset_modes:
-            try:
-                self._attr_current_option = preset_mode
-                if preset_mode == PRESET_ECO:
-                    await self.hass.async_add_executor_job(
-                        self._hub.send_pellematic_data,
-                        3,  # Eco mode
-                        self._prefix,
-                        "mode_auto"
-                    )
-                self.async_write_ha_state()
-            except Exception as err:
-                _LOGGER.error(
-                    "Failed to set preset mode to %s for %s: %s",
-                    preset_mode,
-                    self.entity_id,
-                    err,
-                )
-                # Re-raise to let Home Assistant handle it properly
-                raise
+        """Set new preset mode."""
+        if preset_mode not in self._attr_preset_modes:
+            _LOGGER.error("Invalid preset mode: %s", preset_mode)
+            return
+        
+        try:
+            # Map Home Assistant preset to oekomode value
+            # 0:Aus|1:Komfort|2:Minimum|3:Ökologisch
+            oekomode_map = {
+                PRESET_AWAY: 0,      # Aus / Arrêt
+                PRESET_COMFORT: 1,   # Komfort / Confort
+                PRESET_NONE: 2,      # Minimum / Intermédiaire
+                PRESET_ECO: 3,       # Ökologisch / Ecologique
+            }
+            
+            if preset_mode not in oekomode_map:
+                _LOGGER.error("Preset mode %s not in map", preset_mode)
+                return
+            
+            oekomode_value = oekomode_map[preset_mode]
+            
+            # Send to API
+            await self.hass.async_add_executor_job(
+                self._hub.send_pellematic_data,
+                oekomode_value,
+                self._prefix,
+                "oekomode"
+            )
+            
+            # Update local state
+            self._attr_preset_mode = preset_mode
+            self.async_write_ha_state()
+            
+            _LOGGER.debug(
+                "Set preset mode to %s (oekomode=%d) for %s",
+                preset_mode,
+                oekomode_value,
+                self.entity_id
+            )
+            
+        except Exception as err:
+            _LOGGER.error(
+                "Failed to set preset mode to %s for %s: %s",
+                preset_mode,
+                self.entity_id,
+                err,
+            )
+            # Re-raise to let Home Assistant handle it properly
+            raise
     
     @property
     def supported_features(self) -> ClimateEntityFeature:
