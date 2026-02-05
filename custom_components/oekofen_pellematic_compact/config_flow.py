@@ -307,8 +307,11 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         if user_input is not None:
             # Validate and save the new configuration
             host = user_input[CONF_HOST]
+            charset = user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
     
-            if not host_valid(host):
+            if not charset_valid(charset):
+                errors[CONF_CHARSET] = "invalid_charset"
+            elif not host_valid(host):
                 errors[CONF_HOST] = "invalid_host_ip"
             else:
                 # Merge new input with current config
