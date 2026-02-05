@@ -291,12 +291,18 @@ class PellematicSensor(SensorEntity):
         self._device_info = device_info
         self._state = None
         
-        # Set device class and state class from definition
+        # Set device class from definition
         device_class = sensor_definition.get('device_class')
         if device_class:
             self._attr_device_class = device_class
-            
-            # Set appropriate state class based on device class
+        
+        # Set state class from definition (preferred) or infer from device class
+        state_class = sensor_definition.get('state_class')
+        if state_class:
+            # Use state class from dynamic discovery
+            self._attr_state_class = state_class
+        elif device_class:
+            # Fallback: Infer state class from device class if not provided
             if device_class in (SensorDeviceClass.TEMPERATURE, SensorDeviceClass.PRESSURE, 
                                SensorDeviceClass.POWER, SensorDeviceClass.VOLUME_FLOW_RATE,
                                SensorDeviceClass.WEIGHT, SensorDeviceClass.POWER_FACTOR):
@@ -312,7 +318,7 @@ class PellematicSensor(SensorEntity):
                     else:
                         self._attr_state_class = SensorStateClass.MEASUREMENT
         
-        # Some keys need special handling for state class
+        # Some keys need special handling for state class (override if needed)
         if self._key.replace("#2", "") in (
             'L_state', 'mode_auto', 'oekomode', 'L_wireless_name', 'L_wireless_id',
             'L_jaz_all', 'L_jaz_heat', 'L_jaz_cool', 'L_az_all', 'L_az_heat', 
