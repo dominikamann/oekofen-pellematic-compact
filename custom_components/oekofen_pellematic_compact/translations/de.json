@@ -1,6 +1,5 @@
 {
   "config": {
-    "title": "\u00d6kofen Pellematic",
     "step": {
       "user": {
         "title": "Verbindung zur \u00d6kofen Pellematic herstellen",
@@ -55,8 +54,7 @@
     "error": {
       "already_configured": "Gerät ist bereits konfiguriert",
       "cannot_connect": "Verbindung zur API fehlgeschlagen. Überprüfen Sie URL und Passwort.",
-      "invalid_charset": "Ungültiger Zeichensatz. Verwenden Sie einen gültigen Python-Codec (z.B. iso-8859-1, utf-8, windows-1252)",
-      "charset_mismatch": "Warnung: API scheint '{detected_charset}' zu verwenden, Sie haben '{user_charset}' gewählt. Dies kann zu Encoding-Problemen mit Umlauten (ü, ö, ä) führen. Verwenden Sie besser '{detected_charset}'."
+      "invalid_charset": "Ungültige Zeichenkodierung. Verwenden Sie einen gültigen Python-Codec (z.B. iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
       "already_configured": "Gerät ist bereits konfiguriert"

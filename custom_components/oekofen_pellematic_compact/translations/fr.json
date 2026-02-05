@@ -1,6 +1,5 @@
 {
   "config": {
-    "title": "\u00d6kofen Pellematic",
     "step": {
       "reconfigure": {
         "title": "Reconfigurer \u00d6kofen Pellematic",
@@ -48,8 +47,7 @@
     "error": {
       "already_configured": "Appareil déja configuré",
       "cannot_connect": "Échec de connexion à l'API. Vérifiez l'URL et le mot de passe.",
-      "invalid_charset": "Encodage de caractères invalide. Utilisez un codec Python valide (ex: iso-8859-1, utf-8, windows-1252)",
-      "charset_mismatch": "Attention: L'API semble utiliser '{detected_charset}' mais vous avez sélectionné '{user_charset}'. Cela peut causer des problèmes d'encodage avec les caractères spéciaux. Utilisez plutôt '{detected_charset}'."
+      "invalid_charset": "Encodage de caractères invalide. Utilisez un codec Python valide (ex: iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
       "already_configured": "Appareil déja configuré"
