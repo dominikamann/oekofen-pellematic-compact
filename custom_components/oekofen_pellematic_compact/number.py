@@ -107,7 +107,9 @@ class PellematicNumber(NumberEntity):
         self._attr_native_max_value = number_definition.get('max', 100)
         self._attr_native_step = number_definition.get('step', 0.5)
         self._attr_native_value = None
-        self._factor = number_definition.get('factor', 1)  # Store conversion factor
+        # Store conversion factor - ensure it's a float, not a string
+        factor_value = number_definition.get('factor', 1)
+        self._factor = float(factor_value) if not isinstance(factor_value, (int, float)) else factor_value
         
         _LOGGER.debug(
             "Adding dynamic PellematicNumber: %s, %s, min=%s, max=%s, step=%s, factor=%s",
