@@ -109,49 +109,19 @@ def detect_charset_from_response(raw_data: bytes) -> str:
     Returns:
         Suggested charset ('utf-8' or 'iso-8859-1')
     """
-    # Common patterns that indicate UTF-8 wrongly decoded as ISO-8859-1
-    # ü = UTF-8: C3 BC → wrongly as ISO: Ã¼
-    # ö = UTF-8: C3 B6 → wrongly as ISO: Ã¶
-    # ä = UTF-8: C3 A4 → wrongly as ISO: Ã¤
-    # ß = UTF-8: C3 9F → wrongly as ISO: ÃŸ
-    # ° = UTF-8: C2 B0 → wrongly as ISO: Â°
-    
-    utf8_wrong_patterns = [
-        b'\xc3\xbc',  # ü as UTF-8
-        b'\xc3\xb6',  # ö as UTF-8
-        b'\xc3\xa4',  # ä as UTF-8
-        b'\xc3\x9f',  # ß as UTF-8
-        b'\xc2\xb0',  # ° as UTF-8
-    ]
-    
-    # Count how many UTF-8 multi-byte sequences we find
-    utf8_indicators = sum(1 for pattern in utf8_wrong_patterns if pattern in raw_data)
-    
-    # Try to decode as UTF-8 and check if it's valid
+    # Try UTF-8 first with strict decoding (no ignore)
     try:
         decoded_utf8 = raw_data.decode('utf-8')
-        # If we can decode as UTF-8 and find typical German umlauts, it's likely UTF-8
+        # Successfully decoded as UTF-8
+        # Check if it contains German umlauts - if yes, it's truly UTF-8
         if any(char in decoded_utf8 for char in ['ü', 'ö', 'ä', 'ß', 'Ü', 'Ö', 'Ä']):
+            # Contains umlauts and decodes cleanly - it's UTF-8
             return 'utf-8'
+        # No umlauts but valid UTF-8 - could be either, default to ISO for compatibility
+        return 'iso-8859-1'
     except UnicodeDecodeError:
-        # Can't decode as UTF-8, probably ISO-8859-1
-        pass
-    
-    # If we found UTF-8 multi-byte patterns, suggest UTF-8
-    if utf8_indicators > 0:
-        return 'utf-8'
-    
-    # Try ISO-8859-1 and look for mojibake patterns (Ã¼, Ã¶, etc.)
-    try:
-        decoded_iso = raw_data.decode('iso-8859-1')
-        # Check for common mojibake patterns indicating UTF-8 data decoded as ISO
-        if any(pattern in decoded_iso for pattern in ['Ã¼', 'Ã¶', 'Ã¤', 'Ã', 'Â°']):
-            return 'utf-8'  # Data is actually UTF-8, not ISO
-    except:
-        pass
-    
-    # Default to iso-8859-1 (old default)
-    return 'iso-8859-1'
+        # Can't decode as UTF-8 - it's ISO-8859-1 or another single-byte encoding
+        return 'iso-8859-1'
 
 
 @callback
@@ -289,24 +259,21 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                         self._fetch_api_data, normalized_host, True
                     )
                     
-                    # Warn if detected charset differs from user input
-                    if suggested_charset != charset:
+                    # Use the detected charset instead of user input
+                    charset = suggested_charset
+                    user_input[CONF_CHARSET] = suggested_charset
+                    
+                    # Log if we changed the charset
+                    if suggested_charset != user_input.get(CONF_CHARSET, DEFAULT_CHARSET):
                         import logging
                         _LOGGER = logging.getLogger(__name__)
-                        _LOGGER.warning(
-                            "Charset mismatch: user selected '%s' but API appears to use '%s'. "
-                            "This may cause encoding issues with special characters (ü, ö, ä, etc.)",
-                            charset, suggested_charset
-                        )
-                        description_placeholders["detected_charset"] = suggested_charset
-                        description_placeholders["user_charset"] = charset
-                        description_placeholders["charset_warning"] = (
-                            f"⚠️ Warning: API appears to use '{suggested_charset}' but you selected '{charset}'. "
-                            f"This may cause encoding issues with umlauts (ü, ö, ä). Consider using '{suggested_charset}' instead."
+                        _LOGGER.info(
+                            "Auto-detected charset '%s' (user selected '%s')",
+                            suggested_charset, user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
                         )
                     
                     if not errors:
-                        # Store user's chosen charset
+                        # Store the detected charset
                         self._charset = charset
                         user_input[CONF_HOST] = normalized_host
                         
@@ -417,26 +384,22 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 # Normalize URL (add '?' if needed)
                 normalized_host = self._normalize_url(host)
                 
-                # Auto-detect optimal charset and warn if mismatch
+                # Auto-detect optimal charset and use it
                 try:
                     data, suggested_charset = await self.hass.async_add_executor_job(
                         self._fetch_api_data, normalized_host, True
                     )
                     
-                    # Warn if detected charset differs from user input
+                    # Use the detected charset instead of user input
+                    user_input[CONF_CHARSET] = suggested_charset
+                    
+                    # Log if we changed the charset
                     if suggested_charset != charset:
                         import logging
                         _LOGGER = logging.getLogger(__name__)
-                        _LOGGER.warning(
-                            "Reconfigure: Charset mismatch - user selected '%s' but API appears to use '%s'. "
-                            "This may cause encoding issues with special characters (ü, ö, ä, etc.)",
-                            charset, suggested_charset
-                        )
-                        description_placeholders["detected_charset"] = suggested_charset
-                        description_placeholders["user_charset"] = charset
-                        description_placeholders["charset_warning"] = (
-                            f"⚠️ Warning: API appears to use '{suggested_charset}' but you selected '{charset}'. "
-                            f"This may cause encoding issues with umlauts (ü, ö, ä). Consider using '{suggested_charset}' instead."
+                        _LOGGER.info(
+                            "Reconfigure: Auto-detected charset '%s' (user selected '%s')",
+                            suggested_charset, charset
                         )
                     
                     if not errors:

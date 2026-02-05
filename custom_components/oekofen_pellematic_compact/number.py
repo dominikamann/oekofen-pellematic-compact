@@ -107,14 +107,16 @@ class PellematicNumber(NumberEntity):
         self._attr_native_max_value = number_definition.get('max', 100)
         self._attr_native_step = number_definition.get('step', 0.5)
         self._attr_native_value = None
+        self._factor = number_definition.get('factor', 1)  # Store conversion factor
         
         _LOGGER.debug(
-            "Adding dynamic PellematicNumber: %s, %s, min=%s, max=%s, step=%s",
+            "Adding dynamic PellematicNumber: %s, %s, min=%s, max=%s, step=%s, factor=%s",
             self._name,
             self._attr_unique_id,
             self._attr_native_min_value,
             self._attr_native_max_value,
             self._attr_native_step,
+            self._factor,
         )
 
     @callback
@@ -132,15 +134,19 @@ class PellematicNumber(NumberEntity):
     async def async_set_native_value(self, value) -> None:
         """Update the native value."""
         try:
-            # Prepare the value for sending
-            send_value = value
-            if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
-                send_value = int(value * 10)
+            # Apply factor to convert display value to API value
+            # Example: User sets 58.0°C, factor is 0.1, send 580 to API
+            send_value = int(value / self._factor) if self._factor != 1 else int(value)
+            
+            _LOGGER.debug(
+                "Setting %s: display_value=%s, factor=%s, api_value=%s",
+                self.entity_id, value, self._factor, send_value
+            )
             
             # Send the new value to the API
             await self.hass.async_add_executor_job(
                 self._hub.send_pellematic_data,
-                int(send_value),
+                send_value,
                 self._prefix,
                 self._key
             )
@@ -160,13 +166,21 @@ class PellematicNumber(NumberEntity):
     def _update_native_value(self):
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            current_value = raw_data["val"]
-            if self._attr_device_class == NumberDeviceClass.TEMPERATURE:
-                return int(current_value) / 10
-            if isinstance(current_value, float) and current_value.is_integer():
-                return int(current_value)
-            return float(current_value)
-        except:
+            api_value = raw_data["val"]
+            
+            # Apply factor to convert API value to display value
+            # Example: API sends 580, factor is 0.1, display 58.0°C
+            if self._factor != 1:
+                display_value = float(api_value) * self._factor
+            else:
+                display_value = float(api_value) if not isinstance(api_value, (int, float)) else api_value
+            
+            # Return as int if it's a whole number, otherwise as float
+            if isinstance(display_value, float) and display_value.is_integer():
+                return int(display_value)
+            return display_value
+        except Exception as e:
+            _LOGGER.debug("Error updating value for %s: %s", self.entity_id, e)
             return None
 
     @callback
