@@ -12,6 +12,9 @@ It communicates locally with the heater. This is not an official integration by 
 
 - 🚀 **Automatic entity discovery** - All sensors automatically detected from API
 - 🌍 **Multilingual support** - Names in DE/FR/EN directly from your Ökofen system
+- 🔄 **Automatic migration** - Preserves entity IDs when upgrading (v4.1.0+)
+
+> **⚠️ Upgrading from older versions?** See the [Migration Guide](MIGRATION_GUIDE.md) for information about entity ID preservation.
 
 ![grafik](https://github.com/user-attachments/assets/dbc94d82-ca22-4264-8bf6-36b373ce910b)
 

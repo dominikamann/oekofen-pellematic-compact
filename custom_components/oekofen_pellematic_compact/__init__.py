@@ -16,6 +16,7 @@ from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_time_interval
+from .migration import async_migrate_entity_ids, async_check_and_warn_entity_changes
 from .const import (
     CONF_CHARSET,
     DEFAULT_CHARSET,
@@ -296,6 +297,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Register the hub.
     hass.data[DOMAIN][name] = {"hub": hub}
+
+    # Run one-time entity ID migration for existing users
+    try:
+        migrated = await async_migrate_entity_ids(hass, entry.entry_id, name)
+        if migrated > 0:
+            _LOGGER.info("Migrated %d entity IDs for backwards compatibility", migrated)
+    except Exception as e:
+        _LOGGER.warning("Entity ID migration failed (non-critical): %s", e)
+
+    # Check and warn about potential entity ID issues
+    try:
+        warnings = await async_check_and_warn_entity_changes(hass, entry.entry_id, name)
+        for warning in warnings:
+            _LOGGER.warning(warning)
+    except Exception as e:
+        _LOGGER.debug("Entity ID check failed (non-critical): %s", e)
 
     # Register services
     await async_setup_services(hass)
