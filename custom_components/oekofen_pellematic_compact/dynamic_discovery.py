@@ -117,7 +117,11 @@ def is_select(data: dict) -> bool:
 
 
 def is_number(data: dict) -> bool:
-    """Check if data represents a number entity."""
+    """Check if data represents a number entity.
+    
+    Note: This function should only be called for writable entities (without L_ prefix).
+    Read-only sensors with min/max values are filtered out earlier in the discovery logic.
+    """
     # Numbers have min and max values and are writable (no L_ prefix)
     return "min" in data and "max" in data
 
@@ -251,7 +255,7 @@ def infer_state_class(data: dict) -> Optional[str]:
     # Measurement sensors (temperature, power, energy, frequency, etc.)
     if "val" in data and unit:
         # These are typically measurement sensors
-        if unit in ("°C", "K", "W", "kW", "kWh", "kg", "Pa", "bar", "V", "A", "Hz", "rps"):
+        if unit in ("°C", "K", "W", "kW", "kWh", "kg", "Pa", "bar", "EH", "V", "A", "Hz", "rps", "%", "h", "min", "s", "zs", "l/min", "km/h"):
             return SensorStateClass.MEASUREMENT
         # Most sensors with units are measurements
         return SensorStateClass.MEASUREMENT
@@ -322,8 +326,12 @@ def normalize_unit(unit: str) -> str:
         "h": UnitOfTime.HOURS,
         "min": UnitOfTime.MINUTES,
         "s": UnitOfTime.SECONDS,
+        "zs": UnitOfTime.SECONDS,  # Zehntel-Sekunden (0.01s) - keep as seconds, factor handles conversion
         "Hz": UnitOfFrequency.HERTZ,
         "rps": "rps",  # Rotations per second
+        "EH": "EH",  # Einheit (unit) for pressure measurements
+        "l/min": "L/min",  # Liters per minute
+        "km/h": "km/h",  # Kilometers per hour
     }
     
     return unit_map.get(unit, unit)
