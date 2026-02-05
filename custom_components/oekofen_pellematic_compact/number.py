@@ -168,12 +168,15 @@ class PellematicNumber(NumberEntity):
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
             api_value = raw_data["val"]
             
+            # Convert API value to float first (handles both string and numeric types)
+            numeric_value = float(api_value) if not isinstance(api_value, (int, float)) else api_value
+            
             # Apply factor to convert API value to display value
             # Example: API sends 580, factor is 0.1, display 58.0°C
             if self._factor != 1:
-                display_value = float(api_value) * self._factor
+                display_value = float(numeric_value) * self._factor
             else:
-                display_value = float(api_value) if not isinstance(api_value, (int, float)) else api_value
+                display_value = numeric_value
             
             # Return as int if it's a whole number, otherwise as float
             if isinstance(display_value, float) and display_value.is_integer():
