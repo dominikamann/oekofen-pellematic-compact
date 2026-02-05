@@ -113,12 +113,13 @@ def detect_charset_from_response(raw_data: bytes) -> str:
     try:
         decoded_utf8 = raw_data.decode('utf-8')
         # Successfully decoded as UTF-8
-        # Check if it contains German umlauts - if yes, it's truly UTF-8
-        if any(char in decoded_utf8 for char in ['ü', 'ö', 'ä', 'ß', 'Ü', 'Ö', 'Ä']):
-            # Contains umlauts and decodes cleanly - it's UTF-8
+        # Check if it contains any non-ASCII characters (multi-byte UTF-8)
+        # This works for all languages: German, French, Italian, Spanish, Polish, etc.
+        if any(ord(char) > 127 for char in decoded_utf8):
+            # Contains non-ASCII characters and decodes cleanly - it's UTF-8
             return 'utf-8'
-        # No umlauts but valid UTF-8 - could be either, default to ISO for compatibility
-        return 'iso-8859-1'
+        # Only ASCII characters - could be either, default to UTF-8 (modern standard)
+        return 'utf-8'
     except UnicodeDecodeError:
         # Can't decode as UTF-8 - it's ISO-8859-1 or another single-byte encoding
         return 'iso-8859-1'
