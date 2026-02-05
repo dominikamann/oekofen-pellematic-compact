@@ -12,6 +12,7 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
+    get_api_value,
 )
 from .dynamic_discovery import discover_all_entities
 
@@ -205,7 +206,8 @@ class PellematicBinarySensor(BinarySensorEntity):
         """Return the state of the sensor."""
         current_value = None
         try:
-            current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
+            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            current_value = get_api_value(raw_data)
             if (current_value is True or str(current_value).lower() == 'true'):
                 current_value = True
             elif (current_value is False or str(current_value).lower() == 'false'):
@@ -231,7 +233,8 @@ class PellematicBinarySensor(BinarySensorEntity):
         current_value = None
 
         try:
-            current_value = self._hub.data[self._prefix][self._key.replace("#2", "")]["val"]
+            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+            current_value = get_api_value(raw_data)
             if (current_value is True or str(current_value).lower() == 'true'):
                 current_value = True
             elif (current_value is False or str(current_value).lower() == 'false'):
@@ -355,10 +358,7 @@ class PellematicSensor(SensorEntity):
                 self._state = current_value
                 return 
                 
-            try:
-                current_value = raw_data["val"]
-            except:
-                 current_value = raw_data
+            current_value = get_api_value(raw_data)
 
             try:
                 current_value = _sanitize_oekofen_value(raw_data, current_value)
@@ -438,10 +438,7 @@ class PellematicSensor(SensorEntity):
             except KeyError as e:
                 return None
             
-            try:
-                current_value = raw_data["val"]
-            except:
-                 current_value = raw_data
+            current_value = get_api_value(raw_data)
 
             try:
                 current_value = _sanitize_oekofen_value(raw_data, current_value)

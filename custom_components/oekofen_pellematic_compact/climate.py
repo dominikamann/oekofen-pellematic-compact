@@ -22,6 +22,7 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
+    get_api_value,
 )
 
 from homeassistant.const import (
@@ -121,6 +122,8 @@ class PellematicClimate(ClimateEntity):
         self._attr_target_temperature_comfort = None
         self._attr_target_temperature_slow = None
         self._attr_target_temperature_auto = None
+        self._attr_target_temperature_vacation = None
+        self._attr_preset_mode = PRESET_NONE
         self._attr_preset_modes = SUPPORT_PRESET
         self._attr_supported_features = SUPPORT_FLAGS
         self._attr_hvac_mode = HVACMode.AUTO
@@ -149,32 +152,51 @@ class PellematicClimate(ClimateEntity):
             
         data = self._hub.data[self._prefix]
         if "L_roomtemp_act" in data:
-            self._attr_current_temperature = float(data["L_roomtemp_act"]["val"]) / 10
+            self._attr_current_temperature = float(get_api_value(data["L_roomtemp_act"], 0)) / 10
             
         # Get the remote override value (if any)
-        remote_override = float(data.get("remote_override", {}).get("val", 0)) / 10
+        remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
             
         if "temp_heat" in data:
             # Base comfort temperature without override
-            self._attr_target_temperature_comfort = float(data["temp_heat"]["val"]) / 10
+            self._attr_target_temperature_comfort = float(get_api_value(data["temp_heat"], 0)) / 10
             
         if "temp_setback" in data:
-            self._attr_target_temperature_slow = float(data["temp_setback"]["val"]) / 10
+            self._attr_target_temperature_slow = float(get_api_value(data["temp_setback"], 0)) / 10
+        
+        if "temp_vacation" in data:
+            self._attr_target_temperature_vacation = float(get_api_value(data["temp_vacation"], 0)) / 10
             
         if "L_roomtemp_set" in data and "temp_heat" in data:
             # For Auto mode, L_roomtemp_set includes the remote_override adjustment
             # We need to subtract remote_override to get the base temperature
-            l_roomtemp_set = float(data["L_roomtemp_set"]["val"]) / 10
+            l_roomtemp_set = float(get_api_value(data["L_roomtemp_set"], 0)) / 10
             base_temp = l_roomtemp_set - remote_override
             self._attr_target_temperature_auto = base_temp
             
         if "mode_auto" in data:
-            if int(data["mode_auto"]["val"]) == 2:
+            mode_auto_val = int(get_api_value(data["mode_auto"], 1))
+            if mode_auto_val == 2:
                 self._attr_hvac_mode = HVACMode.HEAT
-            elif int(data["mode_auto"]["val"]) == 3:
+            elif mode_auto_val == 3:
                 self._attr_hvac_mode = HVACMode.OFF
-            elif int(data["mode_auto"]["val"]) == 1:
+            elif mode_auto_val == 1:
                 self._attr_hvac_mode = HVACMode.AUTO
+        
+        # Read oekomode for preset mode
+        # 0:Arrêt|1:Confort|2:Intermédiaire|3:Ecologique
+        if "oekomode" in data:
+            oekomode_val = int(get_api_value(data["oekomode"], 2))
+            if oekomode_val == 0:
+                self._attr_preset_mode = PRESET_AWAY  # Arrêt = Away/Vacation
+            elif oekomode_val == 1:
+                self._attr_preset_mode = PRESET_COMFORT  # Confort
+            elif oekomode_val == 2:
+                self._attr_preset_mode = PRESET_NONE  # Intermédiaire
+            elif oekomode_val == 3:
+                self._attr_preset_mode = PRESET_ECO  # Ecologique
+            else:
+                self._attr_preset_mode = PRESET_NONE
 
     async def async_added_to_hass(self):
         self._hub.async_add_pellematic_sensor(self._api_data_updated)
@@ -196,14 +218,27 @@ class PellematicClimate(ClimateEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        value = None
+        """Return target temperature based on preset mode."""
+        # Preset mode takes precedence over HVAC mode for target temperature
+        if self._attr_preset_mode == PRESET_AWAY:
+            # Away/Vacation mode uses temp_vacation
+            return self._attr_target_temperature_vacation
+        elif self._attr_preset_mode == PRESET_ECO:
+            # Eco/Ecological mode uses temp_setback (reduced temperature)
+            return self._attr_target_temperature_slow
+        elif self._attr_preset_mode == PRESET_COMFORT:
+            # Comfort mode uses temp_heat
+            return self._attr_target_temperature_comfort
+        
+        # Fallback to HVAC mode if no preset or PRESET_NONE
         if self._attr_hvac_mode == HVACMode.OFF:
-            value = self._attr_target_temperature_slow
+            return self._attr_target_temperature_slow
         elif self._attr_hvac_mode == HVACMode.HEAT:
-            value = self._attr_target_temperature_comfort
+            return self._attr_target_temperature_comfort
         elif self._attr_hvac_mode == HVACMode.AUTO:
-            value = self._attr_target_temperature_auto
-        return value
+            return self._attr_target_temperature_auto
+        
+        return None
     
     @property
     def hvac_mode(self) -> HVACMode:
@@ -211,7 +246,8 @@ class PellematicClimate(ClimateEntity):
     
     @property
     def preset_mode(self) -> str:
-        return PRESET_NONE
+        """Return current preset mode."""
+        return self._attr_preset_mode
     
     @property
     def preset_modes(self) -> list[str]:

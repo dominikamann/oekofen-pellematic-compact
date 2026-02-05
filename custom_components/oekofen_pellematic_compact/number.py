@@ -10,6 +10,7 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
+    get_api_value,
 )
 from .dynamic_discovery import discover_all_entities
 
@@ -168,7 +169,7 @@ class PellematicNumber(NumberEntity):
     def _update_native_value(self):
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            api_value = raw_data["val"]
+            api_value = get_api_value(raw_data)
             
             # Convert API value to float first (handles both string and numeric types)
             numeric_value = float(api_value) if not isinstance(api_value, (int, float)) else api_value

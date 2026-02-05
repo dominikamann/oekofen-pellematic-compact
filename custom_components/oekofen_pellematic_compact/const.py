@@ -40,6 +40,28 @@ ATTR_STATUS_DESCRIPTION = "status_description"
 ATTR_MANUFACTURER = "Ökofen"
 ATTR_MODEL = "Pellematic Compact"
 
+
+def get_api_value(data_field, default=None):
+    """Extract value from API data field.
+    
+    Supports both API formats:
+    - New format: {"val": 123, "unit": "°C", "factor": 0.1, ...}
+    - Old format: 123 (direct value as int/string)
+    
+    Args:
+        data_field: The API data field (dict or direct value)
+        default: Default value if field is None or missing "val" key
+        
+    Returns:
+        The extracted value or default
+    """
+    if data_field is None:
+        return default
+    if isinstance(data_field, dict):
+        return data_field.get("val", default)
+    # Old format: direct value (int, float, or string)
+    return data_field
+
 # Data coordinator
 DATA_COORDINATOR = "coordinator"
 
