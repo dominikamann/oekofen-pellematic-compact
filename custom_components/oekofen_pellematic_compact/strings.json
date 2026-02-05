@@ -34,7 +34,8 @@
     "error": {
       "already_configured": "Device is already configured",
       "cannot_connect": "Failed to connect to the API. Check the URL and password.",
-      "invalid_charset": "Invalid character encoding. Use a valid Python codec (e.g., iso-8859-1, utf-8, windows-1252)"
+      "invalid_charset": "Invalid character encoding. Use a valid Python codec (e.g., iso-8859-1, utf-8, windows-1252)",
+      "charset_mismatch": "Warning: API appears to use '{detected_charset}' but you selected '{user_charset}'. This may cause encoding issues with umlauts (ü, ö, ä). Consider using '{detected_charset}' instead."
     },
     "abort": {
       "already_configured": "Device is already configured"

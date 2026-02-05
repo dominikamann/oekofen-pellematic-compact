@@ -97,6 +97,63 @@ def charset_valid(charset: str) -> bool:
         return False
 
 
+def detect_charset_from_response(raw_data: bytes) -> str:
+    """Detect the most likely charset from API response data.
+    
+    This function analyzes the raw bytes from the API response and detects
+    common encoding issues to suggest the correct charset.
+    
+    Args:
+        raw_data: Raw bytes from API response
+        
+    Returns:
+        Suggested charset ('utf-8' or 'iso-8859-1')
+    """
+    # Common patterns that indicate UTF-8 wrongly decoded as ISO-8859-1
+    # ü = UTF-8: C3 BC → wrongly as ISO: Ã¼
+    # ö = UTF-8: C3 B6 → wrongly as ISO: Ã¶
+    # ä = UTF-8: C3 A4 → wrongly as ISO: Ã¤
+    # ß = UTF-8: C3 9F → wrongly as ISO: ÃŸ
+    # ° = UTF-8: C2 B0 → wrongly as ISO: Â°
+    
+    utf8_wrong_patterns = [
+        b'\xc3\xbc',  # ü as UTF-8
+        b'\xc3\xb6',  # ö as UTF-8
+        b'\xc3\xa4',  # ä as UTF-8
+        b'\xc3\x9f',  # ß as UTF-8
+        b'\xc2\xb0',  # ° as UTF-8
+    ]
+    
+    # Count how many UTF-8 multi-byte sequences we find
+    utf8_indicators = sum(1 for pattern in utf8_wrong_patterns if pattern in raw_data)
+    
+    # Try to decode as UTF-8 and check if it's valid
+    try:
+        decoded_utf8 = raw_data.decode('utf-8')
+        # If we can decode as UTF-8 and find typical German umlauts, it's likely UTF-8
+        if any(char in decoded_utf8 for char in ['ü', 'ö', 'ä', 'ß', 'Ü', 'Ö', 'Ä']):
+            return 'utf-8'
+    except UnicodeDecodeError:
+        # Can't decode as UTF-8, probably ISO-8859-1
+        pass
+    
+    # If we found UTF-8 multi-byte patterns, suggest UTF-8
+    if utf8_indicators > 0:
+        return 'utf-8'
+    
+    # Try ISO-8859-1 and look for mojibake patterns (Ã¼, Ã¶, etc.)
+    try:
+        decoded_iso = raw_data.decode('iso-8859-1')
+        # Check for common mojibake patterns indicating UTF-8 data decoded as ISO
+        if any(pattern in decoded_iso for pattern in ['Ã¼', 'Ã¶', 'Ã¤', 'Ã', 'Â°']):
+            return 'utf-8'  # Data is actually UTF-8, not ISO
+    except:
+        pass
+    
+    # Default to iso-8859-1 (old default)
+    return 'iso-8859-1'
+
+
 @callback
 def pellematic_compact_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
@@ -158,14 +215,15 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             _LOGGER.error("Failed to discover components: %s", e)
             return {}
     
-    def _fetch_api_data(self, host: str) -> dict:
+    def _fetch_api_data(self, host: str, detect_charset: bool = False) -> dict | tuple[dict, str]:
         """Fetch data from the Pellematic API (blocking).
         
         Args:
             host: The host URL to connect to
+            detect_charset: If True, return (data, suggested_charset) tuple
             
         Returns:
-            Parsed JSON data from the API
+            Parsed JSON data from the API, or (data, suggested_charset) if detect_charset=True
         """
         url = self._normalize_url(host)
         
@@ -174,10 +232,23 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         
         try:
             response = urllib.request.urlopen(req, timeout=5)
-            str_response = response.read().decode(self._charset, 'ignore')
+            raw_data = response.read()
+            
+            # Detect optimal charset if requested
+            if detect_charset:
+                suggested_charset = detect_charset_from_response(raw_data)
+                str_response = raw_data.decode(suggested_charset, 'ignore')
+            else:
+                suggested_charset = None
+                str_response = raw_data.decode(self._charset, 'ignore')
+            
             # Apply hotfix for invalid JSON
             str_response = str_response.replace("L_statetext:", 'L_statetext":')
-            return json.loads(str_response, strict=False)
+            data = json.loads(str_response, strict=False)
+            
+            if detect_charset:
+                return data, suggested_charset
+            return data
         finally:
             if response is not None:
                 response.close()
@@ -191,6 +262,9 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
     async def async_step_user(self, user_input=None):
         """Handle the initial step - connection details."""
         errors = {}
+        description_placeholders = {
+            "example_url": "http://192.168.178.91:4321/8n2L/all"
+        }
 
         if user_input is not None:
             host = user_input[CONF_HOST]
@@ -205,15 +279,35 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             elif not host_valid(host):
                 errors[CONF_HOST] = "invalid_host_ip"
             else:
-                # Store charset for API fetch
-                self._charset = charset
                 # Normalize URL (add '?' if needed)
                 normalized_host = self._normalize_url(host)
-                user_input[CONF_HOST] = normalized_host
                 
-                # Try to connect to API and auto-discover components
+                # Auto-detect optimal charset
                 try:
-                    discovered = await self._async_discover_components(normalized_host)
+                    data, suggested_charset = await self.hass.async_add_executor_job(
+                        self._fetch_api_data, normalized_host, True
+                    )
+                    
+                    # Warn if detected charset differs from user input
+                    if suggested_charset != charset:
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.warning(
+                            "Charset mismatch: user selected '%s' but API appears to use '%s'. "
+                            "This may cause encoding issues with special characters (ü, ö, ä, etc.)",
+                            charset, suggested_charset
+                        )
+                        description_placeholders["detected_charset"] = suggested_charset
+                        description_placeholders["user_charset"] = charset
+                        errors[CONF_CHARSET] = "charset_mismatch"
+                    
+                    # Store user's chosen charset (even if different from detected)
+                    self._charset = charset
+                    user_input[CONF_HOST] = normalized_host
+                    
+                    # Try to discover components
+                    from . import discover_components_from_api
+                    discovered = discover_components_from_api(data)
                     
                     if not discovered:
                         errors["base"] = "cannot_connect"
@@ -239,9 +333,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             step_id="user", 
             data_schema=STEP_USER_DATA_SCHEMA, 
             errors=errors,
-            description_placeholders={
-                "example_url": "http://192.168.178.91:4321/8n2L/all"
-            }
+            description_placeholders=description_placeholders
         )
     
     async def async_step_advanced(self, user_input=None):
