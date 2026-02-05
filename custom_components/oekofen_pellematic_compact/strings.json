@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect to your \u00d6kofen Pellematic",
-        "description": "Enter the JSON API URL (e.g., {example_url}). The system will automatically discover your configuration.",
+        "description": "Enter the JSON API URL (e.g., {example_url}). The system will automatically discover your configuration.\n\n{charset_warning}",
         "data": {
           "host": "JSON API URL (including password)",
           "name": "Integration name",
@@ -13,7 +13,7 @@
       },
       "reconfigure": {
         "title": "Reconfigure Ökofen Pellematic",
-        "description": "Update your integration settings. If you see garbled characters (ü→Ã¼, ö→Ã¶) in entity names, the system will auto-detect and suggest the correct charset.\n\nAfter changing charset, the integration will reload and entity names will be updated.",
+        "description": "Update your integration settings. If you see garbled characters (ü→Ã¼, ö→Ã¶) in entity names, the system will auto-detect and suggest the correct charset.\n\nAfter changing charset, the integration will reload and entity names will be updated.\n\n{charset_warning}",
         "data": {
           "host": "JSON API URL (including password)",
           "scan_interval": "Polling interval (seconds)",

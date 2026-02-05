@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Verbindung zur \u00d6kofen Pellematic herstellen",
-        "description": "Geben Sie die JSON-API URL ein (z.B. {example_url}). Das System erkennt automatisch Ihre Konfiguration.",
+        "description": "Geben Sie die JSON-API URL ein (z.B. {example_url}). Das System erkennt automatisch Ihre Konfiguration.\n\n{charset_warning}",
         "data": {
           "host": "JSON-API URL (inkl. Passwort)",
           "name": "Name der Integration",
@@ -13,7 +13,7 @@
       },
       "reconfigure": {
         "title": "Ökofen Pellematic neu konfigurieren",
-        "description": "Passen Sie Ihre Integrationseinstellungen an. Falls Sie verstümmelte Zeichen (ü→Ã¼, ö→Ã¶) in Entitätsnamen sehen, erkennt das System automatisch den korrekten Zeichensatz und schlägt ihn vor.\n\nNach Änderung des Zeichensatzes wird die Integration neu geladen und die Entitätsnamen werden aktualisiert.",
+        "description": "Passen Sie Ihre Integrationseinstellungen an. Falls Sie verstümmelte Zeichen (ü→Ã¼, ö→Ã¶) in Entitätsnamen sehen, erkennt das System automatisch den korrekten Zeichensatz und schlägt ihn vor.\n\nNach Änderung des Zeichensatzes wird die Integration neu geladen und die Entitätsnamen werden aktualisiert.\n\n{charset_warning}",
         "data": {
           "host": "JSON-API URL (inkl. Passwort)",
           "scan_interval": "Aktualisierungsintervall (Sekunden)",

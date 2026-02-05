@@ -263,7 +263,8 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         """Handle the initial step - connection details."""
         errors = {}
         description_placeholders = {
-            "example_url": "http://192.168.178.91:4321/8n2L/all"
+            "example_url": "http://192.168.178.91:4321/8n2L/all",
+            "charset_warning": ""  # Empty by default
         }
 
         if user_input is not None:
@@ -299,29 +300,33 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                         )
                         description_placeholders["detected_charset"] = suggested_charset
                         description_placeholders["user_charset"] = charset
-                        errors[CONF_CHARSET] = "charset_mismatch"
+                        description_placeholders["charset_warning"] = (
+                            f"⚠️ Warning: API appears to use '{suggested_charset}' but you selected '{charset}'. "
+                            f"This may cause encoding issues with umlauts (ü, ö, ä). Consider using '{suggested_charset}' instead."
+                        )
                     
-                    # Store user's chosen charset (even if different from detected)
-                    self._charset = charset
-                    user_input[CONF_HOST] = normalized_host
-                    
-                    # Try to discover components
-                    from . import discover_components_from_api
-                    discovered = discover_components_from_api(data)
-                    
-                    if not discovered:
-                        errors["base"] = "cannot_connect"
-                    else:
-                        # Store initial user input and discovered data
-                        self._user_input = user_input
-                        self._discovered_data = discovered
+                    if not errors:
+                        # Store user's chosen charset
+                        self._charset = charset
+                        user_input[CONF_HOST] = normalized_host
                         
-                        import logging
-                        _LOGGER = logging.getLogger(__name__)
-                        _LOGGER.info("Auto-discovered components: %s", discovered)
+                        # Try to discover components
+                        from . import discover_components_from_api
+                        discovered = discover_components_from_api(data)
                         
-                        # Move to advanced configuration step
-                        return await self.async_step_advanced()
+                        if not discovered:
+                            errors["base"] = "cannot_connect"
+                        else:
+                            # Store initial user input and discovered data
+                            self._user_input = user_input
+                            self._discovered_data = discovered
+                            
+                            import logging
+                            _LOGGER = logging.getLogger(__name__)
+                            _LOGGER.info("Auto-discovered components: %s", discovered)
+                            
+                            # Move to advanced configuration step
+                            return await self.async_step_advanced()
                         
                 except Exception as e:
                     import logging
@@ -383,7 +388,9 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
     async def async_step_reconfigure(self, user_input: Dict[str, Any] | None = None):
         """Handle reconfiguration."""
         errors = {}
-        description_placeholders = {}
+        description_placeholders = {
+            "charset_warning": ""  # Empty by default
+        }
     
         # Ensure the context contains the entry ID
         if "entry_id" not in self.context:
@@ -427,8 +434,12 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                         )
                         description_placeholders["detected_charset"] = suggested_charset
                         description_placeholders["user_charset"] = charset
-                        errors[CONF_CHARSET] = "charset_mismatch"
-                    else:
+                        description_placeholders["charset_warning"] = (
+                            f"⚠️ Warning: API appears to use '{suggested_charset}' but you selected '{charset}'. "
+                            f"This may cause encoding issues with umlauts (ü, ö, ä). Consider using '{suggested_charset}' instead."
+                        )
+                    
+                    if not errors:
                         # No error - proceed with update
                         user_input[CONF_HOST] = normalized_host
                         # Merge new input with current config

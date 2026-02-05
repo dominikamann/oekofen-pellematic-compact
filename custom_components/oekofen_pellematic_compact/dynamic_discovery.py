@@ -321,12 +321,21 @@ def normalize_unit(unit: str) -> str:
     
     # Fix common encoding issues where ° (degree symbol) becomes ?
     # This happens when UTF-8 data is misinterpreted as ISO-8859-1 or similar
+    # Also normalize plain "C" to "°C" as some APIs send it without degree symbol
     unit_fixed = unit.replace('?C', '°C').replace('?c', '°C')
+    if unit_fixed == "C":
+        unit_fixed = "°C"
+    
+    # Normalize zs (Zehntel-Sekunden/tenth-seconds) to s (seconds) for consistency
+    # The factor field in the data handles the 0.1 conversion
+    if unit_fixed == "zs":
+        unit_fixed = "s"
     
     # Map common units
     unit_map = {
         "Â°C": UnitOfTemperature.CELSIUS,
         "°C": UnitOfTemperature.CELSIUS,
+        "C": UnitOfTemperature.CELSIUS,  # Some APIs send C without degree symbol
         "K": UnitOfTemperature.KELVIN,
         "%": PERCENTAGE,
         "kWh": UnitOfEnergy.KILO_WATT_HOUR,
@@ -336,7 +345,6 @@ def normalize_unit(unit: str) -> str:
         "h": UnitOfTime.HOURS,
         "min": UnitOfTime.MINUTES,
         "s": UnitOfTime.SECONDS,
-        "zs": UnitOfTime.SECONDS,  # Zehntel-Sekunden (0.01s) - keep as seconds, factor handles conversion
         "Hz": UnitOfFrequency.HERTZ,
         "rps": "rps",  # Rotations per second
         "EH": "EH",  # Einheit (unit) for pressure measurements
