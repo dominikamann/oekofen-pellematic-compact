@@ -60,13 +60,19 @@ def _sanitize_oekofen_value(raw_data: Dict[str, Any], value: Any) -> Optional[An
             return value
 
     # Filter sentinel/overflow values close to min/max (e.g. 32765, 32767, -32768)
+    # Only apply this filter for large ranges to avoid filtering legitimate percentage values
     if isinstance(value, numbers.Number):
         min_v = raw_data.get("min")
         max_v = raw_data.get("max")
-        if isinstance(max_v, numbers.Number) and value >= (max_v - 2):
-            return None
-        if isinstance(min_v, numbers.Number) and value <= (min_v + 2):
-            return None
+        
+        # Only filter if we have a large range (> 1000) to avoid filtering 0% or 100% for pumps
+        if isinstance(max_v, numbers.Number) and isinstance(min_v, numbers.Number):
+            range_size = max_v - min_v
+            if range_size > 1000:  # Only for large ranges like -32768 to 32767
+                if value >= (max_v - 2):
+                    return None
+                if value <= (min_v + 2):
+                    return None
 
     return value
 
@@ -322,10 +328,12 @@ class PellematicSensor(SensorEntity):
                         self._attr_state_class = SensorStateClass.MEASUREMENT
         
         # Some keys need special handling for state class (override if needed)
-        if self._key.replace("#2", "") in (
-            'L_state', 'mode_auto', 'oekomode', 'L_wireless_name', 'L_wireless_id',
-            'L_jaz_all', 'L_jaz_heat', 'L_jaz_cool', 'L_az_all', 'L_az_heat', 
-            'L_az_cool', 'L_COP',
+        # Use case-insensitive comparison to handle any API case variations
+        key_normalized = self._key.replace("#2", "").lower()
+        if key_normalized in (
+            'l_state', 'mode_auto', 'oekomode', 'l_wireless_name', 'l_wireless_id',
+            'l_jaz_all', 'l_jaz_heat', 'l_jaz_cool', 'l_az_all', 'l_az_heat', 
+            'l_az_cool', 'l_cop',
         ):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         
