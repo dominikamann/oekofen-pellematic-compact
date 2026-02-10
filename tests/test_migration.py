@@ -52,12 +52,14 @@ async def test_migrate_entity_ids_no_entities(mock_hass):
     """Test migration with no entities."""
     with patch("custom_components.oekofen_pellematic_compact.migration.er.async_get") as mock_get_registry:
         mock_registry = Mock()
-        mock_registry.async_entries_for_config_entry = Mock(return_value=[])
+        # Return actual empty list instead of Mock
+        mock_entries = []
         mock_get_registry.return_value = mock_registry
         
-        migrated = await async_migrate_entity_ids(mock_hass, "test_entry", "test_hub")
-        
-        assert migrated == 0
+        with patch("custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry", return_value=mock_entries):
+            migrated = await async_migrate_entity_ids(mock_hass, "test_entry", "test_hub")
+            
+            assert migrated == 0
 
 
 @pytest.mark.asyncio
@@ -72,17 +74,23 @@ async def test_migrate_entity_ids_with_old_format(mock_hass):
     new_entity.entity_id = "sensor.pellematic_pe1_L_temp_act"
     new_entity.domain = "sensor"
     
+    # Return actual list instead of Mock
+    mock_entries = [old_entity, new_entity]
+    
     with patch("custom_components.oekofen_pellematic_compact.migration.er.async_get") as mock_get_registry:
-        mock_registry = Mock()
-        mock_registry.async_entries_for_config_entry = Mock(
-            return_value=[old_entity, new_entity]
-        )
-        mock_get_registry.return_value = mock_registry
-        
-        migrated = await async_migrate_entity_ids(mock_hass, "test_entry", "test_hub")
-        
-        # Should detect and preserve the old entity
-        assert migrated >= 1
+        with patch("custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry", return_value=mock_entries):
+            # Mock persistent notification
+            mock_hass.components = Mock()
+            mock_hass.components.persistent_notification = Mock()
+            mock_hass.components.persistent_notification.async_create = Mock()
+            
+            mock_registry = Mock()
+            mock_get_registry.return_value = mock_registry
+            
+            migrated = await async_migrate_entity_ids(mock_hass, "test_entry", "test_hub")
+            
+            # Should detect and preserve the old entity
+            assert migrated >= 1
 
 
 @pytest.mark.asyncio
@@ -111,12 +119,18 @@ async def test_check_and_warn_german_entities(mock_hass):
     english_entity.entity_id = "sensor.pellematic_pe1_L_temp_act"
     english_entity.domain = "sensor"
     
+    # Return actual list
+    mock_entries = [german_entity, english_entity]
+    
+    # Mock persistent notification properly
+    mock_hass.components = Mock()
+    mock_hass.components.persistent_notification = Mock()
+    mock_create_notification = Mock()
+    mock_hass.components.persistent_notification.async_create = mock_create_notification
+    
     with patch("custom_components.oekofen_pellematic_compact.migration.er.async_get") as mock_get_registry:
-        with patch("custom_components.oekofen_pellematic_compact.migration.async_create") as mock_create_notification:
+        with patch("custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry", return_value=mock_entries):
             mock_registry = Mock()
-            mock_registry.async_entries_for_config_entry = Mock(
-                return_value=[german_entity, english_entity]
-            )
             mock_get_registry.return_value = mock_registry
             
             warnings = await async_check_and_warn_entity_changes(
@@ -139,12 +153,18 @@ async def test_check_and_warn_french_entities(mock_hass):
     french_entity.entity_id = "sensor.pellematic_circuit_1_température"
     french_entity.domain = "sensor"
     
+    # Return actual list
+    mock_entries = [french_entity]
+    
+    # Mock persistent notification properly
+    mock_hass.components = Mock()
+    mock_hass.components.persistent_notification = Mock()
+    mock_create_notification = Mock()
+    mock_hass.components.persistent_notification.async_create = mock_create_notification
+    
     with patch("custom_components.oekofen_pellematic_compact.migration.er.async_get") as mock_get_registry:
-        with patch("custom_components.oekofen_pellematic_compact.migration.async_create") as mock_create_notification:
+        with patch("custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry", return_value=mock_entries):
             mock_registry = Mock()
-            mock_registry.async_entries_for_config_entry = Mock(
-                return_value=[french_entity]
-            )
             mock_get_registry.return_value = mock_registry
             
             warnings = await async_check_and_warn_entity_changes(
@@ -168,12 +188,18 @@ async def test_check_and_warn_no_warnings(mock_hass):
     entity2.entity_id = "sensor.pellematic_hk1_L_roomtemp_act"
     entity2.domain = "sensor"
     
+    # Return actual list
+    mock_entries = [entity1, entity2]
+    
+    # Mock persistent notification properly
+    mock_hass.components = Mock()
+    mock_hass.components.persistent_notification = Mock()
+    mock_create_notification = Mock()
+    mock_hass.components.persistent_notification.async_create = mock_create_notification
+    
     with patch("custom_components.oekofen_pellematic_compact.migration.er.async_get") as mock_get_registry:
-        with patch("custom_components.oekofen_pellematic_compact.migration.async_create") as mock_create_notification:
+        with patch("custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry", return_value=mock_entries):
             mock_registry = Mock()
-            mock_registry.async_entries_for_config_entry = Mock(
-                return_value=[entity1, entity2]
-            )
             mock_get_registry.return_value = mock_registry
             
             warnings = await async_check_and_warn_entity_changes(

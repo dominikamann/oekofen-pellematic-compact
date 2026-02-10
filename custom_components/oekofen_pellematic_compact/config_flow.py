@@ -16,6 +16,8 @@ from homeassistant.const import (
 from .const import (
     CONF_CHARSET,
     DEFAULT_CHARSET,
+    CONF_API_SUFFIX,
+    DEFAULT_API_SUFFIX,
     DOMAIN,
     DEFAULT_HOST,
     DEFAULT_NAME,
@@ -125,6 +127,37 @@ def detect_charset_from_response(raw_data: bytes) -> str:
         return 'iso-8859-1'
 
 
+def api_response_has_metadata(data: dict) -> bool:
+    """Check if API response contains metadata (val, unit, factor).    
+    Modern firmware (with ?) returns: {"L_ambient": {"val": "98", "unit": "°C", "factor": "0.1", ...}}
+    Old firmware (needs ??) returns: {"L_ambient": "98"}
+    
+    Args:
+        data: Parsed JSON data from API
+        
+    Returns:
+        True if response contains metadata, False if simple values only
+    """
+    # Check a few common fields to see if they contain metadata
+    # Look for nested dictionaries with 'val', 'unit', or 'factor' keys
+    for section_key, section_value in data.items():
+        if isinstance(section_value, dict):
+            # Check fields within this section
+            for field_key, field_value in section_value.items():
+                if isinstance(field_value, dict):
+                    # Check if this looks like metadata structure
+                    if any(key in field_value for key in ['val', 'unit', 'factor', 'format']):
+                        return True
+                    # Found dict but no metadata keys - might be old format
+                elif isinstance(field_value, (str, int, float, bool)):
+                    # Found simple value - this might be old firmware
+                    # But continue checking in case it's mixed
+                    continue
+    
+    # No metadata found in any field
+    return False
+
+
 @callback
 def pellematic_compact_entries(hass: HomeAssistant):
     """Return the hosts already configured."""
@@ -144,19 +177,23 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
         self._discovered_data = {}
         self._user_input = {}
         self._charset = DEFAULT_CHARSET
+        self._api_suffix = DEFAULT_API_SUFFIX
 
-    def _normalize_url(self, host: str) -> str:
-        """Normalize the URL by ensuring it ends with '?' for full API response.
+    def _normalize_url(self, host: str, suffix: str = "?") -> str:
+        """Normalize the URL by ensuring it ends with the correct API suffix.
         
         Args:
             host: The host URL
+            suffix: API suffix to use ("?" or "??")
             
         Returns:
-            Normalized URL with '?' appended if not present
+            Normalized URL with suffix appended
         """
         url = host.strip()
-        if not url.endswith('?'):
-            url += '?'
+        # Remove any existing ? or ?? at the end
+        url = url.rstrip('?')
+        # Add the specified suffix
+        url += suffix
         return url
 
     async def _async_discover_components(self, host: str) -> dict:
@@ -186,17 +223,70 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             _LOGGER.error("Failed to discover components: %s", e)
             return {}
     
-    def _fetch_api_data(self, host: str, detect_charset: bool = False) -> dict | tuple[dict, str]:
+    def _fetch_api_data(self, host: str, detect_charset: bool = False, detect_api_suffix: bool = False):
         """Fetch data from the Pellematic API (blocking).
         
         Args:
-            host: The host URL to connect to
-            detect_charset: If True, return (data, suggested_charset) tuple
+            host: The host URL to connect to (without ? or ??)
+            detect_charset: If True, detect charset from response
+            detect_api_suffix: If True, detect optimal API suffix (? or ??)
             
         Returns:
-            Parsed JSON data from the API, or (data, suggested_charset) if detect_charset=True
+            - dict: Parsed JSON data if detect_charset=False and detect_api_suffix=False
+            - tuple[dict, str]: (data, charset) if detect_charset=True and detect_api_suffix=False
+            - tuple[dict, str, str]: (data, charset, api_suffix) if both detect flags are True
         """
-        url = self._normalize_url(host)
+        # Try with current suffix first, or use default
+        suffix_to_try = self._api_suffix if hasattr(self, '_api_suffix') else DEFAULT_API_SUFFIX
+        
+        # If detecting API suffix, try both ? and ??
+        if detect_api_suffix:
+            # Try modern firmware first (single ?)
+            try:
+                data_single, charset_single = self._fetch_with_suffix(host, "?", detect_charset=True)
+                
+                # Check if response contains metadata
+                if api_response_has_metadata(data_single):
+                    # Modern firmware - has metadata with single ?
+                    if detect_charset:
+                        return data_single, charset_single, "?"
+                    return data_single, "?"
+                else:
+                    # Old firmware - try with ??
+                    import logging
+                    _LOGGER = logging.getLogger(__name__)
+                    _LOGGER.info("API response has no metadata with '?', trying '??' for old firmware compatibility")
+                    
+                    data_double, charset_double = self._fetch_with_suffix(host, "??", detect_charset=True)
+                    if detect_charset:
+                        return data_double, charset_double, "??"
+                    return data_double, "??"
+                    
+            except Exception as e:
+                import logging
+                _LOGGER = logging.getLogger(__name__)
+                _LOGGER.error("Failed to fetch with both ? and ??: %s", e)
+                raise
+        else:
+            # Not detecting suffix - use existing one
+            if detect_charset:
+                data, charset = self._fetch_with_suffix(host, suffix_to_try, detect_charset=True)
+                return data, charset
+            else:
+                return self._fetch_with_suffix(host, suffix_to_try, detect_charset=False)
+    
+    def _fetch_with_suffix(self, host: str, suffix: str, detect_charset: bool = False):
+        """Fetch data with specific API suffix (blocking).
+        
+        Args:
+            host: The host URL to connect to (without ? or ??)
+            suffix: API suffix to use ("?" or "??")
+            detect_charset: If True, return tuple (data, charset)
+            
+        Returns:
+            Parsed JSON data, or tuple (data, charset) if detect_charset=True
+        """
+        url = self._normalize_url(host, suffix)
         
         req = urllib.request.Request(url)
         response = None
@@ -251,32 +341,46 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             elif not host_valid(host):
                 errors[CONF_HOST] = "invalid_host_ip"
             else:
-                # Normalize URL (add '?' if needed)
-                normalized_host = self._normalize_url(host)
+                # Clean host URL (remove any existing ? or ??)
+                clean_host = host.strip().rstrip('?')
                 
-                # Auto-detect optimal charset
+                # Auto-detect optimal charset and API suffix
+                # If user provided a charset different from default, respect their choice
+                user_provided_charset = user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
                 try:
-                    data, suggested_charset = await self.hass.async_add_executor_job(
-                        self._fetch_api_data, normalized_host, True
+                    # Detect both charset and API suffix (? vs ??)
+                    data, suggested_charset, suggested_suffix = await self.hass.async_add_executor_job(
+                        self._fetch_api_data, clean_host, True, True
                     )
                     
-                    # Use the detected charset instead of user input
-                    charset = suggested_charset
-                    user_input[CONF_CHARSET] = suggested_charset
-                    
-                    # Log if we changed the charset
-                    if suggested_charset != user_input.get(CONF_CHARSET, DEFAULT_CHARSET):
+                    # Only override charset if user didn't explicitly change it from default
+                    # This allows users to manually override auto-detection if needed
+                    if user_provided_charset == DEFAULT_CHARSET:
+                        charset = suggested_charset
+                        user_input[CONF_CHARSET] = suggested_charset
+                        
                         import logging
                         _LOGGER = logging.getLogger(__name__)
                         _LOGGER.info(
-                            "Auto-detected charset '%s' (user selected '%s')",
-                            suggested_charset, user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
+                            "Auto-detected charset '%s' and API suffix '%s'",
+                            suggested_charset, suggested_suffix
+                        )
+                    else:
+                        # User explicitly set a charset - respect their choice
+                        charset = user_provided_charset
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info(
+                            "Using user-provided charset '%s', auto-detected API suffix '%s'",
+                            user_provided_charset, suggested_suffix
                         )
                     
                     if not errors:
-                        # Store the detected charset
+                        # Store the charset and API suffix
                         self._charset = charset
-                        user_input[CONF_HOST] = normalized_host
+                        self._api_suffix = suggested_suffix
+                        user_input[CONF_HOST] = clean_host
+                        user_input[CONF_API_SUFFIX] = suggested_suffix
                         
                         # Try to discover components
                         from . import discover_components_from_api
@@ -301,6 +405,8 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                     _LOGGER = logging.getLogger(__name__)
                     _LOGGER.error("Failed to connect or discover: %s", e)
                     errors["base"] = "cannot_connect"
+                    # Ensure charset has a fallback value
+                    user_input.setdefault(CONF_CHARSET, DEFAULT_CHARSET)
 
         return self.async_show_form(
             step_id="user", 
@@ -382,30 +488,60 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             elif not host_valid(host):
                 errors[CONF_HOST] = "invalid_host_ip"
             else:
-                # Normalize URL (add '?' if needed)
-                normalized_host = self._normalize_url(host)
+                # Clean host URL (remove any existing ? or ??)
+                clean_host = host.strip().rstrip('?')
                 
-                # Auto-detect optimal charset and use it
+                # Check if user manually changed charset from current config
+                current_charset = current_config.get(CONF_CHARSET, DEFAULT_CHARSET)
+                current_host = current_config.get(CONF_HOST, DEFAULT_HOST).rstrip('?')
+                user_charset = user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
+                charset_manually_changed = (user_charset != current_charset)
+                host_changed = (clean_host != current_host)
+                
+                # Auto-detect optimal charset and API suffix
                 try:
-                    data, suggested_charset = await self.hass.async_add_executor_job(
-                        self._fetch_api_data, normalized_host, True
+                    # Detect both charset and API suffix
+                    data, suggested_charset, suggested_suffix = await self.hass.async_add_executor_job(
+                        self._fetch_api_data, clean_host, True, True
                     )
                     
-                    # Use the detected charset instead of user input
-                    user_input[CONF_CHARSET] = suggested_charset
-                    
-                    # Log if we changed the charset
-                    if suggested_charset != charset:
+                    # Only override charset if user didn't manually change it
+                    # BUT: Always auto-detect if host changed (might be different API)
+                    if charset_manually_changed:
+                        # User explicitly changed charset - respect their choice
                         import logging
                         _LOGGER = logging.getLogger(__name__)
                         _LOGGER.info(
-                            "Reconfigure: Auto-detected charset '%s' (user selected '%s')",
-                            suggested_charset, charset
+                            "Reconfigure: Using user-selected charset '%s', auto-detected API suffix '%s'",
+                            user_charset, suggested_suffix
                         )
+                        # Keep user's choice
+                        user_input[CONF_CHARSET] = user_charset
+                    elif host_changed:
+                        # Host changed - auto-detect for new API
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info(
+                            "Reconfigure: Host changed, auto-detected charset '%s' and API suffix '%s'",
+                            suggested_charset, suggested_suffix
+                        )
+                        user_input[CONF_CHARSET] = suggested_charset
+                    else:
+                        # User didn't change charset or host - use auto-detection
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info(
+                            "Reconfigure: Auto-detected charset '%s' and API suffix '%s'",
+                            suggested_charset, suggested_suffix
+                        )
+                        user_input[CONF_CHARSET] = suggested_charset
+                    
+                    # Always save the detected API suffix
+                    user_input[CONF_API_SUFFIX] = suggested_suffix
                     
                     if not errors:
                         # No error - proceed with update
-                        user_input[CONF_HOST] = normalized_host
+                        user_input[CONF_HOST] = clean_host
                         # Merge new input with current config
                         updated_config = {**current_config, **user_input}
                         self.hass.config_entries.async_update_entry(
@@ -420,6 +556,9 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                     _LOGGER = logging.getLogger(__name__)
                     _LOGGER.error("Failed to connect during reconfigure: %s", e)
                     errors["base"] = "cannot_connect"
+                    # Ensure charset and API suffix have fallback values
+                    user_input.setdefault(CONF_CHARSET, current_config.get(CONF_CHARSET, DEFAULT_CHARSET))
+                    user_input.setdefault(CONF_API_SUFFIX, current_config.get(CONF_API_SUFFIX, DEFAULT_API_SUFFIX))
     
         # Create a schema with current configuration as defaults
         data_schema = vol.Schema(

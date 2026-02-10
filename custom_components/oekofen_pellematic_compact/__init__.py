@@ -20,6 +20,8 @@ from .migration import async_migrate_entity_ids, async_check_and_warn_entity_cha
 from .const import (
     CONF_CHARSET,
     DEFAULT_CHARSET,
+    CONF_API_SUFFIX,
+    DEFAULT_API_SUFFIX,
     DEFAULT_HOST,
     DOMAIN,
     DEFAULT_NAME,
@@ -75,6 +77,161 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+def _api_response_has_metadata(data: dict) -> bool:
+    """Check if API response contains metadata (val, unit, factor).
+    
+    Args:
+        data: Parsed JSON data from API
+        
+    Returns:
+        True if response contains metadata, False if simple values only
+    """
+    for section_key, section_value in data.items():
+        if isinstance(section_value, dict):
+            for field_key, field_value in section_value.items():
+                if isinstance(field_value, dict):
+                    if any(key in field_value for key in ['val', 'unit', 'factor', 'format']):
+                        return True
+    return False
+
+
+def _detect_api_config(host: str) -> tuple[str, str]:
+    """Detect charset and API suffix from API response (blocking function for executor).
+    
+    Args:
+        host: The API host URL (without ? or ??)
+        
+    Returns:
+        Tuple of (charset, api_suffix)
+        
+    Raises:
+        Exception: If API is unreachable or invalid
+    """
+    if not host or host == DEFAULT_HOST:
+        raise ValueError(f"Invalid host: {host}")
+    
+    # Remove any existing suffix
+    clean_host = host.strip().rstrip('?')
+    charset = DEFAULT_CHARSET  # Default fallback
+    
+    # Try with single ? first (modern firmware)
+    url_single = clean_host + '?'
+    req = urllib.request.Request(url_single)
+    response = None
+    
+    try:
+        response = urllib.request.urlopen(req, timeout=5)
+        raw_data = response.read()
+        
+        if not raw_data:
+            raise ValueError("Empty API response")
+        
+        # Detect charset
+        try:
+            decoded_utf8 = raw_data.decode('utf-8')
+            if any(ord(char) > 127 for char in decoded_utf8):
+                charset = 'utf-8'
+            else:
+                charset = 'utf-8'
+        except UnicodeDecodeError:
+            charset = 'iso-8859-1'
+        
+        # Decode and parse
+        str_response = raw_data.decode(charset, 'ignore')
+        str_response = str_response.replace("L_statetext:", 'L_statetext":')
+        data = json.loads(str_response, strict=False)
+        
+        # Check if metadata exists
+        if _api_response_has_metadata(data):
+            # Modern firmware - has metadata with single ?
+            return charset, '?'
+        else:
+            # Old firmware - try with ??
+            _LOGGER.info("API response has no metadata with '?', trying '??' for old firmware")
+    except Exception as e:
+        # If single ? fails completely, try with ??
+        _LOGGER.warning("Failed to fetch with '?': %s, trying '??'", e)
+    finally:
+        if response is not None:
+            response.close()
+    
+    # Try with double ?? (old firmware)
+    url_double = clean_host + '??'
+    req = urllib.request.Request(url_double)
+    response = None
+    
+    try:
+        response = urllib.request.urlopen(req, timeout=5)
+        raw_data = response.read()
+        
+        if not raw_data:
+            raise ValueError("Empty API response")
+        
+        # Re-detect charset for ?? response
+        try:
+            decoded_utf8 = raw_data.decode('utf-8')
+            if any(ord(char) > 127 for char in decoded_utf8):
+                charset = 'utf-8'
+            else:
+                charset = 'utf-8'
+        except UnicodeDecodeError:
+            charset = 'iso-8859-1'
+        
+        # Decode and return
+        str_response = raw_data.decode(charset, 'ignore')
+        str_response = str_response.replace("L_statetext:", 'L_statetext":')
+        return charset, '??'
+    finally:
+        if response is not None:
+            response.close()
+
+
+def _detect_api_charset(host: str) -> str:
+    """Detect charset from API response (blocking function for executor).
+    
+    Args:
+        host: The API host URL
+        
+    Returns:
+        Detected charset ('utf-8' or 'iso-8859-1')
+        
+    Raises:
+        Exception: If API is unreachable or invalid
+    """
+    if not host or host == DEFAULT_HOST:
+        # Don't try to connect to placeholder/invalid hosts
+        raise ValueError(f"Invalid host: {host}")
+    
+    url = host.strip()
+    if not url.endswith('?'):
+        url += '?'
+    
+    req = urllib.request.Request(url)
+    response = None
+    
+    try:
+        response = urllib.request.urlopen(req, timeout=5)
+        raw_data = response.read()
+        
+        if not raw_data:
+            raise ValueError("Empty API response")
+        
+        # Try UTF-8 first with strict decoding
+        try:
+            decoded_utf8 = raw_data.decode('utf-8')
+            # Check if it contains any non-ASCII characters
+            if any(ord(char) > 127 for char in decoded_utf8):
+                return 'utf-8'
+            # Only ASCII characters - default to UTF-8 (modern standard)
+            return 'utf-8'
+        except UnicodeDecodeError:
+            # Can't decode as UTF-8 - it's ISO-8859-1
+            return 'iso-8859-1'
+    finally:
+        if response is not None:
+            response.close()
+
+
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate old config entry to new version."""
     _LOGGER.debug("Migrating config entry from version %s", entry.version)
@@ -95,6 +252,27 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         new_data.setdefault(CONF_NUM_OF_WIRELESS_SENSORS, DEFAULT_NUM_OF_WIRELESS_SENSORS)
         new_data.setdefault(CONF_NUM_OF_BUFFER_STORAGE, DEFAULT_NUM_OF_BUFFER_STORAGE)
         new_data.setdefault(CONF_SOLAR_CIRCUIT, False)
+        
+        # Auto-detect charset and API suffix if not present
+        if CONF_CHARSET not in new_data or CONF_API_SUFFIX not in new_data:
+            try:
+                host = new_data.get(CONF_HOST, DEFAULT_HOST).rstrip('?')
+                detected_charset, detected_suffix = await hass.async_add_executor_job(
+                    _detect_api_config, host
+                )
+                new_data[CONF_CHARSET] = detected_charset
+                new_data[CONF_API_SUFFIX] = detected_suffix
+                _LOGGER.info(
+                    "Migration V1→V2: Auto-detected charset '%s' and API suffix '%s' for %s",
+                    detected_charset, detected_suffix, host
+                )
+            except Exception as e:
+                _LOGGER.warning(
+                    "Migration V1→V2: Failed to auto-detect config, using defaults: %s",
+                    e
+                )
+                new_data[CONF_CHARSET] = DEFAULT_CHARSET
+                new_data[CONF_API_SUFFIX] = DEFAULT_API_SUFFIX
         
         hass.config_entries.async_update_entry(entry, data=new_data, version=2)
         _LOGGER.info("Migration to version 2 successful")
@@ -276,14 +454,49 @@ def discover_components_from_api(data: Dict[str, Any]) -> Dict[str, Any]:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a Ökofen Pellematic Component."""
-    host = entry.data[CONF_HOST]
+    host = entry.data[CONF_HOST].rstrip('?')  # Remove any existing suffix
     name = entry.data[CONF_NAME]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
-    charset = entry.data.get(CONF_CHARSET, DEFAULT_CHARSET)
+    
+    # CRITICAL: Auto-detect and save charset/api_suffix if missing
+    # This is a fallback for installations that were migrated before auto-detection was added
+    if CONF_CHARSET not in entry.data or CONF_API_SUFFIX not in entry.data:
+        _LOGGER.warning(
+            "Setup %s: CONF_CHARSET or CONF_API_SUFFIX missing! Attempting auto-detection...",
+            name
+        )
+        try:
+            detected_charset, detected_suffix = await hass.async_add_executor_job(
+                _detect_api_config, host
+            )
+            # Update the config entry with detected values
+            new_data = {
+                **entry.data,
+                CONF_CHARSET: detected_charset,
+                CONF_API_SUFFIX: detected_suffix
+            }
+            hass.config_entries.async_update_entry(entry, data=new_data)
+            charset = detected_charset
+            api_suffix = detected_suffix
+            _LOGGER.info(
+                "Setup %s: Auto-detected and saved charset '%s' and API suffix '%s'",
+                name, detected_charset, detected_suffix
+            )
+        except Exception as e:
+            _LOGGER.error(
+                "Setup %s: Failed to auto-detect config, using defaults: %s",
+                name, e
+            )
+            charset = DEFAULT_CHARSET
+            api_suffix = DEFAULT_API_SUFFIX
+    else:
+        charset = entry.data[CONF_CHARSET]
+        api_suffix = entry.data[CONF_API_SUFFIX]
 
-    _LOGGER.debug("Setup Pellematic Hub %s, %s", DOMAIN, name)
+    _LOGGER.debug("Setup Pellematic Hub %s, %s (charset: %s, API suffix: %s)", 
+                  DOMAIN, name, charset, api_suffix)
 
-    hub = PellematicHub(hass, name, host, scan_interval, charset)
+    hub = PellematicHub(hass, name, host, scan_interval, charset, api_suffix)
 
     # Pre-fetch API data before setting up platforms
     # This ensures all platforms have data available immediately
@@ -402,11 +615,13 @@ class PellematicHub:
         host: str,
         scan_interval: int,
         charset: str = DEFAULT_CHARSET,
+        api_suffix: str = DEFAULT_API_SUFFIX,
     ) -> None:
         """Initialize the hub."""
         self._hass = hass
         self._host = host
         self._charset = charset
+        self._api_suffix = api_suffix
         self._lock = asyncio.Lock()
         self._name = name
         self._scan_interval = timedelta(seconds=scan_interval)
@@ -473,13 +688,13 @@ class PellematicHub:
         """Get data from api"""
         try:
             result = await self._hass.async_add_executor_job(
-                fetch_data, self._host, self._charset
+                fetch_data, self._host, self._charset, self._api_suffix
             )
             self.data = result
             return True
         except Exception as e:
             _LOGGER.error("Failed to fetch Pellematic data: %s", e)
-            # Keep existing data if available
+# Keep existing data if available
             return False
     
     async def async_get_data(self, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
@@ -504,22 +719,22 @@ class PellematicHub:
         return discover_components_from_api(self.data)
 
 
-def fetch_data(url: str, charset: str = DEFAULT_CHARSET) -> Dict[str, Any]:
+def fetch_data(url: str, charset: str = DEFAULT_CHARSET, api_suffix: str = DEFAULT_API_SUFFIX) -> Dict[str, Any]:
     """Get data from API.
     
     Args:
-        url: API endpoint URL
+        url: API endpoint URL (without ? or ??)
         charset: Character encoding for response
+        api_suffix: API suffix to use ("?" for modern firmware, "??" for old firmware)
         
     Returns:
         Parsed JSON data from API
     """
-    # Strip any leading/trailing whitespace
-    url = url.strip()
+    # Strip any leading/trailing whitespace and existing suffix
+    url = url.strip().rstrip('?')
 
-    # Ensure URL ends with '?' for full API response
-    if not url.endswith('?'):
-        url += '?'
+    # Append the API suffix
+    url += api_suffix
         
     req = urllib.request.Request(url)
     response = None

@@ -206,10 +206,13 @@ def test_total_entities_all_fixtures():
         ("api_response_base_csta.json", 187),  # -1 after binary→select fix
         ("api_response_base_srqu.json", 394),
         ("api_response_base_da.json", 87),
-        ("api_response_n4n.json", 160),
-        ("api_response_mr.json", 91),
-        ("api_response_3bk.json", 123),
-        ("api_response_be72.json", 118),
+        ("api_response_n4n.json", 165),
+        ("api_response_mr.json", 95),
+        ("api_response_3bk.json", 127),
+        ("api_response_be72.json", 124),
+        ("api_response_will.json", 152),
+        ("api_response_poolandeco.json", 111),
+        ("api_v352_r49.json", 184),  # Modern firmware v3.52 with weather and forecast
     ]
     
     total_entities = 0
@@ -225,4 +228,4 @@ def test_total_entities_all_fixtures():
         total_entities += count
     
     # Total entities across all fixtures (international names, binary→select fix)
-    assert total_entities == 2263
+    assert total_entities == 2729
