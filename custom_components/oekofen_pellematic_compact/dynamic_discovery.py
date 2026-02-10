@@ -1,4 +1,4 @@
-T"""Dynamic sensor discovery from API metadata."""
+"""Dynamic sensor discovery from API metadata."""
 
 import logging
 from typing import Any, Optional
