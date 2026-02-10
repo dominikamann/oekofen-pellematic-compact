@@ -1,4 +1,4 @@
-"""Dynamic sensor discovery from API metadata."""
+T"""Dynamic sensor discovery from API metadata."""
 
 import logging
 from typing import Any, Optional
@@ -121,6 +121,10 @@ def is_number(data: dict) -> bool:
     
     Note: This function should only be called for writable entities (without L_ prefix).
     Read-only sensors with min/max values are filtered out earlier in the discovery logic.
+    
+    Old firmware (v3.24.0 and earlier) does not provide a 'writeable' flag.
+    We detect writable number entities by the presence of min/max fields.
+    This ensures backwards compatibility with older Ökofen firmware versions.
     """
     # Numbers have min and max values and are writable (no L_ prefix)
     return "min" in data and "max" in data
