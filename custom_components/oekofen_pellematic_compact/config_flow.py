@@ -102,8 +102,9 @@ def charset_valid(charset: str) -> bool:
 def detect_charset_from_response(raw_data: bytes) -> str:
     """Detect the most likely charset from API response data.
     
-    This function analyzes the raw bytes from the API response and detects
-    common encoding issues to suggest the correct charset.
+    This function handles mixed-encoding scenarios where the Ökofen API
+    may send UTF-8 for most fields but ISO-8859-1 bytes in some values
+    (e.g., location names with umlauts).
     
     Args:
         raw_data: Raw bytes from API response
@@ -111,19 +112,36 @@ def detect_charset_from_response(raw_data: bytes) -> str:
     Returns:
         Suggested charset ('utf-8' or 'iso-8859-1')
     """
-    # Try UTF-8 first with strict decoding (no ignore)
+    # Try UTF-8 first with strict decoding
     try:
         decoded_utf8 = raw_data.decode('utf-8')
-        # Successfully decoded as UTF-8
-        # Check if it contains any non-ASCII characters (multi-byte UTF-8)
-        # This works for all languages: German, French, Italian, Spanish, Polish, etc.
+        # Successfully decoded as UTF-8 - this is the modern standard
+        # Check if it contains any non-ASCII characters
         if any(ord(char) > 127 for char in decoded_utf8):
             # Contains non-ASCII characters and decodes cleanly - it's UTF-8
             return 'utf-8'
         # Only ASCII characters - could be either, default to UTF-8 (modern standard)
         return 'utf-8'
     except UnicodeDecodeError:
-        # Can't decode as UTF-8 - it's ISO-8859-1 or another single-byte encoding
+        # UTF-8 strict decode failed - could be ISO-8859-1 or mixed encoding
+        # Try UTF-8 with replace to see how many characters are problematic
+        decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')
+        replacement_count = decoded_utf8_replace.count('�')
+        
+        # Count non-ASCII characters
+        non_ascii_count = sum(1 for char in decoded_utf8_replace if ord(char) > 127)
+        
+        # If replacement characters are less than 20% of non-ASCII chars,
+        # it's likely mixed encoding with mostly UTF-8 → prefer UTF-8
+        # Increased threshold from 10% to 20% to handle smaller responses
+        if non_ascii_count > 0 and replacement_count / non_ascii_count < 0.2:
+            # Mixed encoding detected: mostly UTF-8 with some ISO-8859-1 bytes
+            # Prefer UTF-8 as it handles the majority of the content correctly
+            # Individual ISO-8859-1 bytes will show as � which is acceptable
+            # for rare fields like location names
+            return 'utf-8'
+        
+        # Too many problematic characters - it's likely all ISO-8859-1
         return 'iso-8859-1'
 
 

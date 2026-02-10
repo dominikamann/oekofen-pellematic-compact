@@ -126,7 +126,7 @@ def _detect_api_config(host: str) -> tuple[str, str]:
         if not raw_data:
             raise ValueError("Empty API response")
         
-        # Detect charset
+        # Detect charset with mixed encoding support
         try:
             decoded_utf8 = raw_data.decode('utf-8')
             if any(ord(char) > 127 for char in decoded_utf8):
@@ -134,7 +134,18 @@ def _detect_api_config(host: str) -> tuple[str, str]:
             else:
                 charset = 'utf-8'
         except UnicodeDecodeError:
-            charset = 'iso-8859-1'
+            # Try UTF-8 with replace to detect mixed encoding
+            decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')
+            replacement_count = decoded_utf8_replace.count('�')
+            non_ascii_count = sum(1 for char in decoded_utf8_replace if ord(char) > 127)
+            
+            # If less than 20% of non-ASCII chars are problematic, prefer UTF-8
+            # This handles mixed encoding where most content is UTF-8 but some fields have ISO-8859-1 bytes
+            # Increased threshold from 10% to 20% to handle smaller responses
+            if non_ascii_count > 0 and replacement_count / non_ascii_count < 0.2:
+                charset = 'utf-8'
+            else:
+                charset = 'iso-8859-1'
         
         # Decode and parse
         str_response = raw_data.decode(charset, 'ignore')
@@ -167,7 +178,7 @@ def _detect_api_config(host: str) -> tuple[str, str]:
         if not raw_data:
             raise ValueError("Empty API response")
         
-        # Re-detect charset for ?? response
+        # Re-detect charset for ?? response with mixed encoding support
         try:
             decoded_utf8 = raw_data.decode('utf-8')
             if any(ord(char) > 127 for char in decoded_utf8):
@@ -175,7 +186,18 @@ def _detect_api_config(host: str) -> tuple[str, str]:
             else:
                 charset = 'utf-8'
         except UnicodeDecodeError:
-            charset = 'iso-8859-1'
+            # Try UTF-8 with replace to detect mixed encoding
+            decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')
+            replacement_count = decoded_utf8_replace.count('�')
+            non_ascii_count = sum(1 for char in decoded_utf8_replace if ord(char) > 127)
+            
+            # If less than 20% of non-ASCII chars are problematic, prefer UTF-8
+            # This handles mixed encoding where most content is UTF-8 but some fields have ISO-8859-1 bytes
+            # Increased threshold from 10% to 20% to handle smaller responses
+            if non_ascii_count > 0 and replacement_count / non_ascii_count < 0.2:
+                charset = 'utf-8'
+            else:
+                charset = 'iso-8859-1'
         
         # Decode and return
         str_response = raw_data.decode(charset, 'ignore')
@@ -216,7 +238,7 @@ def _detect_api_charset(host: str) -> str:
         if not raw_data:
             raise ValueError("Empty API response")
         
-        # Try UTF-8 first with strict decoding
+        # Try UTF-8 first with strict decoding and mixed encoding support
         try:
             decoded_utf8 = raw_data.decode('utf-8')
             # Check if it contains any non-ASCII characters
@@ -225,8 +247,18 @@ def _detect_api_charset(host: str) -> str:
             # Only ASCII characters - default to UTF-8 (modern standard)
             return 'utf-8'
         except UnicodeDecodeError:
-            # Can't decode as UTF-8 - it's ISO-8859-1
-            return 'iso-8859-1'
+            # Try UTF-8 with replace to detect mixed encoding
+            decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')
+            replacement_count = decoded_utf8_replace.count('�')
+            non_ascii_count = sum(1 for char in decoded_utf8_replace if ord(char) > 127)
+            
+            # If less than 20% of non-ASCII chars are problematic, prefer UTF-8
+            # This handles mixed encoding where most content is UTF-8 but some fields have ISO-8859-1 bytes
+            # Increased threshold from 10% to 20% to handle smaller responses
+            if non_ascii_count > 0 and replacement_count / non_ascii_count < 0.2:
+                return 'utf-8'
+            else:
+                return 'iso-8859-1'
     finally:
         if response is not None:
             response.close()
