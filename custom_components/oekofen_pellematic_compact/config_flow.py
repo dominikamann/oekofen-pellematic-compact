@@ -58,28 +58,6 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     }
 )
 
-# Step 2: Show discovered values and allow manual adjustment
-def get_advanced_schema(discovered: dict) -> vol.Schema:
-    """Generate schema with discovered values as defaults."""
-    return vol.Schema(
-        {
-            vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
-            vol.Optional(CONF_NUM_OF_HEATING_CIRCUIT, default=discovered.get(CONF_NUM_OF_HEATING_CIRCUIT, DEFAULT_NUM_OF_HEATING_CIRCUIT)): int,
-            vol.Optional(CONF_NUM_OF_HOT_WATER, default=discovered.get(CONF_NUM_OF_HOT_WATER, DEFAULT_NUM_OF_HOT_WATER)): int,
-            vol.Optional(CONF_NUM_OF_PELLEMATIC_HEATER, default=discovered.get(CONF_NUM_OF_PELLEMATIC_HEATER, DEFAULT_NUM_OF_PELLEMATIC_HEATER)): int,
-            vol.Optional(CONF_SOLAR_CIRCUIT, default=discovered.get(CONF_SOLAR_CIRCUIT, False)): bool,
-            vol.Optional(CONF_NUM_OF_SMART_PV_SE, default=discovered.get(CONF_NUM_OF_SMART_PV_SE, DEFAULT_NUM_OF_SMART_PV_SE)): int,
-            vol.Optional(CONF_NUM_OF_SMART_PV_SK, default=discovered.get(CONF_NUM_OF_SMART_PV_SK, DEFAULT_NUM_OF_SMART_PV_SK)): int,   
-            vol.Optional(CONF_NUM_OF_HEAT_PUMPS, default=discovered.get(CONF_NUM_OF_HEAT_PUMPS, DEFAULT_NUM_OF_HEAT_PUMPS)): int,    
-            vol.Optional(CONF_NUM_OF_WIRELESS_SENSORS, default=discovered.get(CONF_NUM_OF_WIRELESS_SENSORS, DEFAULT_NUM_OF_WIRELESS_SENSORS)): int,
-            vol.Optional(CONF_NUM_OF_BUFFER_STORAGE, default=discovered.get(CONF_NUM_OF_BUFFER_STORAGE, DEFAULT_NUM_OF_BUFFER_STORAGE)): int,
-            vol.Optional(CONF_CIRCULATOR, default=discovered.get(CONF_CIRCULATOR, False)): bool,
-            vol.Optional(CONF_SMART_PV, default=discovered.get(CONF_SMART_PV, False)): bool,
-            vol.Optional(CONF_STIRLING, default=discovered.get(CONF_STIRLING, False)): bool,
-        }
-    )
-
-
 def host_valid(host):
     """Return True if hostname or IP address is valid."""
     return True
@@ -195,8 +173,6 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
 
     def __init__(self):
         """Initialize the config flow."""
-        self._discovered_data = {}
-        self._user_input = {}
         self._charset = DEFAULT_CHARSET
         self._api_suffix = DEFAULT_API_SUFFIX
 
@@ -450,13 +426,32 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                             user_provided_charset, suggested_suffix
                         )
                     
+                    # Only override old_firmware if user didn't explicitly change it from default
+                    # This allows users to manually override auto-detection if needed
+                    if should_auto_detect_old_firmware:
+                        user_input[CONF_OLD_FIRMWARE] = detected_old_firmware
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info(
+                            "Auto-detected old_firmware flag: %s",
+                            detected_old_firmware
+                        )
+                    else:
+                        # User explicitly set old_firmware - respect their choice
+                        user_input[CONF_OLD_FIRMWARE] = user_provided_old_firmware
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info(
+                            "Using user-provided old_firmware flag: %s",
+                            user_provided_old_firmware
+                        )
+                    
                     if not errors:
                         # Store the charset and API suffix
                         self._charset = charset
                         self._api_suffix = suggested_suffix
                         user_input[CONF_HOST] = clean_host
                         user_input[CONF_API_SUFFIX] = suggested_suffix
-                        user_input[CONF_OLD_FIRMWARE] = detected_old_firmware
                         
                         # Try to discover components
                         from . import discover_components_from_api
@@ -465,24 +460,30 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                         if not discovered:
                             errors["base"] = "cannot_connect"
                         else:
-                            # Store initial user input and discovered data
-                            self._user_input = user_input
-                            self._discovered_data = discovered
-                            
                             import logging
                             _LOGGER = logging.getLogger(__name__)
                             _LOGGER.info("Auto-discovered components: %s", discovered)
                             
-                            # Move to advanced configuration step
-                            return await self.async_step_advanced()
+                            # Merge user input with discovered components and create entry directly
+                            final_config = {**discovered, **user_input}
+                            
+                            # Set unique ID and create entry
+                            await self.async_set_unique_id(final_config[CONF_HOST])
+                            self._abort_if_unique_id_configured()
+                            
+                            return self.async_create_entry(
+                                title=final_config[CONF_NAME], 
+                                data=final_config
+                            )
                         
                 except Exception as e:
                     import logging
                     _LOGGER = logging.getLogger(__name__)
                     _LOGGER.error("Failed to connect or discover: %s", e)
                     errors["base"] = "cannot_connect"
-                    # Ensure charset has a fallback value
+                    # Ensure charset and old_firmware have fallback values
                     user_input.setdefault(CONF_CHARSET, DEFAULT_CHARSET)
+                    user_input.setdefault(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE)
 
         return self.async_show_form(
             step_id="user", 
@@ -491,50 +492,6 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             description_placeholders=description_placeholders
         )
     
-    async def async_step_advanced(self, user_input=None):
-        """Handle advanced configuration step - show discovered values and allow adjustments."""
-        errors = {}
-        
-        if user_input is not None:
-            # Merge all configuration: base input + discovered + user adjustments
-            final_config = {
-                **self._user_input,
-                **self._discovered_data,
-                **user_input,
-            }
-            
-            # Set unique ID and create entry
-            await self.async_set_unique_id(final_config[CONF_HOST])
-            self._abort_if_unique_id_configured()
-            
-            return self.async_create_entry(
-                title=final_config[CONF_NAME], 
-                data=final_config
-            )
-        
-        # Generate schema with discovered values as defaults
-        advanced_schema = get_advanced_schema(self._discovered_data)
-        
-        # Create description with discovered components summary
-        discovered_summary = []
-        if self._discovered_data.get(CONF_NUM_OF_HEATING_CIRCUIT, 0) > 0:
-            discovered_summary.append(f"Heating circuits: {self._discovered_data[CONF_NUM_OF_HEATING_CIRCUIT]}")
-        if self._discovered_data.get(CONF_NUM_OF_HOT_WATER, 0) > 0:
-            discovered_summary.append(f"Hot water: {self._discovered_data[CONF_NUM_OF_HOT_WATER]}")
-        if self._discovered_data.get(CONF_NUM_OF_PELLEMATIC_HEATER, 0) > 0:
-            discovered_summary.append(f"Heaters: {self._discovered_data[CONF_NUM_OF_PELLEMATIC_HEATER]}")
-        
-        summary_text = "\n".join(discovered_summary) if discovered_summary else "No components discovered"
-        
-        return self.async_show_form(
-            step_id="advanced",
-            data_schema=advanced_schema,
-            errors=errors,
-            description_placeholders={
-                "discovered": summary_text
-            }
-        )
-        
     async def async_step_reconfigure(self, user_input: Dict[str, Any] | None = None):
         """Handle reconfiguration."""
         errors = {}
@@ -619,15 +576,43 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                         )
                         user_input[CONF_CHARSET] = suggested_charset
                     
-                    # Always save the detected API suffix and old_firmware flag
+                    # Always save the detected API suffix
                     user_input[CONF_API_SUFFIX] = suggested_suffix
-                    user_input[CONF_OLD_FIRMWARE] = detected_old_firmware
+                    
+                    # Only override old_firmware if user didn't manually change it
+                    if old_firmware_manually_changed:
+                        # User explicitly changed old_firmware - respect their choice
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info(
+                            "Reconfigure: Using user-selected old_firmware flag: %s",
+                            user_old_firmware
+                        )
+                        user_input[CONF_OLD_FIRMWARE] = user_old_firmware
+                    else:
+                        # Auto-detect old_firmware
+                        import logging
+                        _LOGGER = logging.getLogger(__name__)
+                        _LOGGER.info(
+                            "Reconfigure: Auto-detected old_firmware flag: %s",
+                            detected_old_firmware
+                        )
+                        user_input[CONF_OLD_FIRMWARE] = detected_old_firmware
+                    
+                    # Auto-discover component counts (always, to keep config fresh)
+                    from . import discover_components_from_api
+                    discovered = discover_components_from_api(data)
+                    
+                    import logging
+                    _LOGGER = logging.getLogger(__name__)
+                    _LOGGER.info("Reconfigure: Auto-discovered components: %s", discovered)
                     
                     if not errors:
                         # No error - proceed with update
                         user_input[CONF_HOST] = clean_host
-                        # Merge new input with current config
-                        updated_config = {**current_config, **user_input}
+                        # Merge: current config + discovered components + user input
+                        # User input takes precedence to preserve scan_interval, charset, old_firmware
+                        updated_config = {**current_config, **discovered, **user_input}
                         self.hass.config_entries.async_update_entry(
                             config_entry,
                             data=updated_config,
@@ -645,24 +630,12 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                     user_input.setdefault(CONF_API_SUFFIX, current_config.get(CONF_API_SUFFIX, DEFAULT_API_SUFFIX))
                     user_input.setdefault(CONF_OLD_FIRMWARE, current_config.get(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE))
     
-        # Create a schema with current configuration as defaults
+        # Create a simplified schema with only essential user-facing options
+        # Component counts are auto-detected and preserved from current config
         data_schema = vol.Schema(
             {
-                #vol.Optional(CONF_NAME, default=current_config.get(CONF_NAME, DEFAULT_NAME)): str, Do not add as it has changes in sensor names
                 vol.Optional(CONF_HOST, default=current_config.get(CONF_HOST, DEFAULT_HOST)): str,
                 vol.Optional(CONF_SCAN_INTERVAL, default=current_config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
-                vol.Optional(CONF_NUM_OF_HEATING_CIRCUIT, default=current_config.get(CONF_NUM_OF_HEATING_CIRCUIT, DEFAULT_NUM_OF_HEATING_CIRCUIT)): int,
-                vol.Optional(CONF_NUM_OF_HOT_WATER, default=current_config.get(CONF_NUM_OF_HOT_WATER, DEFAULT_NUM_OF_HOT_WATER)): int,
-                vol.Optional(CONF_NUM_OF_PELLEMATIC_HEATER, default=current_config.get(CONF_NUM_OF_PELLEMATIC_HEATER, DEFAULT_NUM_OF_PELLEMATIC_HEATER)): int,
-                vol.Optional(CONF_SOLAR_CIRCUIT, default=current_config.get(CONF_SOLAR_CIRCUIT, False)): bool,
-                vol.Optional(CONF_NUM_OF_SMART_PV_SE, default=current_config.get(CONF_NUM_OF_SMART_PV_SE, DEFAULT_NUM_OF_SMART_PV_SE)): int,
-                vol.Optional(CONF_NUM_OF_SMART_PV_SK, default=current_config.get(CONF_NUM_OF_SMART_PV_SK, DEFAULT_NUM_OF_SMART_PV_SK)): int,
-                vol.Optional(CONF_NUM_OF_HEAT_PUMPS, default=current_config.get(CONF_NUM_OF_HEAT_PUMPS, DEFAULT_NUM_OF_HEAT_PUMPS)): int,
-                vol.Optional(CONF_NUM_OF_WIRELESS_SENSORS, default=DEFAULT_NUM_OF_WIRELESS_SENSORS): int,
-                vol.Optional(CONF_NUM_OF_BUFFER_STORAGE, default=DEFAULT_NUM_OF_BUFFER_STORAGE): int,
-                vol.Optional(CONF_CIRCULATOR, default=current_config.get(CONF_CIRCULATOR, False)): bool,
-                vol.Optional(CONF_SMART_PV, default=current_config.get(CONF_SMART_PV, False)): bool,
-                vol.Optional(CONF_STIRLING, default=current_config.get(CONF_STIRLING, False)): bool,
                 vol.Optional(CONF_CHARSET, default=current_config.get(CONF_CHARSET, DEFAULT_CHARSET)): str,
                 vol.Optional(CONF_OLD_FIRMWARE, default=current_config.get(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE)): bool,
             }

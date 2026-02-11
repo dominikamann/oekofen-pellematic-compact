@@ -1,66 +1,44 @@
 {
   "config": {
     "step": {
-      "reconfigure": {
-        "title": "Reconfigurer \u00d6kofen Pellematic",
-        "description": "Mettez \u00e0 jour les param\u00e8tres d'int\u00e9gration. Si vous voyez des caract\u00e8res corrompus (\u00fc\u2192\u00c3\u00bc, \u00f6\u2192\u00c3\u00b6) dans les noms d'entit\u00e9s, le syst\u00e8me d\u00e9tectera automatiquement le jeu de caract\u00e8res correct.\\n\\nApr\u00e8s modification du charset, l'int\u00e9gration sera recharg\u00e9e et les noms d'entit\u00e9s seront mis \u00e0 jour.",
+      "user": {
+        "title": "Connecter votre chaudière Ökofen Pellematic",
+        "description": "Entrez l'URL de l'API JSON (ex: {example_url}). Le système découvrira automatiquement votre configuration.\n\n{charset_warning}",
         "data": {
           "host": "URL de l'API JSON (mot de passe inclus)",
-          "scan_interval": "Fr\u00e9quence de rafra\u00eechissement (secondes)",
-          "solar_circuit": "Capteurs solaires (SE1, SK1)",
-          "circulator": "Circulateur (CIRC1)",
-          "smart_pv": "Smart PV (POWER)",
-          "stirling": "Moteur Stirling (stirling)",
-          "num_of_heating_circuits": "Circuits de chauffage (HKx)",
-          "num_of_hot_water": "Circuits d'eau chaude (HWx)",
-          "num_of_pellematic_heaters": "Chaudi\u00e8res Pellematic (PELx)",
-          "num_of_smart_pv_se_count": "Modules Smart PV (SEx)",
-          "num_of_smart_pv_sk_count": "Collecteurs solaires (SKx)",
-          "num_of_heat_pumps_count": "Pompes \u00e0 chaleur (WPx)",
-          "num_of_wireless_sensors": "Capteurs sans fil (WIRELESSx)",
-          "num_of_buffer_storage": "Stockages tampon (PUx)",
-          "charset": "Jeu de caract\u00e8res (iso-8859-1 ou utf-8)"
+          "name": "Nom de l'intégration",
+          "charset": "Jeu de caractères (iso-8859-1 ou utf-8)",
+          "old_firmware": "Mode ancien firmware (environ v3.10)"
         }
       },
-      "user": {
-        "title": "Configurer la connexion à l'interface JSON de votre chaudière \u00d6kofen Pellematic",
+      "reconfigure": {
+        "title": "Reconfigurer Ökofen Pellematic",
+        "description": "Mettez à jour les paramètres d'intégration. Le nombre de composants est détecté automatiquement, vous n'avez qu'à configurer les paramètres de connexion.\n\nSi vous voyez des caractères corrompus (ü→Ã¼, ö→Ã¶) dans les noms d'entités, essayez de changer le jeu de caractères.\n\n{charset_warning}",
         "data": {
-          "host": "L'url incluant le mot de passe",
-          "name": "Nom de l'appareil",
-          "scan_interval": "Fréquence de raffraichissement en secondes",
-          "solar_circuit": "Solar & Sun Sensors support yes/no (SE1, SK1)",
-          "circulator": "Circulator support yes/no (CIRC1)",
-          "smart_pv": "Smart PV support yes/no (POWER)",
-          "stirling": "Stirling engine generator support yes/no (stirling)",
-          "num_of_heating_circuits": "Nombre de circuits de chauffage (HKx)",
-          "num_of_hot_water": "Nombre de circuits d'eau chaude (HWx)",
-          "num_of_pellematic_heaters": "Num of Pellematic heaters (PEx)",
-          "num_of_smart_pv_se_count" : "Nombre de Smart PV (SEx)",
-          "num_of_smart_pv_sk_count" : "Nombre de Smart PV (SKx)",
-          "num_of_heat_pumps_count" : "Nombre de Heat Pumps (WPx)",
-          "num_of_wireless_sensors" : "Nombre de wireless sensors (WIRELESSx)",
-          "num_of_buffer_storage" : "Nombre de buffer storages (PUx)",
-          "charset": "Character set for decoding (try iso-8859-1 or utf-8)"     
+          "host": "URL de l'API JSON (mot de passe inclus)",
+          "scan_interval": "Fréquence de rafraîchissement (secondes)",
+          "charset": "Jeu de caractères (iso-8859-1 ou utf-8)",
+          "old_firmware": "Mode ancien firmware (environ v3.10)"
         }
       }
     },
     "error": {
-      "already_configured": "Appareil déja configuré",
+      "already_configured": "Appareil déjà configuré",
       "cannot_connect": "Échec de connexion à l'API. Vérifiez l'URL et le mot de passe. Si l'URL est correcte, l'API Ökofen peut limiter les requêtes - veuillez patienter un moment et réessayer.",
       "invalid_charset": "Encodage de caractères invalide. Utilisez un codec Python valide (ex: iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
-      "already_configured": "Appareil déja configuré"
+      "already_configured": "Appareil déjà configuré"
     }
   },
   "entity": {
-	"select": {
+    "select": {
       "heater": {
         "state": {
           "0_off": "0 - Arrêt",
           "1_auto": "1 - Auto",
           "2_comfort": "2 - Confort",
-		  "3_slow": "3 - Réduit"
+          "3_slow": "3 - Réduit"
         }
       },
       "mode": {
@@ -68,17 +46,17 @@
           "0_off": "0 - Arrêt",
           "1_auto": "1 - Auto",
           "2_force": "2 - Marche forcée",
-          "2_hotwater": "2 - Hot water"
+          "2_hotwater": "2 - Eau chaude"
         }
       },
       "heat_once": {
         "state": {
-          "0_off": "0 - Off",
-          "1_on": "1 - On"
+          "0_off": "0 - Arrêt",
+          "1_on": "1 - Marche"
         }
       }
     },
-	"switch": {
+    "switch": {
       "onoff": {
         "state": {
           "0_off": "0 - Arrêt",

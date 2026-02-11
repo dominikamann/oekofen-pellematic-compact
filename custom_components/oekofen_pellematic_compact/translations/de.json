@@ -8,48 +8,17 @@
           "host": "JSON-API URL (inkl. Passwort)",
           "name": "Name der Integration",
           "charset": "Zeichensatz (iso-8859-1 oder utf-8)",
-          "old_firmware": "Alte Firmware-Version (v3.10d und früher)"
+          "old_firmware": "Alte Firmware-Version (ca. v3.10)"
         }
       },
       "reconfigure": {
         "title": "Ökofen Pellematic neu konfigurieren",
-        "description": "Passen Sie Ihre Integrationseinstellungen an. Falls Sie verstümmelte Zeichen (ü→Ã¼, ö→Ã¶) in Entitätsnamen sehen, erkennt das System automatisch den korrekten Zeichensatz und schlägt ihn vor.\n\nNach Änderung des Zeichensatzes wird die Integration neu geladen und die Entitätsnamen werden aktualisiert.\n\n{charset_warning}",
+        "description": "Passen Sie Ihre Integrationseinstellungen an. Komponentenzählungen werden automatisch erkannt, Sie müssen nur die Verbindungseinstellungen konfigurieren.\n\nFalls Sie verstümmelte Zeichen (ü→Ã¼, ö→Ã¶) in Entitätsnamen sehen, versuchen Sie den Zeichensatz zu ändern.\n\n{charset_warning}",
         "data": {
           "host": "JSON-API URL (inkl. Passwort)",
           "scan_interval": "Aktualisierungsintervall (Sekunden)",
-          "solar_circuit": "Solar & Sonnensensoren (SE1, SK1)",
-          "circulator": "Zirkulation (CIRC1)",
-          "smart_pv": "Smart PV (POWER)",
-          "stirling": "Stirling Motor (stirling)",
-          "num_of_heating_circuits": "Heizkreise (HKx)",
-          "num_of_hot_water": "Warmwasserkreise (HWx)",
-          "num_of_pellematic_heaters": "Pellematic Heizungen (PELx)",
-          "num_of_smart_pv_se_count": "Smart PV Module (SEx)",
-          "num_of_smart_pv_sk_count": "Thermische Solarkollektoren (SKx)",
-          "num_of_heat_pumps_count": "Wärmepumpen (WPx)",
-          "num_of_wireless_sensors": "Funksensoren (WIRELESSx)",
-          "num_of_buffer_storage": "Pufferspeicher (PUx)",
           "charset": "Zeichensatz (iso-8859-1 oder utf-8)",
-          "old_firmware": "Alte Firmware-Version (v3.10d und früher)"
-        }
-      },
-      "advanced": {
-        "title": "Erkannte Komponenten konfigurieren",
-        "description": "Auto-Erkennung hat gefunden:\n{discovered}\n\nSie können diese Werte bei Bedarf anpassen.",
-        "data": {
-          "scan_interval": "Aktualisierungsintervall (Sekunden)",
-          "solar_circuit": "Solar & Sonnensensoren (SE1, SK1)",
-          "circulator": "Zirkulation (CIRC1)",
-          "smart_pv": "Smart PV (POWER)",
-          "stirling": "Stirling Motor (stirling)",
-          "num_of_heating_circuits": "Heizkreise (HKx)",
-          "num_of_hot_water": "Warmwasserkreise (HWx)",
-          "num_of_pellematic_heaters": "Pellematic Heizungen (PELx)",
-          "num_of_smart_pv_se_count": "Smart PV Module (SEx)",
-          "num_of_smart_pv_sk_count": "Thermische Solarkollektoren (SKx)",
-          "num_of_heat_pumps_count": "Wärmepumpen (WPx)",
-          "num_of_wireless_sensors": "Funksensoren (WIRELESSx)",
-          "num_of_buffer_storage": "Pufferspeicher (PUx)"
+          "old_firmware": "Alte Firmware-Version (ca. v3.10)"
         }
       }
     },
@@ -68,7 +37,7 @@
         "state": {
           "0_off": "0 - Stopp",
           "1_auto": "1 - Auto",
-          "2_conmfort": "2 - Komfort",
+          "2_comfort": "2 - Komfort",
           "3_slow": "3 - Reduziert"
         }
       },
@@ -78,6 +47,26 @@
           "1_auto": "1 - Auto",
           "2_force": "2 - Erzwungen",
           "2_hotwater": "2 - Warmwasser"
+        }
+      },
+      "heat_once": {
+        "state": {
+          "0_off": "0 - Aus",
+          "1_on": "1 - Ein"
+        }
+      }
+    },
+	"switch": {
+      "onoff": {
+        "state": {
+          "0_off": "0 - Aus",
+          "1_on": "1 - Ein"
+        }
+      },
+      "prog": {
+        "state": {
+          "0_prog1": "0 - Programm 1",
+          "1_prog2": "1 - Programm 2"
         }
       }
     }
