@@ -500,6 +500,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Setup Pellematic Hub %s, %s (charset: %s, API suffix: %s)", 
                   DOMAIN, name, charset, api_suffix)
+    _LOGGER.info("Setting up Ökofen Pellematic integration '%s' at %s", name, host)
 
     hub = PellematicHub(hass, name, host, scan_interval, charset, api_suffix)
 
@@ -508,7 +509,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         _LOGGER.debug("Pre-fetching API data for %s", name)
         await hub.fetch_pellematic_data()
-        _LOGGER.info("Successfully pre-fetched API data for %s", name)
+        _LOGGER.info("Successfully pre-fetched API data for '%s' - %d top-level keys found", 
+                    name, len(hub.data) if hub.data else 0)
     except Exception as e:
         _LOGGER.error("Failed to pre-fetch API data for %s: %s", name, e)
         # Continue anyway - platforms will retry later
@@ -535,7 +537,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register services
     await async_setup_services(hass)
 
+    _LOGGER.info("Ökofen Pellematic '%s': Starting platform setup (sensor, select, number, climate)", name)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _LOGGER.info("Ökofen Pellematic '%s': Setup complete - entities should be available within 1 minute", name)
     return True
 
 
@@ -595,6 +599,9 @@ async def rediscover_and_update_entry(hass: HomeAssistant, entry: ConfigEntry) -
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Pellematic entry."""
+    name = entry.data.get(CONF_NAME, DEFAULT_NAME)
+    _LOGGER.info("Unloading Ökofen Pellematic integration '%s' - entities will become unavailable", name)
+    
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -604,9 +611,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
     )
     if not unload_ok:
+        _LOGGER.error("Failed to unload some platforms for '%s'", name)
         return False
 
     hass.data[DOMAIN].pop(entry.data["name"])
+    _LOGGER.info("Successfully unloaded Ökofen Pellematic integration '%s'", name)
     return True
 
 
