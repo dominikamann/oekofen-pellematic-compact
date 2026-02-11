@@ -13,7 +13,7 @@
       },
       "reconfigure": {
         "title": "Reconfigurer Ökofen Pellematic",
-        "description": "Mettez à jour les paramètres d'intégration. Le nombre de composants est détecté automatiquement, vous n'avez qu'à configurer les paramètres de connexion.\n\nSi vous voyez des caractères corrompus (ü→Ã¼, ö→Ã¶) dans les noms d'entités, essayez de changer le jeu de caractères.\n\n{charset_warning}",
+        "description": "Mettez à jour les paramètres d'intégration. Le nombre de composants est détecté automatiquement, vous n'avez qu'à configurer les paramètres de connexion.\n\nSi vous voyez des caractères corrompus (ü→Ã¼, ö→Ã¶) dans les noms d'entités, essayez de changer le jeu de caractères.\n\n⚠️ Après l'enregistrement, l'intégration sera rechargée et toutes les entités seront indisponibles pendant 1-2 minutes lors de la reconnexion à l'API.\n\n{charset_warning}",
         "data": {
           "host": "URL de l'API JSON (mot de passe inclus)",
           "scan_interval": "Fréquence de rafraîchissement (secondes)",
@@ -28,7 +28,8 @@
       "invalid_charset": "Encodage de caractères invalide. Utilisez un codec Python valide (ex: iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
-      "already_configured": "Appareil déjà configuré"
+      "already_configured": "Appareil déjà configuré",
+      "reconfiguration_successful": "Configuration mise à jour avec succès. L'intégration se recharge - les entités seront disponibles dans 1-2 minutes."
     }
   },
   "entity": {

@@ -13,7 +13,7 @@
       },
       "reconfigure": {
         "title": "Reconfigure Ökofen Pellematic",
-        "description": "Update your integration settings. Component counts are auto-detected, you only need to configure connection settings.\n\nIf you see garbled characters (ü→Ã¼, ö→Ã¶) in entity names, try changing the charset setting.\n\n{charset_warning}",
+        "description": "Update your integration settings. Component counts are auto-detected, you only need to configure connection settings.\n\nIf you see garbled characters (ü→Ã¼, ö→Ã¶) in entity names, try changing the charset setting.\n\n⚠️ After saving, the integration will reload and all entities will become unavailable for 1-2 minutes while reconnecting to the API.\n\n{charset_warning}",
         "data": {
           "host": "JSON API URL (including password)",
           "scan_interval": "Polling interval (seconds)",
@@ -28,7 +28,8 @@
       "invalid_charset": "Invalid character encoding. Use a valid Python codec (e.g., iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "Device is already configured",
+      "reconfiguration_successful": "Configuration updated successfully. The integration is reloading - entities will become available within 1-2 minutes."
     }
   },
   "entity": {

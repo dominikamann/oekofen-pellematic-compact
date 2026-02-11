@@ -13,7 +13,7 @@
       },
       "reconfigure": {
         "title": "Ökofen Pellematic neu konfigurieren",
-        "description": "Passen Sie Ihre Integrationseinstellungen an. Komponentenzählungen werden automatisch erkannt, Sie müssen nur die Verbindungseinstellungen konfigurieren.\n\nFalls Sie verstümmelte Zeichen (ü→Ã¼, ö→Ã¶) in Entitätsnamen sehen, versuchen Sie den Zeichensatz zu ändern.\n\n{charset_warning}",
+        "description": "Passen Sie Ihre Integrationseinstellungen an. Komponentenzählungen werden automatisch erkannt, Sie müssen nur die Verbindungseinstellungen konfigurieren.\n\nFalls Sie verstümmelte Zeichen (ü→Ã¼, ö→Ã¶) in Entitätsnamen sehen, versuchen Sie den Zeichensatz zu ändern.\n\n⚠️ Nach dem Speichern wird die Integration neu geladen und alle Entitäten sind für 1-2 Minuten nicht verfügbar, während die Verbindung zur API wiederhergestellt wird.\n\n{charset_warning}",
         "data": {
           "host": "JSON-API URL (inkl. Passwort)",
           "scan_interval": "Aktualisierungsintervall (Sekunden)",
@@ -28,7 +28,8 @@
       "invalid_charset": "Ungültige Zeichenkodierung. Verwenden Sie einen gültigen Python-Codec (z.B. iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
-      "already_configured": "Gerät ist bereits konfiguriert"
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "reconfiguration_successful": "Konfiguration erfolgreich aktualisiert. Die Integration wird neu geladen - Entitäten werden innerhalb von 1-2 Minuten verfügbar sein."
     }
   },
   "entity": {
