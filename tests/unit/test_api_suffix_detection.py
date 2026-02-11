@@ -114,3 +114,31 @@ def test_user_report_old_firmware_case():
     }
     assert _api_response_has_metadata(old_firmware_double_q) is True
 
+
+def test_modern_firmware_fallback_when_double_q_fails():
+    """Test that firmware type is determined by metadata presence.
+    
+    This tests the simplified logic in v4.2.1:
+    - If '?' response has metadata → modern firmware, use '?', old_firmware=False
+    - If '?' response has no metadata → old firmware, use '??', old_firmware=True
+    
+    The metadata presence is the single source of truth for firmware detection.
+    """
+    # Modern firmware with single '?' - has metadata (normal case)
+    modern_firmware_with_metadata = {
+        "system": {
+            "L_ambient": {"val": "98", "unit": "°C", "factor": "0.1"},
+        }
+    }
+    assert _api_response_has_metadata(modern_firmware_with_metadata) is True
+    
+    # Old firmware with '?' - no metadata structure
+    old_firmware_no_metadata = {
+        "system": {
+            "L_ambient": "98",
+            "L_errors": "0"
+        }
+    }
+    assert _api_response_has_metadata(old_firmware_no_metadata) is False
+
+

@@ -96,7 +96,6 @@ class TestFixturesIntegration:
         for result in results:
             assert result["success"], f"Climate entity failed: {result['fixture']} - {result['entity']}"
         
-        return results
     
     def test_sensor_entities(self, all_fixtures):
         """Test sensor entity integration with all fixtures."""
@@ -141,7 +140,6 @@ class TestFixturesIntegration:
         success_rate = len(successful) / len(results)
         assert success_rate > 0.8, f"Too many sensor failures: {success_rate:.1%}"
         
-        return results
     
     def test_number_entities(self, all_fixtures):
         """Test number entity integration with all fixtures."""
@@ -196,7 +194,6 @@ class TestFixturesIntegration:
         success_rate = len(successful) / len(results)
         assert success_rate > 0.9, f"Too many number failures: {success_rate:.1%}"
         
-        return results
     
     def test_all_entities_comprehensive(self, all_fixtures):
         """Comprehensive test of all entity types across all fixtures."""
@@ -258,7 +255,6 @@ class TestFixturesIntegration:
         assert stats["fixtures_tested"] > 0, "No fixtures tested"
         assert success_rate > 0.8, f"Success rate too low: {success_rate:.1%}"
         
-        return stats
     
     def test_poolandeco_fixture_specific(self, all_fixtures):
         """Specific test for the user's poolandeco fixture."""

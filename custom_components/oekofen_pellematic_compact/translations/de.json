@@ -7,7 +7,8 @@
         "data": {
           "host": "JSON-API URL (inkl. Passwort)",
           "name": "Name der Integration",
-          "charset": "Zeichensatz (iso-8859-1 oder utf-8)"
+          "charset": "Zeichensatz (iso-8859-1 oder utf-8)",
+          "old_firmware": "Alte Firmware-Version (v3.10d und früher)"
         }
       },
       "reconfigure": {
@@ -28,7 +29,8 @@
           "num_of_heat_pumps_count": "Wärmepumpen (WPx)",
           "num_of_wireless_sensors": "Funksensoren (WIRELESSx)",
           "num_of_buffer_storage": "Pufferspeicher (PUx)",
-          "charset": "Zeichensatz (iso-8859-1 oder utf-8)"
+          "charset": "Zeichensatz (iso-8859-1 oder utf-8)",
+          "old_firmware": "Alte Firmware-Version (v3.10d und früher)"
         }
       },
       "advanced": {
@@ -53,7 +55,7 @@
     },
     "error": {
       "already_configured": "Gerät ist bereits konfiguriert",
-      "cannot_connect": "Verbindung zur API fehlgeschlagen. Überprüfen Sie URL und Passwort.",
+      "cannot_connect": "Verbindung zur API fehlgeschlagen. Überprüfen Sie die URL und das Passwort. Falls die URL korrekt ist, könnte die Ökofen-API zu viele Anfragen blockieren - bitte warten Sie einen Moment und versuchen Sie es erneut.",
       "invalid_charset": "Ungültige Zeichenkodierung. Verwenden Sie einen gültigen Python-Codec (z.B. iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {

@@ -7,7 +7,8 @@
         "data": {
           "host": "JSON API URL (including password)",
           "name": "Integration name",
-          "charset": "Character set (iso-8859-1 or utf-8)"
+          "charset": "Character set (iso-8859-1 or utf-8)",
+          "old_firmware": "Old firmware mode (v3.10d and earlier)"
         }
       },
       "reconfigure": {
@@ -28,7 +29,8 @@
           "num_of_heat_pumps_count": "Heat pumps (WPx)",
           "num_of_wireless_sensors": "Wireless sensors (WIRELESSx)",
           "num_of_buffer_storage": "Buffer storages (PUx)",
-          "charset": "Character set (iso-8859-1 or utf-8)"
+          "charset": "Character set (iso-8859-1 or utf-8)",
+          "old_firmware": "Old firmware mode (v3.10d and earlier)"
         }
       },
       "advanced": {
@@ -53,7 +55,7 @@
     },
     "error": {
       "already_configured": "Device is already configured",
-      "cannot_connect": "Failed to connect to the API. Check the URL and password.",
+      "cannot_connect": "Failed to connect to the API. Check the URL and password. If the URL is correct, the Ökofen API may be rate-limiting requests - please wait a moment and try again.",
       "invalid_charset": "Invalid character encoding. Use a valid Python codec (e.g., iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {

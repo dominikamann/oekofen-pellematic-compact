@@ -18,6 +18,8 @@ from .const import (
     DEFAULT_CHARSET,
     CONF_API_SUFFIX,
     DEFAULT_API_SUFFIX,
+    CONF_OLD_FIRMWARE,
+    DEFAULT_OLD_FIRMWARE,
     DOMAIN,
     DEFAULT_HOST,
     DEFAULT_NAME,
@@ -52,6 +54,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
         vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
         vol.Optional(CONF_CHARSET, default=DEFAULT_CHARSET): str,
+        vol.Optional(CONF_OLD_FIRMWARE, default=DEFAULT_OLD_FIRMWARE): bool,
     }
 )
 
@@ -241,49 +244,69 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             _LOGGER.error("Failed to discover components: %s", e)
             return {}
     
-    def _fetch_api_data(self, host: str, detect_charset: bool = False, detect_api_suffix: bool = False):
+    def _fetch_api_data(self, host: str, detect_charset: bool = False, detect_api_suffix: bool = False, user_old_firmware: bool = None):
         """Fetch data from the Pellematic API (blocking).
+        
+        Firmware detection logic:
+        - Modern firmware (v3.52+): '?' returns data WITH metadata (val, unit, factor)
+        - Old firmware (v3.10d-): '?' returns data WITHOUT metadata
         
         Args:
             host: The host URL to connect to (without ? or ??)
             detect_charset: If True, detect charset from response
             detect_api_suffix: If True, detect optimal API suffix (? or ??)
+            user_old_firmware: User's manual old_firmware setting (None = auto-detect, True = force ??, False = force ?)
             
         Returns:
             - dict: Parsed JSON data if detect_charset=False and detect_api_suffix=False
             - tuple[dict, str]: (data, charset) if detect_charset=True and detect_api_suffix=False
-            - tuple[dict, str, str]: (data, charset, api_suffix) if both detect flags are True
+            - tuple[dict, str, str, bool]: (data, charset, api_suffix, old_firmware) if both detect flags are True
         """
+        # If user manually specified old_firmware mode, respect it (never overwrite)
+        if user_old_firmware is not None:
+            suffix_to_try = "??" if user_old_firmware else "?"
+            if detect_charset:
+                data, charset = self._fetch_with_suffix(host, suffix_to_try, detect_charset=True)
+                if detect_api_suffix:
+                    return data, charset, suffix_to_try, user_old_firmware
+                return data, charset
+            else:
+                data = self._fetch_with_suffix(host, suffix_to_try, detect_charset=False)
+                if detect_api_suffix:
+                    return data, suffix_to_try, user_old_firmware
+                return data
+        
+        # Auto-detect mode
         # Try with current suffix first, or use default
         suffix_to_try = self._api_suffix if hasattr(self, '_api_suffix') else DEFAULT_API_SUFFIX
         
-        # If detecting API suffix, try both ? and ??
+        # If detecting API suffix, check metadata presence
         if detect_api_suffix:
-            # Try modern firmware first (single ?)
+            # Try with ? first to check for metadata
+            import logging
+            _LOGGER = logging.getLogger(__name__)
+            _LOGGER.debug("Auto-detecting firmware type by checking API response with '?'...")
             try:
-                data_single, charset_single = self._fetch_with_suffix(host, "?", detect_charset=True)
+                data, charset_detected = self._fetch_with_suffix(host, "?", detect_charset=True)
                 
-                # Check if response contains metadata
-                if api_response_has_metadata(data_single):
+                # Check if response contains metadata (val, unit, factor)
+                if api_response_has_metadata(data):
                     # Modern firmware - has metadata with single ?
+                    _LOGGER.info("API response has metadata with '?' - modern firmware detected")
                     if detect_charset:
-                        return data_single, charset_single, "?"
-                    return data_single, "?"
+                        return data, charset_detected, "?", False  # old_firmware=False
+                    return data, "?", False
                 else:
-                    # Old firmware - try with ??
-                    import logging
-                    _LOGGER = logging.getLogger(__name__)
-                    _LOGGER.info("API response has no metadata with '?', trying '??' for old firmware compatibility")
-                    
-                    data_double, charset_double = self._fetch_with_suffix(host, "??", detect_charset=True)
+                    # Old firmware - no metadata with ?
+                    _LOGGER.info("API response has no metadata with '?' - old firmware detected")
                     if detect_charset:
-                        return data_double, charset_double, "??"
-                    return data_double, "??"
+                        return data, charset_detected, "??", True  # old_firmware=True
+                    return data, "??", True
                     
             except Exception as e:
                 import logging
                 _LOGGER = logging.getLogger(__name__)
-                _LOGGER.error("Failed to fetch with both ? and ??: %s", e)
+                _LOGGER.error("Failed to fetch API data: %s", e)
                 raise
         else:
             # Not detecting suffix - use existing one
@@ -303,14 +326,21 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             
         Returns:
             Parsed JSON data, or tuple (data, charset) if detect_charset=True
+            
+        Raises:
+            Exception: On connection errors, timeouts, or invalid responses
         """
         url = self._normalize_url(host, suffix)
+        
+        import logging
+        _LOGGER = logging.getLogger(__name__)
+        _LOGGER.debug("Fetching API data from: %s", url.replace(url.split('/')[4], '[PASSWORD]') if len(url.split('/')) > 4 else '[URL]')
         
         req = urllib.request.Request(url)
         response = None
         
         try:
-            response = urllib.request.urlopen(req, timeout=5)
+            response = urllib.request.urlopen(req, timeout=10)  # Increased timeout to 10s for slow APIs
             raw_data = response.read()
             
             # Detect optimal charset if requested
@@ -328,6 +358,25 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             if detect_charset:
                 return data, suggested_charset
             return data
+        except urllib.error.HTTPError as e:
+            import logging
+            _LOGGER = logging.getLogger(__name__)
+            if e.code == 429:
+                _LOGGER.warning("API rate limiting detected (HTTP 429) - too many requests to Ökofen API")
+                raise Exception("Ökofen API rate limiting - please wait a moment and try again")
+            else:
+                _LOGGER.error("HTTP error while fetching API data: %s %s", e.code, e.reason)
+                raise Exception(f"HTTP error {e.code}: {e.reason}")
+        except urllib.error.URLError as e:
+            import logging
+            _LOGGER = logging.getLogger(__name__)
+            _LOGGER.error("Connection error while fetching API data: %s", e.reason)
+            raise Exception(f"Connection failed: {e.reason}. Check URL and network.")
+        except Exception as e:
+            import logging
+            _LOGGER = logging.getLogger(__name__)
+            _LOGGER.error("Unexpected error while fetching API data: %s", e)
+            raise
         finally:
             if response is not None:
                 response.close()
@@ -365,10 +414,18 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 # Auto-detect optimal charset and API suffix
                 # If user provided a charset different from default, respect their choice
                 user_provided_charset = user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
+                user_provided_old_firmware = user_input.get(CONF_OLD_FIRMWARE)
+                # Only auto-detect old_firmware if user left it at default (False)
+                # If user explicitly set it to True, we respect that choice
+                should_auto_detect_old_firmware = user_provided_old_firmware == DEFAULT_OLD_FIRMWARE
+                
                 try:
                     # Detect both charset and API suffix (? vs ??)
-                    data, suggested_charset, suggested_suffix = await self.hass.async_add_executor_job(
-                        self._fetch_api_data, clean_host, True, True
+                    # Pass user's old_firmware preference:
+                    #   - None = auto-detect based on metadata presence
+                    #   - True/False = use user's explicit choice (never overwrite)
+                    data, suggested_charset, suggested_suffix, detected_old_firmware = await self.hass.async_add_executor_job(
+                        self._fetch_api_data, clean_host, True, True, user_provided_old_firmware if not should_auto_detect_old_firmware else None
                     )
                     
                     # Only override charset if user didn't explicitly change it from default
@@ -399,6 +456,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                         self._api_suffix = suggested_suffix
                         user_input[CONF_HOST] = clean_host
                         user_input[CONF_API_SUFFIX] = suggested_suffix
+                        user_input[CONF_OLD_FIRMWARE] = detected_old_firmware
                         
                         # Try to discover components
                         from . import discover_components_from_api
@@ -509,18 +567,25 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 # Clean host URL (remove any existing ? or ??)
                 clean_host = host.strip().rstrip('?')
                 
-                # Check if user manually changed charset from current config
+                # Check if user manually changed charset or old_firmware from current config
                 current_charset = current_config.get(CONF_CHARSET, DEFAULT_CHARSET)
                 current_host = current_config.get(CONF_HOST, DEFAULT_HOST).rstrip('?')
+                current_old_firmware = current_config.get(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE)
                 user_charset = user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
+                user_old_firmware = user_input.get(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE)
                 charset_manually_changed = (user_charset != current_charset)
+                old_firmware_manually_changed = (user_old_firmware != current_old_firmware)
                 host_changed = (clean_host != current_host)
                 
                 # Auto-detect optimal charset and API suffix
                 try:
                     # Detect both charset and API suffix
-                    data, suggested_charset, suggested_suffix = await self.hass.async_add_executor_job(
-                        self._fetch_api_data, clean_host, True, True
+                    # IMPORTANT: Pass user's old_firmware preference only if they changed it manually
+                    # This ensures user's manual settings are NEVER overwritten by auto-detection
+                    #   - If user changed it: use their choice (True/False)
+                    #   - If user didn't change it: auto-detect (None)
+                    data, suggested_charset, suggested_suffix, detected_old_firmware = await self.hass.async_add_executor_job(
+                        self._fetch_api_data, clean_host, True, True, user_old_firmware if old_firmware_manually_changed else None
                     )
                     
                     # Only override charset if user didn't manually change it
@@ -554,8 +619,9 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                         )
                         user_input[CONF_CHARSET] = suggested_charset
                     
-                    # Always save the detected API suffix
+                    # Always save the detected API suffix and old_firmware flag
                     user_input[CONF_API_SUFFIX] = suggested_suffix
+                    user_input[CONF_OLD_FIRMWARE] = detected_old_firmware
                     
                     if not errors:
                         # No error - proceed with update
@@ -577,6 +643,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                     # Ensure charset and API suffix have fallback values
                     user_input.setdefault(CONF_CHARSET, current_config.get(CONF_CHARSET, DEFAULT_CHARSET))
                     user_input.setdefault(CONF_API_SUFFIX, current_config.get(CONF_API_SUFFIX, DEFAULT_API_SUFFIX))
+                    user_input.setdefault(CONF_OLD_FIRMWARE, current_config.get(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE))
     
         # Create a schema with current configuration as defaults
         data_schema = vol.Schema(
@@ -597,6 +664,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 vol.Optional(CONF_SMART_PV, default=current_config.get(CONF_SMART_PV, False)): bool,
                 vol.Optional(CONF_STIRLING, default=current_config.get(CONF_STIRLING, False)): bool,
                 vol.Optional(CONF_CHARSET, default=current_config.get(CONF_CHARSET, DEFAULT_CHARSET)): str,
+                vol.Optional(CONF_OLD_FIRMWARE, default=current_config.get(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE)): bool,
             }
         )
 

@@ -22,6 +22,8 @@ from .const import (
     DEFAULT_CHARSET,
     CONF_API_SUFFIX,
     DEFAULT_API_SUFFIX,
+    CONF_OLD_FIRMWARE,
+    DEFAULT_OLD_FIRMWARE,
     DEFAULT_HOST,
     DOMAIN,
     DEFAULT_NAME,
@@ -95,14 +97,19 @@ def _api_response_has_metadata(data: dict) -> bool:
     return False
 
 
-def _detect_api_config(host: str) -> tuple[str, str]:
+def _detect_api_config(host: str) -> tuple[str, str, bool]:
     """Detect charset and API suffix from API response (blocking function for executor).
+    
+    Detection logic:
+    - Try '?' first and check if response contains metadata (val, unit, factor)
+    - If HAS metadata → Modern firmware (v3.52+): use '?', old_firmware=False
+    - If NO metadata → Old firmware (v3.10d-): use '??', old_firmware=True
     
     Args:
         host: The API host URL (without ? or ??)
         
     Returns:
-        Tuple of (charset, api_suffix)
+        Tuple of (charset, api_suffix, old_firmware)
         
     Raises:
         Exception: If API is unreachable or invalid
@@ -119,8 +126,9 @@ def _detect_api_config(host: str) -> tuple[str, str]:
     req = urllib.request.Request(url_single)
     response = None
     
+    _LOGGER.debug("Checking API with '?' to detect firmware type...")
     try:
-        response = urllib.request.urlopen(req, timeout=5)
+        response = urllib.request.urlopen(req, timeout=10)  # Increased timeout to 10s for slow APIs
         raw_data = response.read()
         
         if not raw_data:
@@ -155,57 +163,21 @@ def _detect_api_config(host: str) -> tuple[str, str]:
         # Check if metadata exists
         if _api_response_has_metadata(data):
             # Modern firmware - has metadata with single ?
-            return charset, '?'
+            _LOGGER.info("API response has metadata with '?' - modern firmware detected")
+            return charset, '?', False  # old_firmware=False
         else:
-            # Old firmware - try with ??
-            _LOGGER.info("API response has no metadata with '?', trying '??' for old firmware")
+            # Old firmware - no metadata with ?
+            _LOGGER.info("API response has no metadata with '?' - old firmware detected")
+            return charset, '??', True  # old_firmware=True
     except Exception as e:
-        # If single ? fails completely, try with ??
-        _LOGGER.warning("Failed to fetch with '?': %s, trying '??'", e)
+        # If ? fails completely, raise error
+        _LOGGER.error("Failed to fetch with '?': %s", e)
+        raise
     finally:
         if response is not None:
             response.close()
     
-    # Try with double ?? (old firmware)
-    url_double = clean_host + '??'
-    req = urllib.request.Request(url_double)
-    response = None
-    
-    try:
-        response = urllib.request.urlopen(req, timeout=5)
-        raw_data = response.read()
-        
-        if not raw_data:
-            raise ValueError("Empty API response")
-        
-        # Re-detect charset for ?? response with mixed encoding support
-        try:
-            decoded_utf8 = raw_data.decode('utf-8')
-            if any(ord(char) > 127 for char in decoded_utf8):
-                charset = 'utf-8'
-            else:
-                charset = 'utf-8'
-        except UnicodeDecodeError:
-            # Try UTF-8 with replace to detect mixed encoding
-            decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')
-            replacement_count = decoded_utf8_replace.count('�')
-            non_ascii_count = sum(1 for char in decoded_utf8_replace if ord(char) > 127)
-            
-            # If less than 20% of non-ASCII chars are problematic, prefer UTF-8
-            # This handles mixed encoding where most content is UTF-8 but some fields have ISO-8859-1 bytes
-            # Increased threshold from 10% to 20% to handle smaller responses
-            if non_ascii_count > 0 and replacement_count / non_ascii_count < 0.2:
-                charset = 'utf-8'
-            else:
-                charset = 'iso-8859-1'
-        
-        # Decode and return
-        str_response = raw_data.decode(charset, 'ignore')
-        str_response = str_response.replace("L_statetext:", 'L_statetext":')
-        return charset, '??'
-    finally:
-        if response is not None:
-            response.close()
+    # No second request here: the '?' response is enough to determine firmware type.
 
 
 def _detect_api_charset(host: str) -> str:
@@ -490,29 +462,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     name = entry.data[CONF_NAME]
     scan_interval = entry.data[CONF_SCAN_INTERVAL]
     
-    # CRITICAL: Auto-detect and save charset/api_suffix if missing
+    # CRITICAL: Auto-detect and save charset/api_suffix/old_firmware if missing
     # This is a fallback for installations that were migrated before auto-detection was added
-    if CONF_CHARSET not in entry.data or CONF_API_SUFFIX not in entry.data:
+    if CONF_CHARSET not in entry.data or CONF_API_SUFFIX not in entry.data or CONF_OLD_FIRMWARE not in entry.data:
         _LOGGER.warning(
-            "Setup %s: CONF_CHARSET or CONF_API_SUFFIX missing! Attempting auto-detection...",
+            "Setup %s: CONF_CHARSET, CONF_API_SUFFIX, or CONF_OLD_FIRMWARE missing! Attempting auto-detection...",
             name
         )
         try:
-            detected_charset, detected_suffix = await hass.async_add_executor_job(
+            detected_charset, detected_suffix, detected_old_firmware = await hass.async_add_executor_job(
                 _detect_api_config, host
             )
             # Update the config entry with detected values
             new_data = {
                 **entry.data,
                 CONF_CHARSET: detected_charset,
-                CONF_API_SUFFIX: detected_suffix
+                CONF_API_SUFFIX: detected_suffix,
+                CONF_OLD_FIRMWARE: detected_old_firmware
             }
             hass.config_entries.async_update_entry(entry, data=new_data)
             charset = detected_charset
             api_suffix = detected_suffix
             _LOGGER.info(
-                "Setup %s: Auto-detected and saved charset '%s' and API suffix '%s'",
-                name, detected_charset, detected_suffix
+                "Setup %s: Auto-detected and saved charset '%s', API suffix '%s', old_firmware=%s",
+                name, detected_charset, detected_suffix, detected_old_firmware
             )
         except Exception as e:
             _LOGGER.error(

@@ -22,6 +22,7 @@ CONF_SMART_PV = "smart_pv"
 CONF_STIRLING = "stirling"
 CONF_CHARSET = "charset"
 CONF_API_SUFFIX = "api_suffix"  # "?" or "??" for old firmware compatibility
+CONF_OLD_FIRMWARE = "old_firmware"  # Boolean flag for old firmware mode
 CONF_NUM_OF_HEATING_CIRCUIT = "num_of_heating_circuits"
 CONF_NUM_OF_PELLEMATIC_HEATER = "num_of_pellematic_heaters"
 CONF_NUM_OF_SMART_PV_SE = "num_of_smart_pv_se_count"
@@ -35,6 +36,7 @@ CONF_SOLAREDGE_HUB = "solaredge_hub"
 # Default connection settings
 DEFAULT_HOST = "http://[YOU_IP]:4321/[YOUR_PASSWORD]/all"
 DEFAULT_CHARSET = "iso-8859-1"
+DEFAULT_OLD_FIRMWARE = False  # False = modern firmware, True = old firmware (v3.10d and earlier)
 DEFAULT_API_SUFFIX = "?"  # Modern firmware uses "?", old firmware needs "??"
 
 # Device attributes

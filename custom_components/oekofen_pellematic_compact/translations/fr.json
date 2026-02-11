@@ -46,7 +46,7 @@
     },
     "error": {
       "already_configured": "Appareil déja configuré",
-      "cannot_connect": "Échec de connexion à l'API. Vérifiez l'URL et le mot de passe.",
+      "cannot_connect": "Échec de connexion à l'API. Vérifiez l'URL et le mot de passe. Si l'URL est correcte, l'API Ökofen peut limiter les requêtes - veuillez patienter un moment et réessayer.",
       "invalid_charset": "Encodage de caractères invalide. Utilisez un codec Python valide (ex: iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
