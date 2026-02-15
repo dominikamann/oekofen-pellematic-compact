@@ -73,6 +73,10 @@ def extract_key_suffix(key: str) -> str:
     if key.startswith("solarheat_mode_"):
         suffix = key.replace("solarheat_mode_", "")
         return f"solarheat {suffix}"
+
+    # Preserve ext_ prefix to keep external variants distinct
+    if key.startswith("ext_"):
+        return key
     
     # For other keys, extract the part after the first underscore
     parts = key.split("_")
