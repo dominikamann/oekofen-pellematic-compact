@@ -72,6 +72,28 @@ def test_all_platforms_basic():
         assert has_min and has_max, f"Number {number['key']} missing min/max"
 
 
+def test_entity_names_deterministic_across_fixtures():
+    """Test that entity names are generated deterministically for all fixtures."""
+    fixtures_dir = Path(__file__).parent / "fixtures"
+
+    for fixture_file in sorted(fixtures_dir.glob("api_response_*.json")):
+        data = load_fixture(fixture_file.name)
+
+        first = discover_all_entities(data)
+        second = discover_all_entities(data)
+
+        def build_name_map(discovered: dict) -> dict:
+            name_map = {}
+            for entity_type in ("sensors", "binary_sensors", "selects", "numbers"):
+                for entity in discovered[entity_type]:
+                    name_map[entity["unique_id"]] = entity["name"]
+            return name_map
+
+        assert build_name_map(first) == build_name_map(second), (
+            f"Non-deterministic names in {fixture_file.name}"
+        )
+
+
 def test_all_platforms_complex():
     """Test that all platforms discover entities from complex fixture."""
     data = load_fixture("api_response_basic_yo_2.json")
@@ -208,6 +230,7 @@ def test_total_entities_all_fixtures():
         ("api_response_base_da.json", 87),
         ("api_response_n4n.json", 165),
         ("api_response_mg.json", 171),
+        ("api_response_ext_zx.json", 154),
         ("api_response_mr.json", 95),
         ("api_response_3bk.json", 127),
         ("api_response_be72.json", 124),
@@ -230,4 +253,4 @@ def test_total_entities_all_fixtures():
         total_entities += count
     
     # Total entities across all fixtures (international names, binary→select fix)
-    assert total_entities == 3084
+    assert total_entities == 3238
