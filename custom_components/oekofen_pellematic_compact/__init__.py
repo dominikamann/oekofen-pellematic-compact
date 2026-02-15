@@ -460,7 +460,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a Ökofen Pellematic Component."""
     host = entry.data[CONF_HOST].rstrip('?')  # Remove any existing suffix
     name = entry.data[CONF_NAME]
-    scan_interval = entry.data[CONF_SCAN_INTERVAL]
+    scan_interval = entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     
     # CRITICAL: Auto-detect and save charset/api_suffix/old_firmware if missing
     # This is a fallback for installations that were migrated before auto-detection was added

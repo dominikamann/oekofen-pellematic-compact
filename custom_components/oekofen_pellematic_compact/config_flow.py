@@ -53,6 +53,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
         vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
+        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): int,
         vol.Optional(CONF_CHARSET, default=DEFAULT_CHARSET): str,
         vol.Optional(CONF_OLD_FIRMWARE, default=DEFAULT_OLD_FIRMWARE): bool,
     }
