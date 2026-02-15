@@ -645,7 +645,7 @@ class PellematicHub:
         self._unsub_interval_method = None
         self._sensors = []
         self.data = {}
-        self._last_fetch_time = 0  # Track last API call time for rate limiting
+        self._last_fetch_time = 0.0  # Track last API call time for rate limiting
         self._min_fetch_interval = 2.5  # Minimum seconds between API calls (Ökofen requirement)
 
     @callback
@@ -711,7 +711,7 @@ class PellematicHub:
         """
         async with self._lock:
             # Calculate time since last fetch
-            current_time = time.time()
+            current_time = time.monotonic()
             time_since_last_fetch = current_time - self._last_fetch_time
             
             # Wait if needed to honor minimum interval
@@ -723,16 +723,16 @@ class PellematicHub:
                 )
                 await asyncio.sleep(wait_time)
             
+            # Mark the attempt time before the request so even failures are rate-limited.
+            self._last_fetch_time = time.monotonic()
             try:
                 result = await self._hass.async_add_executor_job(
                     fetch_data, self._host, self._charset, self._api_suffix
                 )
                 self.data = result
-                self._last_fetch_time = time.time()  # Update timestamp on success
                 return True
             except Exception as e:
                 _LOGGER.error("Failed to fetch Pellematic data: %s", e)
-                # Don't update timestamp on error to allow immediate retry
                 # Keep existing data if available
                 return False
     
