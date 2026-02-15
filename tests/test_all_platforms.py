@@ -207,6 +207,7 @@ def test_total_entities_all_fixtures():
         ("api_response_base_srqu.json", 394),
         ("api_response_base_da.json", 87),
         ("api_response_n4n.json", 165),
+        ("api_response_mg.json", 171),
         ("api_response_mr.json", 95),
         ("api_response_3bk.json", 127),
         ("api_response_be72.json", 124),
@@ -229,4 +230,4 @@ def test_total_entities_all_fixtures():
         total_entities += count
     
     # Total entities across all fixtures (international names, binary→select fix)
-    assert total_entities == 2913
+    assert total_entities == 3084

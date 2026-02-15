@@ -22,6 +22,7 @@ def test_compare_discovery_methods():
         "api_response_with_sk_dash.json",
         "api_response_base_csta.json",
         "api_response_base_srqu.json",
+        "api_response_mg.json",
     ]
     
     total_stats = {

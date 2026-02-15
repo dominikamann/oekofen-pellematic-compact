@@ -290,3 +290,27 @@ class TestFixturesIntegration:
         print(f"  Eco: {target_eco}°C (This was shown as 8.0°C before fix!)")
         print(f"  Vacation: {target_vacation}°C")
         print(f"  Preset: Ecologique (mode {oekomode})")
+
+    def test_mg_fixture_specific(self, all_fixtures):
+        """Specific test for the user's mg fixture."""
+        assert "api_response_mg.json" in all_fixtures, "mg fixture missing"
+
+        api_data = all_fixtures["api_response_mg.json"]
+
+        # Ensure buffer storage data exists
+        assert "pu1" in api_data, "pu1 not found in mg fixture"
+        pu1 = api_data["pu1"]
+
+        # Validate both internal and external min temp keys are present and distinct
+        assert "mintemp_off" in pu1, "mintemp_off not found in pu1"
+        assert "ext_mintemp_off" in pu1, "ext_mintemp_off not found in pu1"
+
+        mintemp_off = float(get_api_value(pu1["mintemp_off"], 0)) / 10
+        ext_mintemp_off = float(get_api_value(pu1["ext_mintemp_off"], 0)) / 10
+
+        assert mintemp_off == 8.0, f"mintemp_off should be 8.0, got {mintemp_off}"
+        assert ext_mintemp_off == 8.0, f"ext_mintemp_off should be 8.0, got {ext_mintemp_off}"
+
+        print("\n✓ mg fixture validated successfully!")
+        print(f"  pu1 mintemp_off: {mintemp_off}°C")
+        print(f"  pu1 ext_mintemp_off: {ext_mintemp_off}°C")
