@@ -7,7 +7,7 @@ from homeassistant.components.climate import (
     PRESET_COMFORT,
     PRESET_ECO,
     PRESET_NONE,
-    PRESET_AWAY,
+    PRESET_HOME,
     ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
@@ -42,7 +42,8 @@ SUPPORT_FLAGS = (
     | ClimateEntityFeature.TURN_OFF
     | ClimateEntityFeature.TURN_ON
 )
-SUPPORT_PRESET = [PRESET_AWAY, PRESET_ECO, PRESET_COMFORT, PRESET_NONE]
+# Vacation/Away mode is controlled separately via L_state, not oekomode
+SUPPORT_PRESET = [PRESET_NONE, PRESET_COMFORT, PRESET_HOME, PRESET_ECO]
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -210,19 +211,20 @@ class PellematicClimate(ClimateEntity):
                 _LOGGER.warning("Invalid mode_auto value: %s", data["mode_auto"])
         
         # Read oekomode for preset mode
-        # 0:Arrêt|1:Confort|2:Intermédiaire|3:Ecologique
+        # Format: "0:Aus|1:Komfort (-0.5K)|2:Minimum (-1.0K)|3:Ökologisch (-1.5K)"
+        # Note: Vacation mode is NOT controlled by oekomode - it's detected via L_state==128
         if "oekomode" in data:
             try:
                 # Convert to int, handling both numeric and string values
-                oekomode_val = int(get_api_value(data["oekomode"], 2))
+                oekomode_val = int(get_api_value(data["oekomode"], 0))
                 if oekomode_val == 0:
-                    self._attr_preset_mode = PRESET_AWAY  # Arrêt = Away/Vacation
+                    self._attr_preset_mode = PRESET_NONE  # Aus (no eco reduction)
                 elif oekomode_val == 1:
-                    self._attr_preset_mode = PRESET_COMFORT  # Confort
+                    self._attr_preset_mode = PRESET_COMFORT  # Komfort (-0.5K)
                 elif oekomode_val == 2:
-                    self._attr_preset_mode = PRESET_NONE  # Intermédiaire
+                    self._attr_preset_mode = PRESET_HOME  # Minimum (-1.0K)
                 elif oekomode_val == 3:
-                    self._attr_preset_mode = PRESET_ECO  # Ecologique
+                    self._attr_preset_mode = PRESET_ECO  # Ökologisch (-1.5K)
                 else:
                     self._attr_preset_mode = PRESET_NONE
             except (ValueError, TypeError):
@@ -248,28 +250,19 @@ class PellematicClimate(ClimateEntity):
 
     @property
     def target_temperature(self) -> float | None:
-        """Return target temperature based on preset mode.
+        """Return the actual target temperature.
         
-        The oekomode (preset) determines which temperature profile is active.
-        When in AUTO mode, the time program switches between heating and setback,
-        but always using the temperatures defined by the current oekomode.
+        Returns L_roomtemp_set which is the current temperature the system is targeting.
+        This accounts for the oekomode setting (eco reduction) and time program automatically.
         
-        For example: oekomode=ECO means lower temperatures are used,
-        even when the time program says "heating phase".
+        The oekomode applies a reduction from temp_heat:
+        - oekomode 0 (NONE): No reduction
+        - oekomode 1 (COMFORT): -0.5K
+        - oekomode 2 (HOME): -1.0K  
+        - oekomode 3 (ECO): -1.5K
         """
-        # Preset mode determines the temperature profile
-        if self._attr_preset_mode == PRESET_AWAY:
-            # Away/Vacation mode uses temp_vacation
-            return self._attr_target_temperature_vacation
-        elif self._attr_preset_mode == PRESET_ECO:
-            # Eco/Ecological mode uses temp_setback (reduced temperature)
-            return self._attr_target_temperature_slow
-        elif self._attr_preset_mode == PRESET_COMFORT:
-            # Comfort mode uses temp_heat
-            return self._attr_target_temperature_comfort
-        
-        # Fallback: use the auto temperature (L_roomtemp_set)
-        # This is what Ökofen is currently targeting
+        # Always return L_roomtemp_set - this is what the system is actually targeting right now
+        # It already includes oekomode reductions and time program adjustments
         return self._attr_target_temperature_auto
     
     @property
@@ -387,12 +380,13 @@ class PellematicClimate(ClimateEntity):
         
         try:
             # Map Home Assistant preset to oekomode value
-            # 0:Aus|1:Komfort|2:Minimum|3:Ökologisch
+            # Format: "0:Aus|1:Komfort (-0.5K)|2:Minimum (-1.0K)|3:Ökologisch (-1.5K)"
+            # Note: Vacation/Away is NOT controlled via oekomode
             oekomode_map = {
-                PRESET_AWAY: 0,      # Aus / Arrêt
-                PRESET_COMFORT: 1,   # Komfort / Confort
-                PRESET_NONE: 2,      # Minimum / Intermédiaire
-                PRESET_ECO: 3,       # Ökologisch / Ecologique
+                PRESET_NONE: 0,      # Aus (no eco reduction)
+                PRESET_COMFORT: 1,   # Komfort (-0.5K)
+                PRESET_HOME: 2,      # Minimum (-1.0K)
+                PRESET_ECO: 3,       # Ökologisch (-1.5K)
             }
             
             if preset_mode not in oekomode_map:

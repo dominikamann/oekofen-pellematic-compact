@@ -11,5 +11,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/dominikamann/oekofen-pellematic-compact/issues",
   "requirements": [],
-  "version": "v4.2.3"
+  "version": "v4.2.4"
 }
