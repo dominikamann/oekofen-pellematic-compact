@@ -122,11 +122,9 @@ async def test_check_and_warn_german_entities(mock_hass):
     # Return actual list
     mock_entries = [german_entity, english_entity]
     
-    # Mock persistent notification properly
-    mock_hass.components = Mock()
-    mock_hass.components.persistent_notification = Mock()
-    mock_create_notification = Mock()
-    mock_hass.components.persistent_notification.async_create = mock_create_notification
+    # Mock services.async_call for persistent notification
+    mock_async_call = AsyncMock()
+    mock_hass.services.async_call = mock_async_call
     
     with patch("custom_components.oekofen_pellematic_compact.migration.er.async_get") as mock_get_registry:
         with patch("custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry", return_value=mock_entries):
@@ -141,8 +139,11 @@ async def test_check_and_warn_german_entities(mock_hass):
             assert len(warnings) >= 1
             assert any("kesseltemperatur" in w.lower() for w in warnings)
             
-            # Should create notification
-            mock_create_notification.assert_called_once()
+            # Should create notification via services.async_call
+            mock_async_call.assert_called_once()
+            call_args = mock_async_call.call_args
+            assert call_args[0][0] == "persistent_notification"
+            assert call_args[0][1] == "create"
 
 
 @pytest.mark.asyncio
@@ -156,11 +157,9 @@ async def test_check_and_warn_french_entities(mock_hass):
     # Return actual list
     mock_entries = [french_entity]
     
-    # Mock persistent notification properly
-    mock_hass.components = Mock()
-    mock_hass.components.persistent_notification = Mock()
-    mock_create_notification = Mock()
-    mock_hass.components.persistent_notification.async_create = mock_create_notification
+    # Mock services.async_call for persistent notification
+    mock_async_call = AsyncMock()
+    mock_hass.services.async_call = mock_async_call
     
     with patch("custom_components.oekofen_pellematic_compact.migration.er.async_get") as mock_get_registry:
         with patch("custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry", return_value=mock_entries):

@@ -258,17 +258,18 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         new_data.setdefault(CONF_SOLAR_CIRCUIT, False)
         
         # Auto-detect charset and API suffix if not present
-        if CONF_CHARSET not in new_data or CONF_API_SUFFIX not in new_data:
+        if CONF_CHARSET not in new_data or CONF_API_SUFFIX not in new_data or CONF_OLD_FIRMWARE not in new_data:
             try:
                 host = new_data.get(CONF_HOST, DEFAULT_HOST).rstrip('?')
-                detected_charset, detected_suffix = await hass.async_add_executor_job(
+                detected_charset, detected_suffix, detected_old_firmware = await hass.async_add_executor_job(
                     _detect_api_config, host
                 )
                 new_data[CONF_CHARSET] = detected_charset
                 new_data[CONF_API_SUFFIX] = detected_suffix
+                new_data[CONF_OLD_FIRMWARE] = detected_old_firmware
                 _LOGGER.info(
-                    "Migration V1→V2: Auto-detected charset '%s' and API suffix '%s' for %s",
-                    detected_charset, detected_suffix, host
+                    "Migration V1→V2: Auto-detected charset '%s', API suffix '%s', old_firmware=%s for %s",
+                    detected_charset, detected_suffix, detected_old_firmware, host
                 )
             except Exception as e:
                 _LOGGER.warning(
@@ -277,6 +278,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 )
                 new_data[CONF_CHARSET] = DEFAULT_CHARSET
                 new_data[CONF_API_SUFFIX] = DEFAULT_API_SUFFIX
+                new_data[CONF_OLD_FIRMWARE] = DEFAULT_OLD_FIRMWARE
         
         hass.config_entries.async_update_entry(entry, data=new_data, version=2)
         _LOGGER.info("Migration to version 2 successful")

@@ -127,14 +127,21 @@ async def async_migrate_entity_ids(
         )
         
         # Create a persistent notification to inform the user
-        hass.components.persistent_notification.async_create(
-            f"**Ökofen Pellematic: Entity ID Migration Complete**\n\n"
-            f"Successfully preserved {migrated_count} entity ID(s) for backwards compatibility.\n\n"
-            f"Your existing automations and dashboards should continue working without changes.\n\n"
-            f"For more information, see the [Migration Guide](https://github.com/dominikamann/oekofen-pellematic-compact/blob/main/MIGRATION_GUIDE.md).",
-            title="Ökofen Pellematic Migration",
-            notification_id=f"oekofen_migration_{hub_name}",
-        )
+        try:
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "message": f"**Ökofen Pellematic: Entity ID Migration Complete**\n\n"
+                               f"Successfully preserved {migrated_count} entity ID(s) for backwards compatibility.\n\n"
+                               f"Your existing automations and dashboards should continue working without changes.\n\n"
+                               f"For more information, see the [Migration Guide](https://github.com/dominikamann/oekofen-pellematic-compact/blob/main/MIGRATION_GUIDE.md).",
+                    "title": "Ökofen Pellematic Migration",
+                    "notification_id": f"oekofen_migration_{hub_name}",
+                },
+            )
+        except Exception as e:
+            _LOGGER.debug("Could not create migration notification: %s", e)
     else:
         _LOGGER.debug("No old-format entity IDs found for %s", hub_name)
     
@@ -201,14 +208,21 @@ async def async_check_and_warn_entity_changes(
         if len(warnings) > 5:
             warning_text += f"\n\n...and {len(warnings) - 5} more warnings (check logs for details)"
         
-        hass.components.persistent_notification.async_create(
-            f"**Ökofen Pellematic: Entity ID Warning**\n\n"
-            f"Some entity IDs contain translated text which may cause issues:\n\n"
-            f"{warning_text}\n\n"
-            f"These entities will continue working, but consider renaming them to use standardized IDs.\n\n"
-            f"See the [Migration Guide](https://github.com/dominikamann/oekofen-pellematic-compact/blob/main/MIGRATION_GUIDE.md) for more information.",
-            title="Ökofen Pellematic Entity Warning",
-            notification_id=f"oekofen_entity_warning_{hub_name}",
-        )
+        try:
+            await hass.services.async_call(
+                "persistent_notification",
+                "create",
+                {
+                    "message": f"**Ökofen Pellematic: Entity ID Warning**\n\n"
+                               f"Some entity IDs contain translated text which may cause issues:\n\n"
+                               f"{warning_text}\n\n"
+                               f"These entities will continue working, but consider renaming them to use standardized IDs.\n\n"
+                               f"See the [Migration Guide](https://github.com/dominikamann/oekofen-pellematic-compact/blob/main/MIGRATION_GUIDE.md) for more information.",
+                    "title": "Ökofen Pellematic Entity Warning",
+                    "notification_id": f"oekofen_entity_warning_{hub_name}",
+                },
+            )
+        except Exception as e:
+            _LOGGER.debug("Could not create entity warning notification: %s", e)
     
     return warnings
