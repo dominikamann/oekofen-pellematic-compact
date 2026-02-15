@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import re
+import time
 from datetime import timedelta
 from typing import Optional, Callable, Any, Dict, Set
 from collections.abc import Awaitable
@@ -644,6 +645,8 @@ class PellematicHub:
         self._unsub_interval_method = None
         self._sensors = []
         self.data = {}
+        self._last_fetch_time = 0  # Track last API call time for rate limiting
+        self._min_fetch_interval = 2.5  # Minimum seconds between API calls (Ökofen requirement)
 
     @callback
     def async_add_pellematic_sensor(self, update_callback) -> None:
@@ -701,17 +704,37 @@ class PellematicHub:
         return self._name
 
     async def fetch_pellematic_data(self) -> bool:
-        """Get data from api"""
-        try:
-            result = await self._hass.async_add_executor_job(
-                fetch_data, self._host, self._charset, self._api_suffix
-            )
-            self.data = result
-            return True
-        except Exception as e:
-            _LOGGER.error("Failed to fetch Pellematic data: %s", e)
-# Keep existing data if available
-            return False
+        """Get data from API with rate limiting.
+        
+        The Ökofen API requires at least 2500ms between requests.
+        Returns HTTP 401 with 'Wait at least 2500ms during requests' if called too frequently.
+        """
+        async with self._lock:
+            # Calculate time since last fetch
+            current_time = time.time()
+            time_since_last_fetch = current_time - self._last_fetch_time
+            
+            # Wait if needed to honor minimum interval
+            if time_since_last_fetch < self._min_fetch_interval:
+                wait_time = self._min_fetch_interval - time_since_last_fetch
+                _LOGGER.debug(
+                    "Rate limiting: waiting %.2fs before next API call (last call was %.2fs ago)",
+                    wait_time, time_since_last_fetch
+                )
+                await asyncio.sleep(wait_time)
+            
+            try:
+                result = await self._hass.async_add_executor_job(
+                    fetch_data, self._host, self._charset, self._api_suffix
+                )
+                self.data = result
+                self._last_fetch_time = time.time()  # Update timestamp on success
+                return True
+            except Exception as e:
+                _LOGGER.error("Failed to fetch Pellematic data: %s", e)
+                # Don't update timestamp on error to allow immediate retry
+                # Keep existing data if available
+                return False
     
     async def async_get_data(self, force_refresh: bool = False) -> Optional[Dict[str, Any]]:
         """Get current API data, fetch if not available or forced.
