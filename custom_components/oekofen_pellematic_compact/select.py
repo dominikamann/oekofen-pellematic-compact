@@ -95,7 +95,7 @@ class PellematicSelect(SelectEntity):
         self._name = f"{self._platform_name} {select_definition['name']}"
         self._attr_unique_id = f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         # Use component_key for entity_id instead of long human-readable name
-        self._attr_object_id = f"{self._prefix}_{self._key}"
+        self._attr_object_id = f"{self._prefix}_{self._key}".lower()
         self._attr_current_option = None
         self._attr_options = select_definition['options']
         self._device_info = device_info
