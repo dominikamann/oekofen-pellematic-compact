@@ -184,11 +184,11 @@ class PellematicBinarySensor(BinarySensorEntity):
             f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         )
         # Use component_key for entity_id instead of long human-readable name
-        self._attr_object_id = f"{self._prefix}_{self._key}"
+        self._attr_object_id = f"{self._prefix}_{self._key}".lower()
         self._unit_of_measurement = sensor_definition.get('unit')
         self._icon = sensor_definition.get('icon')
         self._device_info = device_info
-        
+
         # Set device class from definition, default to POWER
         device_class = sensor_definition.get('device_class')
         if device_class:
@@ -294,7 +294,7 @@ class PellematicSensor(SensorEntity):
             f"{self._platform_name.lower()}_{self._prefix}_{self._key}"
         )
         # Use component_key for entity_id instead of long human-readable name
-        self._attr_object_id = f"{self._prefix}_{self._key}"
+        self._attr_object_id = f"{self._prefix}_{self._key}".lower()
         self._unit_of_measurement = sensor_definition.get('unit')
         self._icon = sensor_definition.get('icon')
         self._device_info = device_info
