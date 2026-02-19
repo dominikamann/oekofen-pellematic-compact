@@ -115,7 +115,7 @@ class PellematicClimate(ClimateEntity):
         self._heater_num = heater_num
         self._attr_unique_id = f"{self._platform_name.lower()}_{self._prefix}_climate"
         # Use component_key for entity_id instead of long human-readable name
-        self._attr_object_id = f"{self._prefix}_climate"
+        self._attr_object_id = f"{self._prefix}_climate".lower()
         self._attr_current_option = None
         self._device_info = device_info
         self._attr_temperature_unit = UnitOfTemperature.CELSIUS
