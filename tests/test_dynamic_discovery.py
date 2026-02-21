@@ -29,7 +29,9 @@ def test_infer_binary_device_class():
     # Burner / motor -> RUNNING
     assert infer_binary_device_class({}, "L_br") == BinarySensorDeviceClass.RUNNING
     assert infer_binary_device_class({}, "L_ak") == BinarySensorDeviceClass.RUNNING
-    assert infer_binary_device_class({}, "L_stb") == BinarySensorDeviceClass.RUNNING
+
+    # Safety temperature limiter (STB) -> PROBLEM (fault condition, not running)
+    assert infer_binary_device_class({}, "L_stb") == BinarySensorDeviceClass.PROBLEM
 
     # Emergency / fault -> PROBLEM
     assert infer_binary_device_class({}, "L_not") == BinarySensorDeviceClass.PROBLEM

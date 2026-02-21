@@ -255,11 +255,11 @@ def infer_binary_device_class(data: dict, key: str) -> Optional[BinarySensorDevi
         return BinarySensorDeviceClass.RUNNING
 
     # Burner / ignition / fan running
-    if any(word in key_lower for word in ("_br", "_ak", "_stb")):
+    if any(word in key_lower for word in ("_br", "_ak")):
         return BinarySensorDeviceClass.RUNNING
 
-    # Fault / emergency condition
-    if any(word in key_lower for word in ("_not", "error", "fault", "stoer")):
+    # Fault / emergency / safety trip condition
+    if any(word in key_lower for word in ("_not", "_stb", "error", "fault", "stoer")):
         return BinarySensorDeviceClass.PROBLEM
 
     # USB / connectivity
