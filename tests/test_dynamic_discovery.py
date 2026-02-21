@@ -8,6 +8,7 @@ from custom_components.oekofen_pellematic_compact.dynamic_discovery import (
     is_number,
     parse_select_options,
     infer_device_class,
+    infer_binary_device_class,
     infer_icon,
     normalize_unit,
     create_sensor_definition,
@@ -15,7 +16,60 @@ from custom_components.oekofen_pellematic_compact.dynamic_discovery import (
     discover_all_entities,
 )
 from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.const import UnitOfTemperature, UnitOfFrequency, PERCENTAGE
+
+
+def test_infer_binary_device_class():
+    """Test binary sensor device class inference."""
+    # Pumps -> RUNNING
+    assert infer_binary_device_class({}, "L_pump") == BinarySensorDeviceClass.RUNNING
+    assert infer_binary_device_class({}, "L_pummp") == BinarySensorDeviceClass.RUNNING
+
+    # Burner / motor -> RUNNING
+    assert infer_binary_device_class({}, "L_br") == BinarySensorDeviceClass.RUNNING
+    assert infer_binary_device_class({}, "L_ak") == BinarySensorDeviceClass.RUNNING
+    assert infer_binary_device_class({}, "L_stb") == BinarySensorDeviceClass.RUNNING
+
+    # Emergency / fault -> PROBLEM
+    assert infer_binary_device_class({}, "L_not") == BinarySensorDeviceClass.PROBLEM
+
+    # USB -> CONNECTIVITY
+    assert infer_binary_device_class({}, "L_usb_stick") == BinarySensorDeviceClass.CONNECTIVITY
+
+    # Unknown -> None (generic on/off)
+    assert infer_binary_device_class({}, "L_state") is None
+    assert infer_binary_device_class({}, "L_unknown") is None
+
+    # Text-based inference for pump
+    assert infer_binary_device_class({"text": "Pumpe"}, "L_x") == BinarySensorDeviceClass.RUNNING
+
+
+def test_binary_sensors_have_correct_device_class():
+    """Test that binary sensors discovered from a real fixture get correct device classes."""
+    data = {
+        "hk1": {
+            "hk_info": "heating circuit data",
+            "L_pump": {"val": 1, "format": "0:Aus|1:Ein"},
+        },
+        "pe1": {
+            "pe_info": "pellematic data",
+            "L_br": {"val": 0, "format": "0:Aus|1:Ein"},
+            "L_not": {"val": 0, "format": "0:Aus|1:Ein"},
+        },
+        "system": {
+            "system_info": "system global variables",
+            "L_usb_stick": {"val": 0, "format": "0:Aus|1:Ein"},
+        },
+    }
+    from custom_components.oekofen_pellematic_compact.dynamic_discovery import discover_all_entities
+    discovered = discover_all_entities(data)
+    binary_sensors = {f"{s['component']}_{s['key']}": s for s in discovered['binary_sensors']}
+
+    assert binary_sensors["hk1_L_pump"]["device_class"] == BinarySensorDeviceClass.RUNNING
+    assert binary_sensors["pe1_L_br"]["device_class"] == BinarySensorDeviceClass.RUNNING
+    assert binary_sensors["pe1_L_not"]["device_class"] == BinarySensorDeviceClass.PROBLEM
+    assert binary_sensors["system_L_usb_stick"]["device_class"] == BinarySensorDeviceClass.CONNECTIVITY
 
 
 def test_is_binary_sensor():

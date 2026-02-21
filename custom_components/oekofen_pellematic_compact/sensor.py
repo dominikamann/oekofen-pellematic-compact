@@ -189,14 +189,8 @@ class PellematicBinarySensor(BinarySensorEntity):
         self._icon = sensor_definition.get('icon')
         self._device_info = device_info
 
-        # Set device class from definition, default to POWER
-        device_class = sensor_definition.get('device_class')
-        if device_class:
-            self._attr_device_class = device_class
-        else:
-            self._attr_device_class = BinarySensorDeviceClass.POWER
-            if self._icon == "mdi:usb-flash-drive":
-                self._attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+        # Set device class from definition (None is fine — HA will show a generic on/off)
+        self._attr_device_class = sensor_definition.get('device_class') or None
 
         _LOGGER.debug(
             "Adding dynamic PellematicBinarySensor: %s, %s",

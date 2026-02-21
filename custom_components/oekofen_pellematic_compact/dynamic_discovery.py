@@ -12,6 +12,7 @@ from homeassistant.const import (
     PERCENTAGE,
 )
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.number import NumberDeviceClass
 
 _LOGGER = logging.getLogger(__name__)
@@ -241,6 +242,36 @@ def infer_device_class(data: dict, key: str) -> Optional[str]:
     if "error" in text or "fehler" in text or "error" in key_lower:
         return SensorDeviceClass.ENUM
     
+    return None
+
+
+def infer_binary_device_class(data: dict, key: str) -> Optional[BinarySensorDeviceClass]:
+    """Infer the correct BinarySensorDeviceClass from key name and context."""
+    key_lower = key.lower()
+    text = data.get("text", "").lower()
+
+    # Pumps / motors that are running or stopped
+    if any(word in key_lower for word in ("pump", "pumpe", "pummp")):
+        return BinarySensorDeviceClass.RUNNING
+
+    # Burner / ignition / fan running
+    if any(word in key_lower for word in ("_br", "_ak", "_stb")):
+        return BinarySensorDeviceClass.RUNNING
+
+    # Fault / emergency condition
+    if any(word in key_lower for word in ("_not", "error", "fault", "stoer")):
+        return BinarySensorDeviceClass.PROBLEM
+
+    # USB / connectivity
+    if "usb" in key_lower:
+        return BinarySensorDeviceClass.CONNECTIVITY
+
+    # Fall back based on translated label if available
+    if any(word in text for word in ("pump", "pumpe")):
+        return BinarySensorDeviceClass.RUNNING
+    if any(word in text for word in ("fehler", "error", "fault", "stor")):
+        return BinarySensorDeviceClass.PROBLEM
+
     return None
 
 
@@ -543,6 +574,7 @@ def discover_entities_from_component(
             # Read-only sensor (API convention: L_ prefix = read-only)
             if is_binary_sensor(data):
                 definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
+                definition["device_class"] = infer_binary_device_class(data, key)
                 entities["binary_sensors"].append(definition)
             else:
                 definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
