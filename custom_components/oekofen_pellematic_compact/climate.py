@@ -251,18 +251,28 @@ class PellematicClimate(ClimateEntity):
     @property
     def target_temperature(self) -> float | None:
         """Return the actual target temperature.
-        
-        Returns L_roomtemp_set which is the current temperature the system is targeting.
-        This accounts for the oekomode setting (eco reduction) and time program automatically.
-        
-        The oekomode applies a reduction from temp_heat:
-        - oekomode 0 (NONE): No reduction
-        - oekomode 1 (COMFORT): -0.5K
-        - oekomode 2 (HOME): -1.0K  
-        - oekomode 3 (ECO): -1.5K
+
+        Reads live from hub.data so that external changes (e.g. from the physical
+        touch panel) are reflected immediately on the next poll, without waiting for
+        the _api_data_updated callback to refresh the cached value.
+
+        Returns L_roomtemp_set which is the current temperature the system is
+        targeting.  This accounts for the oekomode setting (eco reduction) and
+        time program automatically.
         """
-        # Always return L_roomtemp_set - this is what the system is actually targeting right now
-        # It already includes oekomode reductions and time program adjustments
+        if self._prefix in self._hub.data:
+            data = self._hub.data[self._prefix]
+            if "L_roomtemp_set" in data:
+                try:
+                    remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
+                    l_roomtemp_set = float(get_api_value(data["L_roomtemp_set"], 0)) / 10
+                    return l_roomtemp_set - remote_override
+                except (ValueError, TypeError):
+                    _LOGGER.warning(
+                        "Invalid L_roomtemp_set/remote_override value in live read for %s",
+                        self._prefix,
+                    )
+        # Fall back to cached value during initialisation or if hub data is absent
         return self._attr_target_temperature_auto
     
     @property
