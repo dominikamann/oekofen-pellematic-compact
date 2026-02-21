@@ -5,6 +5,7 @@ to preserve user automations and dashboards.
 """
 
 import logging
+import re
 from typing import Dict, List, Tuple
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -96,17 +97,17 @@ async def async_migrate_entity_ids(
     for entity in entities:
         entity_id = entity.entity_id
         platform = entity.domain
-        
-        # Check each pattern
+        matched_old_pattern = False
+
+        # Check each old naming-convention pattern (e.g., heater_1_ -> pe1_)
         for pattern_platform, old_pattern, new_prefix in patterns:
             if platform != pattern_platform:
                 continue
-                
-            import re
+
             match = re.match(old_pattern, entity_id)
             if not match:
                 continue
-            
+
             # Found a match - this entity needs migration
             # The entity_id will be preserved, but we log the change
             _LOGGER.info(
@@ -114,7 +115,32 @@ async def async_migrate_entity_ids(
                 entity_id
             )
             migrated_count += 1
+            matched_old_pattern = True
             break
+
+        # Second pass: detect mixed-case entity IDs (Phase 1 scenario)
+        # Only runs when no old naming-convention pattern matched
+        if not matched_old_pattern and entity_id != entity_id.lower():
+            target_id = entity_id.lower()
+
+            # Duplicate detection: skip rename if lowercase target already exists
+            existing = entity_reg.async_get(target_id)
+            if existing is not None:
+                _LOGGER.warning(
+                    "Cannot rename %s to %s: target already exists, skipping",
+                    entity_id,
+                    target_id,
+                )
+                continue
+
+            # Safe to rename — only update new_entity_id, never unique_id
+            entity_reg.async_update_entity(entity_id, new_entity_id=target_id)
+            _LOGGER.info(
+                "Renamed entity %s → %s (unique_id preserved)",
+                entity_id,
+                target_id,
+            )
+            migrated_count += 1
     
     # Mark migration as complete
     if hub_name not in hass.data.get("oekofen_pellematic_compact", {}):
@@ -124,7 +150,7 @@ async def async_migrate_entity_ids(
     
     if migrated_count > 0:
         _LOGGER.info(
-            "Entity ID migration completed for %s: %d entities preserved",
+            "Entity ID migration completed for %s: %d entities renamed",
             hub_name,
             migrated_count
         )
@@ -136,7 +162,7 @@ async def async_migrate_entity_ids(
                 "create",
                 {
                     "message": f"**Ökofen Pellematic: Entity ID Migration Complete**\n\n"
-                               f"Successfully preserved {migrated_count} entity ID(s) for backwards compatibility.\n\n"
+                               f"Successfully renamed {migrated_count} entity ID(s) for backwards compatibility.\n\n"
                                f"Your existing automations and dashboards should continue working without changes.\n\n"
                                f"For more information, see the [Migration Guide](https://github.com/dominikamann/oekofen-pellematic-compact/blob/main/MIGRATION_GUIDE.md).",
                     "title": "Ökofen Pellematic Migration",
