@@ -17,7 +17,7 @@ from homeassistant.const import CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_time_interval
-from .migration import async_migrate_entity_ids, async_check_and_warn_entity_changes
+from .migration import async_migrate_entity_ids, async_check_and_warn_entity_changes, ENTITY_WARNING_SHOWN_KEY, MIGRATION_NOTIFICATION_SHOWN_KEY
 from .const import (
     CONF_CHARSET,
     DEFAULT_CHARSET,
@@ -522,20 +522,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][name] = {"hub": hub}
 
     # Run one-time entity ID migration for existing users
-    try:
-        migrated = await async_migrate_entity_ids(hass, entry.entry_id, name)
-        if migrated > 0:
-            _LOGGER.info("Migrated %d entity IDs for backwards compatibility", migrated)
-    except Exception as e:
-        _LOGGER.warning("Entity ID migration failed (non-critical): %s", e)
+    if not entry.data.get(MIGRATION_NOTIFICATION_SHOWN_KEY, False):
+        try:
+            migrated = await async_migrate_entity_ids(hass, entry.entry_id, name)
+            if migrated > 0:
+                _LOGGER.info("Migrated %d entity IDs for backwards compatibility", migrated)
+            # Persist the flag so the migration notification is never repeated
+            hass.config_entries.async_update_entry(
+                entry, data={**entry.data, MIGRATION_NOTIFICATION_SHOWN_KEY: True}
+            )
+        except Exception as e:
+            _LOGGER.warning("Entity ID migration failed (non-critical): %s", e)
+    else:
+        _LOGGER.debug("Entity ID migration already completed for %s, skipping", name)
 
-    # Check and warn about potential entity ID issues
-    try:
-        warnings = await async_check_and_warn_entity_changes(hass, entry.entry_id, name)
-        for warning in warnings:
-            _LOGGER.warning(warning)
-    except Exception as e:
-        _LOGGER.debug("Entity ID check failed (non-critical): %s", e)
+    # Check and warn about potential entity ID issues (one-time, persisted in entry data)
+    if not entry.data.get(ENTITY_WARNING_SHOWN_KEY, False):
+        try:
+            warnings = await async_check_and_warn_entity_changes(hass, entry.entry_id, name)
+            for warning in warnings:
+                _LOGGER.warning(warning)
+            # Persist the flag so this check is skipped on subsequent restarts
+            hass.config_entries.async_update_entry(
+                entry, data={**entry.data, ENTITY_WARNING_SHOWN_KEY: True}
+            )
+        except Exception as e:
+            _LOGGER.debug("Entity ID check failed (non-critical): %s", e)
+    else:
+        _LOGGER.debug("Entity ID warning check already completed for %s, skipping", name)
 
     # Register services
     await async_setup_services(hass)

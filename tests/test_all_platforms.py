@@ -238,6 +238,7 @@ def test_total_entities_all_fixtures():
         ("api_response_poolandeco.json", 111),
         ("api_v352_r49.json", 184),  # Modern firmware v3.52 with weather and forecast
         ("api_response_v324_peter.json", 184),  # Old firmware v3.24.0 (no writeable flag)
+        ("api_response_fren.json", 171),  # French user with 3xhk, 2xpu, 2xww, sk1, circ2, pe1
     ]
     
     total_entities = 0
@@ -253,4 +254,4 @@ def test_total_entities_all_fixtures():
         total_entities += count
     
     # Total entities across all fixtures (international names, binary→select fix)
-    assert total_entities == 3238
+    assert total_entities == 3409

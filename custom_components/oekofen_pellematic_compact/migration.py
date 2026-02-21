@@ -14,6 +14,9 @@ _LOGGER = logging.getLogger(__name__)
 # Version where object_id was introduced
 MIGRATION_FROM_VERSION = "4.0.0"
 MIGRATION_MARKER = "migrated_entity_ids"
+# Keys stored in config entry data to suppress repeated notifications
+ENTITY_WARNING_SHOWN_KEY = "entity_id_warning_shown"
+MIGRATION_NOTIFICATION_SHOWN_KEY = "migration_notification_shown"
 
 
 def _generate_old_entity_id_patterns() -> List[Tuple[str, str, str]]:
@@ -188,9 +191,9 @@ async def async_check_and_warn_entity_changes(
                 "außentemperatur", "betriebsart", "warmwasser"
             ]
             
-            # French words
+            # French words that are NOT also common English words
             french_indicators = [
-                "température", "circuit", "chauffage"
+                "température", "chauffage"
             ]
             
             for word in german_indicators + french_indicators:
