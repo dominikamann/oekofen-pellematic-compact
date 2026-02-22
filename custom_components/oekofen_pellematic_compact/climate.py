@@ -124,6 +124,7 @@ class PellematicClimate(ClimateEntity):
         self._attr_target_temperature_slow = None
         self._attr_target_temperature_auto = None
         self._attr_target_temperature_vacation = None
+        self._pending_target_temperature = None  # Optimistic value after a write, cleared on next poll
         self._attr_preset_mode = PRESET_NONE
         self._attr_preset_modes = SUPPORT_PRESET
         self._attr_supported_features = SUPPORT_FLAGS
@@ -143,6 +144,8 @@ class PellematicClimate(ClimateEntity):
     
     @callback
     def _api_data_updated(self):
+        # Clear optimistic pending temperature – actual device state is now available
+        self._pending_target_temperature = None
         self._update_state()
         self.async_write_ha_state()
 
@@ -158,13 +161,6 @@ class PellematicClimate(ClimateEntity):
                 self._attr_current_temperature = float(get_api_value(data["L_roomtemp_act"], 0)) / 10
             except (ValueError, TypeError):
                 _LOGGER.warning("Invalid L_roomtemp_act value: %s", data["L_roomtemp_act"])
-            
-        # Get the remote override value (if any)
-        try:
-            remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
-        except (ValueError, TypeError):
-            remote_override = 0.0
-            _LOGGER.warning("Invalid remote_override value: %s", data.get("remote_override"))
             
         if "temp_heat" in data:
             # Base comfort temperature without override
@@ -185,13 +181,11 @@ class PellematicClimate(ClimateEntity):
             except (ValueError, TypeError):
                 _LOGGER.warning("Invalid temp_vacation value: %s", data["temp_vacation"])
             
-        if "L_roomtemp_set" in data and "temp_heat" in data:
-            # For Auto mode, L_roomtemp_set includes the remote_override adjustment
-            # We need to subtract remote_override to get the base temperature
+        if "L_roomtemp_set" in data:
+            # L_roomtemp_set is the actual temperature the system is currently targeting
+            # (accounts for time program, oekomode eco reduction, etc.)
             try:
-                l_roomtemp_set = float(get_api_value(data["L_roomtemp_set"], 0)) / 10
-                base_temp = l_roomtemp_set - remote_override
-                self._attr_target_temperature_auto = base_temp
+                self._attr_target_temperature_auto = float(get_api_value(data["L_roomtemp_set"], 0)) / 10
             except (ValueError, TypeError):
                 _LOGGER.warning("Invalid L_roomtemp_set value: %s", data["L_roomtemp_set"])
             
@@ -252,24 +246,27 @@ class PellematicClimate(ClimateEntity):
     def target_temperature(self) -> float | None:
         """Return the actual target temperature.
 
-        Reads live from hub.data so that external changes (e.g. from the physical
-        touch panel) are reflected immediately on the next poll, without waiting for
-        the _api_data_updated callback to refresh the cached value.
+        Returns an optimistic value immediately after a write so the UI does not
+        appear to revert.  Once the next poll arrives, _api_data_updated clears
+        the optimistic value and the live hub.data reading takes over.
 
-        Returns L_roomtemp_set which is the current temperature the system is
-        targeting.  This accounts for the oekomode setting (eco reduction) and
-        time program automatically.
+        L_roomtemp_set is the temperature the system is currently targeting –
+        it already accounts for the active time-program slot, oekomode eco
+        reduction and any physical remote-panel offset.
         """
+        # Return the optimistic value we set during the last write until the
+        # next poll confirms the device's updated state.
+        if self._pending_target_temperature is not None:
+            return self._pending_target_temperature
+
         if self._prefix in self._hub.data:
             data = self._hub.data[self._prefix]
             if "L_roomtemp_set" in data:
                 try:
-                    remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
-                    l_roomtemp_set = float(get_api_value(data["L_roomtemp_set"], 0)) / 10
-                    return l_roomtemp_set - remote_override
+                    return float(get_api_value(data["L_roomtemp_set"], 0)) / 10
                 except (ValueError, TypeError):
                     _LOGGER.warning(
-                        "Invalid L_roomtemp_set/remote_override value in live read for %s",
+                        "Invalid L_roomtemp_set value in live read for %s",
                         self._prefix,
                     )
         # Fall back to cached value during initialisation or if hub data is absent
@@ -301,13 +298,13 @@ class PellematicClimate(ClimateEntity):
             return
             
         temperature = kwargs[ATTR_TEMPERATURE]
-        temperature_int = int(temperature * 10)
-        
-        _LOGGER.info("Setting temperature for %s in mode %s to %s (int: %s)", 
-                    self._prefix, self._attr_hvac_mode, temperature, temperature_int)
+
+        _LOGGER.info("Setting temperature for %s in mode %s to %s", 
+                    self._prefix, self._attr_hvac_mode, temperature)
         
         try:
             if self._attr_hvac_mode == HVACMode.OFF:
+                temperature_int = int(round(temperature * 10))
                 self._attr_target_temperature_slow = temperature
                 _LOGGER.info("Sending setback temperature for %s: %s", self._prefix, temperature_int)
                 await self.hass.async_add_executor_job(
@@ -317,10 +314,38 @@ class PellematicClimate(ClimateEntity):
                     "temp_setback"
                 )
             elif self._attr_hvac_mode in [HVACMode.HEAT, HVACMode.AUTO]:
-                # Both HEAT and AUTO modes use temp_heat for setting the target
-                # We don't need to account for remote_override here as we're setting the base temperature
-                self._attr_target_temperature_comfort = temperature
-                self._attr_target_temperature_auto = temperature  # Keep auto temperature in sync
+                # The device applies fixed offsets on top of temp_heat:
+                #   L_roomtemp_set = temp_heat + L_comfort + remote_override
+                #
+                # To achieve a desired L_roomtemp_set we invert the formula:
+                #   temp_heat = desired - L_comfort - remote_override
+                #
+                # This is correct regardless of the circuit's current operating
+                # mode (comfort, setback, vacation) because it reads the actual
+                # offset fields rather than the transient L_roomtemp_set value.
+                l_comfort = 0.0
+                remote_override = 0.0
+                if self._prefix in self._hub.data:
+                    data = self._hub.data[self._prefix]
+                    try:
+                        l_comfort = float(get_api_value(data.get("L_comfort"), 0)) / 10
+                    except (ValueError, TypeError):
+                        l_comfort = 0.0
+                    try:
+                        remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
+                    except (ValueError, TypeError):
+                        remote_override = 0.0
+
+                adjusted_temp_heat = temperature - l_comfort - remote_override
+                temperature_int = int(round(adjusted_temp_heat * 10))
+                self._attr_target_temperature_comfort = adjusted_temp_heat
+                self._attr_target_temperature_auto = temperature  # reflect the desired L_roomtemp_set
+                _LOGGER.info(
+                    "Offset-corrected temp_heat for %s: desired=%.1f, "
+                    "L_comfort=%.1f, remote_override=%.1f → temp_heat=%.1f (int=%d)",
+                    self._prefix, temperature, l_comfort, remote_override,
+                    adjusted_temp_heat, temperature_int,
+                )
                 _LOGGER.info("Sending heat temperature for %s: %s", self._prefix, temperature_int)
                 await self.hass.async_add_executor_job(
                     self._hub.send_pellematic_data,
@@ -328,6 +353,10 @@ class PellematicClimate(ClimateEntity):
                     self._prefix,
                     "temp_heat"
                 )
+            # Optimistically reflect the new value in the UI immediately.
+            # _api_data_updated will clear this once the next poll confirms the
+            # device's actual state.
+            self._pending_target_temperature = temperature
             _LOGGER.info("Temperature set successfully")
             self.async_write_ha_state()
         except Exception as err:

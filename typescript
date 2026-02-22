@@ -1,0 +1,193 @@
+Script started on Sun Feb 22 19:42:35 2026
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;32m➜  [36moekofen-pellematic-compact[00m [K[?1h=[?2004h[0m[27m[24m[J[01;32m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?2004l
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;31m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h  python _check_formula.py 2>&1[?1l>[?2004l
+]2;python _check_formula.py 2>&1]1;python=== L_roomtemp_set vs (temp_heat + L_comfort + remote_override) ===
+
+  api_response_3bk.json                  hk1: th= 21.0 + lc=0     + ro=0     = expected= 21.0  actual= 21.0  diff=+0.0
+  api_response_base_csta.json            hk1: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_base_srqu.json            hk1: th=230.0 + lc=10.0  + ro=0     = expected=240.0  actual=240.0  diff=+0.0
+  api_response_base_srqu.json            hk2: th=220.0 + lc=0     + ro=0     = expected=220.0  actual=220.0  diff=+0.0
+  api_response_base_srqu.json            hk3: th=200.0 + lc=0     + ro=0     = expected=200.0  actual=200.0  diff=+0.0
+  api_response_base_srqu.json            hk4: th=175.0 + lc=0     + ro=0     = expected=175.0  actual= 80.0  diff=-95.0  <<< LARGE DIFF (setback=120.0, vacation=150.0)
+  api_response_basic.json                hk1: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_basic_m9.json             hk1: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_basic_m9.json             hk2: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_basic_yo_2.json           hk1: th= 21.0 + lc=0     + ro=0     = expected= 21.0  actual= 21.0  diff=+0.0
+  api_response_be72.json                 hk1: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_ext_zx.json               hk1: th= 23.0 + lc=0     + ro=0     = expected= 23.0  actual= 21.0  diff=-2.0  <<< LARGE DIFF (setback=21.0, vacation=15.0)
+  api_response_ext_zx.json               hk2: th= 22.0 + lc=-1.0  + ro=0     = expected= 21.0  actual= 21.0  diff=+0.0
+  api_response_fren.json                 hk1: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_fren.json                 hk2: th= 20.0 + lc=0     + ro=0     = expected= 20.0  actual= 20.0  diff=+0.0
+  api_response_fren.json                 hk3: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_green_kn.json             hk1: th=230.0 + lc=10.0  + ro=0     = expected=240.0  actual=240.0  diff=+0.0
+  api_response_green_kn.json             hk2: th=220.0 + lc=0     + ro=0     = expected=220.0  actual=220.0  diff=+0.0
+  api_response_green_kn.json             hk3: th=200.0 + lc=0     + ro=0     = expected=200.0  actual=200.0  diff=+0.0
+  api_response_green_kn.json             hk4: th=175.0 + lc=0     + ro=0     = expected=175.0  actual= 80.0  diff=-95.0  <<< LARGE DIFF (setback=120.0, vacation=150.0)
+  api_response_mg.json                   hk1: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_mg.json                   hk2: th= 20.0 + lc=0     + ro=0     = expected= 20.0  actual= 20.0  diff=+0.0
+  api_response_mg.json                   hk3: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_mr.json                   hk1: th= 24.0 + lc=0     + ro=0     = expected= 24.0  actual= 24.0  diff=+0.0
+  api_response_n4n.json                  hk1: th= 22.0 + lc=0     + ro=0     = expected= 22.0  actual= 20.5  diff=-1.5
+  api_response_poolandeco.json           hk1: th= 20.0 + lc=-1.0  + ro=0     = expected= 19.0  actual=  8.0  diff=-11.0  <<< LARGE DIFF (setback=19.5, vacation=12.0)
+  api_response_sk_lxy.json               hk1: th= 20.0 + lc=-1.0  + ro=0     = expected= 19.0  actual=  8.0  diff=-11.0  <<< LARGE DIFF (setback=19.5, vacation=12.0)
+  api_response_v324_peter.json           hk1: th= 21.0 + lc=1.0   + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_response_v324_peter.json           hk2: th= 22.0 + lc=1.0   + ro=0     = expected= 23.0  actual= 23.0  diff=+0.0
+  api_response_will.json                 hk1: th= 21.0 + lc=0     + ro=0     = expected= 21.0  actual= 21.0  diff=+0.0
+  api_response_with_se_ml.json           hk1: th= 20.0 + lc=0     + ro=0     = expected= 20.0  actual= 20.0  diff=+0.0
+  api_response_with_se_ml.json           hk2: th= 21.0 + lc=0     + ro=0     = expected= 21.0  actual= 21.0  diff=+0.0
+  api_response_with_sk_dash.json         hk1: th=190.0 + lc=0     + ro=0     = expected=190.0  actual=190.0  diff=+0.0
+  api_v352_r49.json                      hk1: th= 21.0 + lc=1.0   + ro=0     = expected= 22.0  actual= 22.0  diff=+0.0
+  api_v352_r49.json                      hk2: th= 22.0 + lc=1.0   + ro=0     = expected= 23.0  actual= 23.0  diff=+0.0
+
+=== Circuits where formula deviates > 1.5 K (setback/vacation/pool?) ===
+  api_response_base_srqu.json [hk4]: diff=-95.0 K, th=175.0, lr=80.0, ts=120.0, tv=150.0
+  api_response_ext_zx.json [hk1]: diff=-2.0 K, th=23.0, lr=21.0, ts=21.0, tv=15.0
+  api_response_green_kn.json [hk4]: diff=-95.0 K, th=175.0, lr=80.0, ts=120.0, tv=150.0
+  api_response_poolandeco.json [hk1]: diff=-11.0 K, th=20.0, lr=8.0, ts=19.5, tv=12.0
+  api_response_sk_lxy.json [hk1]: diff=-11.0 K, th=20.0, lr=8.0, ts=19.5, tv=12.0
+
+NOTE: These circuits are currently in setback/vacation mode OR are non-room-temp circuits.
+The formula 'temp_heat = desired - L_comfort - remote_override' still
+produces a CORRECT temp_heat (the formula just does not describe the current L_roomtemp_set).
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;32m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;31m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h  python3 -c "[?1l>[?2004l
+[0m[27m[24m[Jdquote> [K[?1h=[?2004hiimport json[?1l>[?2004l
+[0m[27m[24m[Jdquote> [K[?1h=[?2004hdd = json.load(open('tests/fixtures/api_response_n4n.json'))['hk1'][?1l>[?2004l
+[0m[27m[24m[Jdquote> [K[?1h=[?2004hffor k in ['L_roomtemp_set','temp_heat','L_comfort','remote_override','oe [Kkkomode','mode_auto','L_state','temp_setback']:[?1l>[?2004l
+[0m[27m[24m[Jdquote> [K[?1h=[?2004h     if k in d: print(k,'=',d[k])[?1l>[?2004l
+[0m[27m[24m[Jdquote> [K[?1h=[?2004h"" 2>&1[?1l>[?2004l
+]2;python3 -c  2>&1]1;python3L_roomtemp_set = {'val': 205, 'unit': '°C', 'factor': 0.1, 'min': -32768, 'max': 32767, 'text': 'RT Soll'}
+temp_heat = {'val': 220, 'unit': '°C', 'factor': 0.1, 'min': 100, 'max': 400, 'text': 'Raumtemp Heizen'}
+L_comfort = {'val': 0, 'unit': 'K', 'factor': 0.1, 'min': -32768, 'max': 32767, 'text': 'Komforttemperatur'}
+remote_override = {'val': 0, 'unit': 'K', 'factor': 0.1, 'min': -32768, 'max': 32767, 'text': 'HK Fernbedienung'}
+oekomode = {'val': 1, 'format': '0:Aus|1:Komfort|2:Minimum|3:Ökologisch', 'text': 'Öko Modus'}
+mode_auto = {'val': 1, 'format': '0:Aus|1:Auto|2:Heizen|3:Absenken', 'text': 'Betriebsart'}
+L_state = {'val': 16, 'factor': 1, 'text': 'Status'}
+temp_setback = {'val': 205, 'unit': '°C', 'factor': 0.1, 'min': 100, 'max': 400, 'text': 'Raumtemp Absenken'}
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;32m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;31m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h  python -m pytest tests/ -x -q 2>&1 | [K  tail -10[?1l>[?2004l
+]2;python -m pytest tests/ -x -q 2>&1 | tail -10]1;python........................................................................ [ 67%]
+..................................                                       [100%]
+106 passed in 0.63s
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;32m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;31m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h  rm _check_fixtures.py _check_formula [K..py[?1l>[?2004l
+]2;rm _check_fixtures.py _check_formula.py]1;rm[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;32m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h[?2004l
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J[01;31m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h  source .venv/bin/activate && python  [K--m pytest tests/ -v 2>&1[?1l>[?2004l
+]2;source .venv/bin/activate && python -m pytest tests/ -v 2>&1]1;source[1m============================= test session starts ==============================[0m
+platform darwin -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- /Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact
+configfile: pyproject.toml
+plugins: anyio-4.12.1, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+[1mcollecting ... [0m[1mcollected 106 items                                                            [0m
+
+tests/test_all_fixtures_integration.py::TestFixturesIntegration::test_climate_entities [32mPASSED[0m[32m [  0%][0m
+tests/test_all_fixtures_integration.py::TestFixturesIntegration::test_sensor_entities [32mPASSED[0m[32m [  1%][0m
+tests/test_all_fixtures_integration.py::TestFixturesIntegration::test_number_entities [32mPASSED[0m[32m [  2%][0m
+tests/test_all_fixtures_integration.py::TestFixturesIntegration::test_all_entities_comprehensive [32mPASSED[0m[32m [  3%][0m
+tests/test_all_fixtures_integration.py::TestFixturesIntegration::test_poolandeco_fixture_specific [32mPASSED[0m[32m [  4%][0m
+tests/test_all_fixtures_integration.py::TestFixturesIntegration::test_mg_fixture_specific [32mPASSED[0m[32m [  5%][0m
+tests/test_all_platforms.py::test_all_platforms_basic [32mPASSED[0m[32m             [  6%][0m
+tests/test_all_platforms.py::test_entity_names_deterministic_across_fixtures [32mPASSED[0m[32m [  7%][0m
+tests/test_all_platforms.py::test_all_platforms_complex [32mPASSED[0m[32m           [  8%][0m
+tests/test_all_platforms.py::test_select_options_parsing [32mPASSED[0m[32m          [  9%][0m
+tests/test_all_platforms.py::test_number_ranges [32mPASSED[0m[32m                   [ 10%][0m
+tests/test_all_platforms.py::test_unique_entity_ids [32mPASSED[0m[32m               [ 11%][0m
+tests/test_all_platforms.py::test_multilingual_names [32mPASSED[0m[32m              [ 12%][0m
+tests/test_all_platforms.py::test_components_detected [32mPASSED[0m[32m             [ 13%][0m
+tests/test_all_platforms.py::test_total_entities_all_fixtures [32mPASSED[0m[32m     [ 14%][0m
+tests/test_comparison.py::test_compare_discovery_methods [32mPASSED[0m[32m          [ 15%][0m
+tests/test_config_flow_overrides.py::test_initial_config_auto_detection [32mPASSED[0m[32m [ 16%][0m
+tests/test_config_flow_overrides.py::test_initial_config_user_charset_override [32mPASSED[0m[32m [ 16%][0m
+tests/test_config_flow_overrides.py::test_initial_config_user_old_firmware_override [32mPASSED[0m[32m [ 17%][0m
+tests/test_config_flow_overrides.py::test_initial_config_both_overrides [32mPASSED[0m[32m [ 18%][0m
+tests/test_config_flow_overrides.py::test_reconfigure_auto_detection [32mPASSED[0m[32m [ 19%][0m
+tests/test_config_flow_overrides.py::test_reconfigure_user_override [32mPASSED[0m[32m [ 20%][0m
+tests/test_discovery.py::test_discovery_basic_setup [32mPASSED[0m[32m               [ 21%][0m
+tests/test_discovery.py::test_discovery_basic_yo_2 [32mPASSED[0m[32m                [ 22%][0m
+tests/test_discovery.py::test_discovery_multiple_heating_circuits [32mPASSED[0m[32m [ 23%][0m
+tests/test_discovery.py::test_discovery_with_solar [32mPASSED[0m[32m                [ 24%][0m
+tests/test_discovery.py::test_discovery_with_heat_pump [32mPASSED[0m[32m            [ 25%][0m
+tests/test_discovery.py::test_discovery_with_special_components [32mPASSED[0m[32m   [ 26%][0m
+tests/test_discovery.py::test_discovery_with_wireless_sensors [32mPASSED[0m[32m     [ 27%][0m
+tests/test_discovery.py::test_discovery_empty_api_response [32mPASSED[0m[32m        [ 28%][0m
+tests/test_discovery.py::test_discovery_only_system [32mPASSED[0m[32m               [ 29%][0m
+tests/test_discovery.py::test_discovery_complex_setup [32mPASSED[0m[32m             [ 30%][0m
+tests/test_discovery.py::test_discovery_ignores_non_numeric_suffixes [32mPASSED[0m[32m [ 31%][0m
+tests/test_discovery.py::test_discovery_basic_m9 [32mPASSED[0m[32m                  [ 32%][0m
+tests/test_discovery.py::test_discovery_green_kn [32mPASSED[0m[32m                  [ 33%][0m
+tests/test_discovery.py::test_discovery_sk_lxy [32mPASSED[0m[32m                    [ 33%][0m
+tests/test_discovery.py::test_discovery_with_se_ml [32mPASSED[0m[32m                [ 34%][0m
+tests/test_discovery.py::test_discovery_with_sk_dash [32mPASSED[0m[32m              [ 35%][0m
+tests/test_dynamic_discovery.py::test_infer_binary_device_class [32mPASSED[0m[32m   [ 36%][0m
+tests/test_dynamic_discovery.py::test_binary_sensors_have_correct_device_class [32mPASSED[0m[32m [ 37%][0m
+tests/test_dynamic_discovery.py::test_is_binary_sensor [32mPASSED[0m[32m            [ 38%][0m
+tests/test_dynamic_discovery.py::test_is_select [32mPASSED[0m[32m                   [ 39%][0m
+tests/test_dynamic_discovery.py::test_is_number [32mPASSED[0m[32m                   [ 40%][0m
+tests/test_dynamic_discovery.py::test_parse_select_options [32mPASSED[0m[32m        [ 41%][0m
+tests/test_dynamic_discovery.py::test_infer_device_class [32mPASSED[0m[32m          [ 42%][0m
+tests/test_dynamic_discovery.py::test_infer_icon [32mPASSED[0m[32m                  [ 43%][0m
+tests/test_dynamic_discovery.py::test_normalize_unit [32mPASSED[0m[32m              [ 44%][0m
+tests/test_dynamic_discovery.py::test_create_sensor_definition [32mPASSED[0m[32m    [ 45%][0m
+tests/test_dynamic_discovery.py::test_discover_entities_from_component [32mPASSED[0m[32m [ 46%][0m
+tests/test_dynamic_discovery.py::test_discover_all_entities_basic [32mPASSED[0m[32m [ 47%][0m
+tests/test_dynamic_discovery.py::test_discover_all_entities_with_solar [32mPASSED[0m[32m [ 48%][0m
+tests/test_dynamic_discovery.py::test_discover_all_entities_green_mode [32mPASSED[0m[32m [ 49%][0m
+tests/test_dynamic_discovery.py::test_multilingual_support [32mPASSED[0m[32m        [ 50%][0m
+tests/test_entity_id_snapshot.py::test_entity_id_and_unique_id_snapshot [32mPASSED[0m[32m [ 50%][0m
+tests/test_integration.py::test_integration_sensor_platform [32mPASSED[0m[32m       [ 51%][0m
+tests/test_integration.py::test_integration_select_platform [32mPASSED[0m[32m       [ 52%][0m
+tests/test_integration.py::test_integration_number_platform [32mPASSED[0m[32m       [ 53%][0m
+tests/test_integration.py::test_integration_entity_uniqueness [32mPASSED[0m[32m     [ 54%][0m
+tests/test_integration.py::test_integration_multilingual_support [32mPASSED[0m[32m  [ 55%][0m
+tests/test_integration.py::test_integration_backwards_compatibility [32mPASSED[0m[32m [ 56%][0m
+tests/test_integration.py::test_integration_component_detection [32mPASSED[0m[32m   [ 57%][0m
+tests/test_integration.py::test_integration_device_classes [32mPASSED[0m[32m        [ 58%][0m
+tests/test_integration.py::test_integration_full_pipeline [32mPASSED[0m[32m         [ 59%][0m
+tests/test_migration.py::test_generate_old_entity_id_patterns [32mPASSED[0m[32m     [ 60%][0m
+tests/test_migration.py::test_migrate_entity_ids_no_entities [32mPASSED[0m[32m      [ 61%][0m
+tests/test_migration.py::test_migrate_entity_ids_with_old_format [32mPASSED[0m[32m  [ 62%][0m
+tests/test_migration.py::test_migrate_entity_ids_already_migrated [32mPASSED[0m[32m [ 63%][0m
+tests/test_migration.py::test_check_and_warn_german_entities [32mPASSED[0m[32m      [ 64%][0m
+tests/test_migration.py::test_check_and_warn_french_entities [32mPASSED[0m[32m      [ 65%][0m
+tests/test_migration.py::test_check_and_warn_no_warnings [32mPASSED[0m[32m          [ 66%][0m
+tests/test_migration.py::test_old_pattern_matching [32mPASSED[0m[32m                [ 66%][0m
+tests/unit/test_api_suffix_detection.py::test_api_response_has_metadata_modern_firmware [32mPASSED[0m[32m [ 67%][0m
+tests/unit/test_api_suffix_detection.py::test_api_response_has_metadata_old_firmware [32mPASSED[0m[32m [ 68%][0m
+tests/unit/test_api_suffix_detection.py::test_api_response_has_metadata_mixed [32mPASSED[0m[32m [ 69%][0m
+tests/unit/test_api_suffix_detection.py::test_api_response_has_metadata_empty [32mPASSED[0m[32m [ 70%][0m
+tests/unit/test_api_suffix_detection.py::test_api_response_has_metadata_nested [32mPASSED[0m[32m [ 71%][0m
+tests/unit/test_api_suffix_detection.py::test_default_api_suffix [32mPASSED[0m[32m  [ 72%][0m
+tests/unit/test_api_suffix_detection.py::test_user_report_old_firmware_case [32mPASSED[0m[32m [ 73%][0m
+tests/unit/test_api_suffix_detection.py::test_modern_firmware_fallback_when_double_q_fails [32mPASSED[0m[32m [ 74%][0m
+tests/unit/test_backward_compatibility.py::test_pure_iso_8859_1_with_few_special_chars [32mPASSED[0m[32m [ 75%][0m
+tests/unit/test_backward_compatibility.py::test_pure_iso_8859_1_with_many_special_chars [32mPASSED[0m[32m [ 76%][0m
+tests/unit/test_backward_compatibility.py::test_pure_utf8_users_unaffected [32mPASSED[0m[32m [ 77%][0m
+tests/unit/test_backward_compatibility.py::test_french_iso_8859_1_unaffected [32mPASSED[0m[32m [ 78%][0m
+tests/unit/test_backward_compatibility.py::test_edge_case_mostly_ascii_with_one_iso_char [32mPASSED[0m[32m [ 79%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[German-R\xfccklauf Temperatur] [32mPASSED[0m[32m [ 80%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[German-\xd6lkessel Au\xdfentemperatur] [32mPASSED[0m[32m [ 81%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[French-T\xe9l\xe9commande arr\xeat] [32mPASSED[0m[32m [ 82%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[French-Temp\xe9rature ext\xe9rieure] [32mPASSED[0m[32m [ 83%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[Italian-Temperatura esterna \xe0\xe8\xec\xf2\xf9] [32mPASSED[0m[32m [ 83%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[Spanish-Calefacci\xf3n a\xf1o] [32mPASSED[0m[32m [ 84%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[Polish-Temperatura \u0105\u0107\u0119\u0142\u0144\xf3\u015b\u017a\u017c] [32mPASSED[0m[32m [ 85%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[Czech-Teplota \u010d\u011b\u0161\u0159\u017e] [32mPASSED[0m[32m [ 86%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[Greek-\u0398\u03b5\u03c1\u03bc\u03bf\u03ba\u03c1\u03b1\u03c3\u03af\u03b1] [32mPASSED[0m[32m [ 87%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_utf8_detection_various_languages[Cyrillic-\u0422\u0435\u043c\u043f\u0435\u0440\u0430\u0442\u0443\u0440\u0430] [32mPASSED[0m[32m [ 88%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_iso_8859_1_detection [32mPASSED[0m[32m [ 89%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_ascii_defaults_to_utf8 [32mPASSED[0m[32m [ 90%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_french_user_report_case [32mPASSED[0m[32m [ 91%][0m
+tests/unit/test_charset_detection.py::TestCharsetDetection::test_french_arret_case [32mPASSED[0m[32m [ 92%][0m
+tests/unit/test_mixed_encoding.py::TestMixedEncodingDetection::test_mixed_encoding_mostly_utf8_with_iso_bytes [32mPASSED[0m[32m [ 93%][0m
+tests/unit/test_mixed_encoding.py::TestMixedEncodingDetection::test_mostly_iso_8859_1_detected_correctly [32mPASSED[0m[32m [ 94%][0m
+tests/unit/test_mixed_encoding.py::TestMixedEncodingDetection::test_pure_utf8_detected_correctly [32mPASSED[0m[32m [ 95%][0m
+tests/unit/test_mixed_encoding.py::TestMixedEncodingDetection::test_ascii_only_defaults_to_utf8 [32mPASSED[0m[32m [ 96%][0m
+tests/unit/test_mixed_encoding.py::TestMixedEncodingDetection::test_edge_case_20_percent_threshold [32mPASSED[0m[32m [ 97%][0m
+tests/unit/test_old_firmware.py::test_old_firmware_v324_number_entities [32mPASSED[0m[32m [ 98%][0m
+tests/unit/test_old_firmware.py::test_old_firmware_no_writeable_flag [32mPASSED[0m[32m [ 99%][0m
+tests/unit/test_rate_limiting.py::test_fetch_rate_limited_on_back_to_back_calls [32mPASSED[0m[32m [100%][0m
+
+[32m============================= [32m[1m106 passed[0m[32m in 0.67s[0m[32m ==============================[0m
+[1m[7m%[27m[1m[0m                                                                                ]2;dominikamannprivat@Mac:~/Documents/Code/oekofen-pellematic-compact]1;..matic-compact]7;file://Mac/Users/dominikamannprivat/Documents/Code/oekofen-pellematic-compact\[0m[27m[24m[J(.venv) [01;32m➜  [36moekofen-pellematic-compact[00m [01;34mgit:([31mmain[34m) [33m✗[00m [K[?1h=[?2004h
