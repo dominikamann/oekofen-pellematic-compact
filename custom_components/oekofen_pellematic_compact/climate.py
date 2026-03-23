@@ -314,36 +314,47 @@ class PellematicClimate(ClimateEntity):
                     "temp_setback"
                 )
             elif self._attr_hvac_mode in [HVACMode.HEAT, HVACMode.AUTO]:
-                # The device applies fixed offsets on top of temp_heat:
+                # The device's effective target is:
                 #   L_roomtemp_set = temp_heat + L_comfort + remote_override
                 #
-                # To achieve a desired L_roomtemp_set we invert the formula:
-                #   temp_heat = desired - L_comfort - remote_override
+                # We only compensate for L_comfort (autocomfort algorithm – stable,
+                # device-managed):
+                #   temp_heat = desired - L_comfort
                 #
-                # This is correct regardless of the circuit's current operating
-                # mode (comfort, setback, vacation) because it reads the actual
-                # offset fields rather than the transient L_roomtemp_set value.
+                # We deliberately do NOT compensate for remote_override because it
+                # is a physical remote-panel offset (HK Fernbedienung) that the
+                # device's time programs can reset at any time.  Compensating for a
+                # snapshot value that changes seconds later would produce the wrong
+                # result.  A non-zero remote_override is a user-controlled physical
+                # override; HA should respect it rather than cancel it.
                 l_comfort = 0.0
-                remote_override = 0.0
                 if self._prefix in self._hub.data:
                     data = self._hub.data[self._prefix]
                     try:
                         l_comfort = float(get_api_value(data.get("L_comfort"), 0)) / 10
                     except (ValueError, TypeError):
                         l_comfort = 0.0
+                    # Log a warning when remote_override is active so users can debug
                     try:
-                        remote_override = float(get_api_value(data.get("remote_override"), 0)) / 10
+                        ro = float(get_api_value(data.get("remote_override"), 0)) / 10
+                        if ro != 0.0:
+                            _LOGGER.warning(
+                                "remote_override is %.1f°C for %s – this shifts "
+                                "L_roomtemp_set away from the desired target. "
+                                "Set 'remote_override' (HK Fernbedienung / cf1 Télécommande) to 0 to disable it.",
+                                ro, self._prefix,
+                            )
                     except (ValueError, TypeError):
-                        remote_override = 0.0
+                        pass
 
-                adjusted_temp_heat = temperature - l_comfort - remote_override
+                adjusted_temp_heat = temperature - l_comfort
                 temperature_int = int(round(adjusted_temp_heat * 10))
                 self._attr_target_temperature_comfort = adjusted_temp_heat
                 self._attr_target_temperature_auto = temperature  # reflect the desired L_roomtemp_set
                 _LOGGER.info(
                     "Offset-corrected temp_heat for %s: desired=%.1f, "
-                    "L_comfort=%.1f, remote_override=%.1f → temp_heat=%.1f (int=%d)",
-                    self._prefix, temperature, l_comfort, remote_override,
+                    "L_comfort=%.1f → temp_heat=%.1f (int=%d)",
+                    self._prefix, temperature, l_comfort,
                     adjusted_temp_heat, temperature_int,
                 )
                 _LOGGER.info("Sending heat temperature for %s: %s", self._prefix, temperature_int)
