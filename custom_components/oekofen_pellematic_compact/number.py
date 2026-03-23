@@ -104,13 +104,18 @@ class PellematicNumber(NumberEntity):
         self._attr_device_class = number_definition.get('device_class')
         self._attr_mode = NumberMode.SLIDER
         self._attr_native_unit_of_measurement = number_definition.get('unit')
-        self._attr_native_min_value = number_definition.get('min', 0)
-        self._attr_native_max_value = number_definition.get('max', 100)
-        self._attr_native_step = number_definition.get('step', 0.5)
-        self._attr_native_value = None
-        # Store conversion factor - ensure it's a float, not a string
+        # Store conversion factor first so it can be applied to min/max bounds below.
+        # Ensure it's a float, not a string.
         factor_value = number_definition.get('factor', 1)
         self._factor = float(factor_value) if not isinstance(factor_value, (int, float)) else factor_value
+        # The definition stores API-level bounds as 'min_value'/'max_value'.
+        # Apply the same factor used for display values so HA enforces the correct range.
+        raw_min = number_definition.get('min_value')
+        raw_max = number_definition.get('max_value')
+        self._attr_native_min_value = float(raw_min) * self._factor if raw_min is not None else 0.0
+        self._attr_native_max_value = float(raw_max) * self._factor if raw_max is not None else 100.0
+        self._attr_native_step = number_definition.get('step', 0.5)
+        self._attr_native_value = None
         
         _LOGGER.debug(
             "Adding dynamic PellematicNumber: %s, %s, min=%s, max=%s, step=%s, factor=%s",
@@ -137,6 +142,19 @@ class PellematicNumber(NumberEntity):
     async def async_set_native_value(self, value) -> None:
         """Update the native value."""
         try:
+            # Guard: reject out-of-range values before they reach the boiler.
+            # An out-of-range write can permanently corrupt controller state (e.g.
+            # pointing a sensor register at a non-existent physical sensor), which
+            # can cause unacknowledgeable faults that require a full factory reset.
+            if value < self._attr_native_min_value or value > self._attr_native_max_value:
+                _LOGGER.error(
+                    "Blocked write for %s: value %s is outside the valid range "
+                    "[%s, %s]. Write rejected to protect boiler controller state.",
+                    self.entity_id, value,
+                    self._attr_native_min_value, self._attr_native_max_value,
+                )
+                return
+
             # Apply factor to convert display value to API value
             # Example: User sets 58.0°C, factor is 0.1, send 580 to API
             send_value = int(value / self._factor) if self._factor != 1 else int(value)

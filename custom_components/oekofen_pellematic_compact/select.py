@@ -124,10 +124,27 @@ class PellematicSelect(SelectEntity):
     async def async_select_option(self, option) -> None:
         """Update the current selected option."""
         try:
+            # Guard: reject unknown options before sending to the boiler.
+            # An unrecognised value can configure a register (e.g. sensor_on/off)
+            # to reference a physical sensor that does not exist, creating an
+            # unacknowledgeable fault that requires a full factory reset to clear.
+            if option not in self._attr_options:
+                _LOGGER.error(
+                    "Blocked write for %s: option '%s' is not in the valid option "
+                    "list %s. Write rejected to protect boiler controller state.",
+                    self.entity_id, option, self._attr_options,
+                )
+                return
+
+            # Options are stored as "<index>_<label>" (e.g. "0_ecs", "10_buffer").
+            # Extract only the numeric index prefix to send to the API.
+            # Using option[:1] was wrong for multi-digit indices (>= 10).
+            option_value = option.split("_", 1)[0]
+
             # Send the new option value to the API
             await self.hass.async_add_executor_job(
                 self._hub.send_pellematic_data,
-                option[:1],
+                option_value,
                 self._prefix,
                 self._key
             )
