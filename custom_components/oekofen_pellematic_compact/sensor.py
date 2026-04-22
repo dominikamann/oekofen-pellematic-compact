@@ -365,28 +365,20 @@ class PellematicSensor(SensorEntity):
                 pass
         
             if factor is None or not multiply_success:
-                # Der gesamte else-Block, den du hattest
                 if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
                     current_value = int(current_value) * 60
                 if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10                         
+                    current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                     if self._prefix.lower().startswith("se"):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if (current_value is True or str(current_value).lower() == 'true'):
-                        current_value = 100
-                    elif (current_value is False or str(current_value).lower() == 'false'):
-                        current_value = 0
-                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
-                        current_value = int(current_value) / 10  
         except Exception as e:
             _LOGGER.error("An error occurred: %s", e)
-        
+
         self._state = current_value
 
     @property
@@ -444,29 +436,21 @@ class PellematicSensor(SensorEntity):
                 pass
         
             if factor is None or not multiply_success:
-                # Der gesamte else-Block, den du hattest
                 if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
                     current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
                     current_value = int(current_value) * 60
                 if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10                         
+                    current_value = int(current_value) / 10
                 if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
                     if self._prefix.lower().startswith("se"):
                         current_value = int(current_value) / 10
                     else:
                         current_value = int(current_value) / 10000
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.POWER_FACTOR:
-                    if (current_value is True or str(current_value).lower() == 'true'):
-                        current_value = 100
-                    elif (current_value is False or str(current_value).lower() == 'false'):
-                        current_value = 0
-                    if (self._key.replace("#2", "") == 'L_wireless_hum'):
-                        current_value = int(current_value) / 10  
-                        
+
         except Exception as e:
             _LOGGER.error("An error occurred: %s", e)
-        
+
         return current_value
 
     @property

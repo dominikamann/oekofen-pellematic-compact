@@ -137,11 +137,8 @@ def _detect_api_config(host: str) -> tuple[str, str, bool]:
         
         # Detect charset with mixed encoding support
         try:
-            decoded_utf8 = raw_data.decode('utf-8')
-            if any(ord(char) > 127 for char in decoded_utf8):
-                charset = 'utf-8'
-            else:
-                charset = 'utf-8'
+            raw_data.decode('utf-8')
+            charset = 'utf-8'
         except UnicodeDecodeError:
             # Try UTF-8 with replace to detect mixed encoding
             decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')

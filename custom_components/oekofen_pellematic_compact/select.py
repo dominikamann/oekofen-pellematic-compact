@@ -196,7 +196,6 @@ class PellematicSelect(SelectEntity):
     def options(self) -> list[str]:
         """Return a set of selectable options."""
         return self._attr_options
-        raise AttributeError
 
     @property
     def current_option(self) -> str | None:
