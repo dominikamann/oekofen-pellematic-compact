@@ -197,25 +197,17 @@ class PellematicBinarySensor(BinarySensorEntity):
             self._name, self._attr_unique_id,
         )
 
-    @callback
-    def _api_data_updated(self):
-        self.async_write_ha_state()
-
     @property
-    def is_on(self) -> bool:
-        """Return the state of the sensor."""
-        current_value = None
+    def is_on(self) -> bool | None:
+        """Return True when the sensor is on, False when off, None when unknown."""
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
             current_value = get_api_value(raw_data)
-            if (current_value is True or str(current_value).lower() == 'true'):
-                current_value = True
-            elif (current_value is False or str(current_value).lower() == 'false'):
-                current_value = False
-        except:
-            pass
-
-        return current_value
+            if current_value is None:
+                return None
+            return bool(current_value)
+        except Exception:
+            return None
 
     async def async_added_to_hass(self):
         """Register callbacks."""
@@ -227,22 +219,6 @@ class PellematicBinarySensor(BinarySensorEntity):
     @callback
     def _api_data_updated(self):
         self.async_write_ha_state()
-
-    @callback
-    def _update_state(self):
-        current_value = None
-
-        try:
-            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            current_value = get_api_value(raw_data)
-            if (current_value is True or str(current_value).lower() == 'true'):
-                current_value = True
-            elif (current_value is False or str(current_value).lower() == 'false'):
-                current_value = False
-        except:
-            pass
-
-        self._attr_is_on = current_value
 
     @property
     def name(self):
