@@ -150,21 +150,30 @@ async def async_migrate_entity_ids(
     
     if migrated_count > 0:
         _LOGGER.info(
-            "Entity ID migration completed for %s: %d entities renamed",
+            "Entity ID migration completed for %s: %d entity IDs preserved for backwards compatibility",
             hub_name,
             migrated_count
         )
-        
+
         # Create a persistent notification to inform the user
         try:
             await hass.services.async_call(
                 "persistent_notification",
                 "create",
                 {
-                    "message": f"**Ökofen Pellematic: Entity ID Migration Complete**\n\n"
-                               f"Successfully renamed {migrated_count} entity ID(s) for backwards compatibility.\n\n"
-                               f"Your existing automations and dashboards should continue working without changes.\n\n"
-                               f"For more information, see the [Migration Guide](https://github.com/dominikamann/oekofen-pellematic-compact/blob/main/MIGRATION_GUIDE.md).",
+                    "message": (
+                        f"**Ökofen Pellematic: Entity ID Migration Complete**\n\n"
+                        f"Successfully preserved {migrated_count} entity ID(s) from an older "
+                        f"version to keep your automations and dashboards working.\n\n"
+                        f"**This notification will not appear again after this restart.**\n\n"
+                        f"**Want clean, new-style entity IDs?**\n"
+                        f"The preserved IDs use the old naming convention. If you prefer the "
+                        f"new-style IDs, you can rename individual entities in *Settings → "
+                        f"Entities*, or delete the affected entities there before reloading "
+                        f"the integration so they are recreated with updated names.\n\n"
+                        f"For more information, see the "
+                        f"[Migration Guide](https://github.com/dominikamann/oekofen-pellematic-compact/blob/main/MIGRATION_GUIDE.md)."
+                    ),
                     "title": "Ökofen Pellematic Migration",
                     "notification_id": f"oekofen_migration_{hub_name}",
                 },
