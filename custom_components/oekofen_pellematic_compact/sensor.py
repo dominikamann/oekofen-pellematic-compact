@@ -323,63 +323,61 @@ class PellematicSensor(SensorEntity):
     def _api_data_updated(self):
         self.async_write_ha_state()
 
+    def _compute_state(self):
+        """Compute the sensor state from the latest hub data.
+
+        Returns None if the key is missing or the value was sanitized away.
+        Non-numeric values (e.g. time-range strings like "00:00-00:00")
+        bypass scaling and unit conversion and are returned as-is.
+        """
+        try:
+            raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
+        except KeyError:
+            return None
+
+        current_value = get_api_value(raw_data)
+
+        try:
+            current_value = _sanitize_oekofen_value(raw_data, current_value)
+        except Exception:
+            pass
+        if current_value is None:
+            return None
+
+        # Scale by 'factor' only for numeric values. String values (e.g.
+        # heating-schedule "HH:MM-HH:MM") still ship with factor=1 in the
+        # API metadata — silently skip them instead of warning every poll.
+        if not isinstance(current_value, (int, float)) or isinstance(current_value, bool):
+            return current_value
+
+        factor = raw_data.get("factor") if isinstance(raw_data, dict) else None
+        if factor is not None:
+            try:
+                result = float(current_value) * float(factor)
+                return int(result) if result.is_integer() else result
+            except (ValueError, TypeError):
+                pass
+            return current_value
+
+        # Unit-based fallback scaling for old firmware that has no 'factor'.
+        try:
+            if getattr(self, "_attr_device_class", None) == SensorDeviceClass.TEMPERATURE:
+                return int(current_value) / 10
+            if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
+                return int(current_value) * 60
+            if self._unit_of_measurement == UnitOfPower.KILO_WATT:
+                return int(current_value) / 10
+            if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
+                divisor = 10 if self._prefix.lower().startswith("se") else 10000
+                return int(current_value) / divisor
+        except (ValueError, TypeError):
+            pass
+
+        return current_value
+
     @callback
     def _update_state(self):
-        current_value = None
-        try:
-            
-            raw_data = None
-            try:
-                raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            except KeyError as e:
-                # Not found so ok
-                self._state = current_value
-                return 
-                
-            current_value = get_api_value(raw_data)
-
-            try:
-                current_value = _sanitize_oekofen_value(raw_data, current_value)
-                if current_value is None:
-                    self._state = None
-                    return
-            except:
-                pass
-                
-            multiply_success = False
-            factor = None
-            try:
-                factor = raw_data["factor"]
-                if factor is not None:
-                    try:
-                        result = float(current_value) * float(factor)
-                        if result.is_integer():
-                            current_value = int(result)
-                        else:
-                            current_value = result
-                            
-                        multiply_success = True
-                    except ValueError:
-                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
-            except:
-                pass
-        
-            if factor is None or not multiply_success:
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
-                    current_value = int(current_value) * 60
-                if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                    if self._prefix.lower().startswith("se"):
-                        current_value = int(current_value) / 10
-                    else:
-                        current_value = int(current_value) / 10000
-        except Exception as e:
-            _LOGGER.error("An error occurred: %s", e)
-
-        self._state = current_value
+        self._state = self._compute_state()
 
     @property
     def name(self):
@@ -399,59 +397,7 @@ class PellematicSensor(SensorEntity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        current_value = None
-        try:
-            
-            raw_data = None
-            try:
-                raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            except KeyError as e:
-                return None
-            
-            current_value = get_api_value(raw_data)
-
-            try:
-                current_value = _sanitize_oekofen_value(raw_data, current_value)
-                if current_value is None:
-                    return None
-            except:
-                pass
-        
-            multiply_success = False
-            factor = None
-            try:
-                factor = raw_data["factor"]
-                if factor is not None:
-                    try:
-                        result = float(current_value) * float(factor)
-                        if result.is_integer():
-                            current_value = int(result)
-                        else:
-                            current_value = result
-                            
-                        multiply_success = True
-                    except ValueError:
-                        _LOGGER.warning("Value %s could not be scaled with factor %s", current_value, factor)
-            except:
-                pass
-        
-            if factor is None or not multiply_success:
-                if hasattr(self, "_attr_device_class") and self._attr_device_class == SensorDeviceClass.TEMPERATURE:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfVolumeFlowRate.LITERS_PER_MINUTE:
-                    current_value = int(current_value) * 60
-                if self._unit_of_measurement == UnitOfPower.KILO_WATT:
-                    current_value = int(current_value) / 10
-                if self._unit_of_measurement == UnitOfEnergy.KILO_WATT_HOUR:
-                    if self._prefix.lower().startswith("se"):
-                        current_value = int(current_value) / 10
-                    else:
-                        current_value = int(current_value) / 10000
-
-        except Exception as e:
-            _LOGGER.error("An error occurred: %s", e)
-
-        return current_value
+        return self._compute_state()
 
     @property
     def extra_state_attributes(self):

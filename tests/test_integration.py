@@ -216,14 +216,13 @@ async def test_integration_full_pipeline():
     
     total_entities = 0
     
+    from tests.conftest import load_fixture
+
     for fixture_file in fixture_files:
-        try:
-            with open(fixture_file, "r", encoding="utf-8") as f:
-                api_data = json.load(f)
-        except json.JSONDecodeError as e:
-            # Skip files with invalid JSON (e.g., control characters)
-            _LOGGER.warning("Skipping %s due to JSON error: %s", fixture_file.name, e)
-            continue
+        # Use the shared loader so we exercise the same encoding and
+        # JSON-repair path as production (handles ISO-8859-1 and control
+        # characters in API responses).
+        api_data = load_fixture(fixture_file.name)
         
         discovered = discover_all_entities(api_data)
         
