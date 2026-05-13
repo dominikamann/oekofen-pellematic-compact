@@ -53,4 +53,26 @@ OR
  
 ![401221389-5b7e7316-5a60-4428-93fd-7f5761fa9ed7](https://github.com/user-attachments/assets/7e84f405-fed4-425f-aa96-9504b01bd6ce)
 
+## Tips: derived sensors (e.g. gas-equivalent energy)
+
+The integration exposes the raw sensors needed to derive your own values — for example pellet consumption in kg (`sensor.pellematic_pe1_storage_fill_today`, `sensor.pellematic_pe1_storage_fill_yesterday`, `sensor.pellematic_pe1_l_storage_fill`). Anything that's a fixed-constant calculation on top of those (gas-equivalent volume, CO₂ avoided, cost per day, ...) is best done as a Home Assistant **Template Helper** so you can pick the constants that match your pellet quality and local gas tariff.
+
+### Converting kg of pellets to m³ of natural gas (equivalent energy)
+
+1. Go to **Settings → Devices & services → Helpers → Create helper → Template → Template a sensor**.
+2. Use the formula below. Adjust the two constants to match your situation:
+   - Pellet heating value: ~4.8 kWh/kg for ENplus A1, ~4.6 kWh/kg for ENplus A2
+   - Natural gas heating value (Hi): ~10.0 kWh/m³ in most of Europe (check your local supplier)
+
+```jinja
+{% set kg = states('sensor.pellematic_pe1_storage_fill_today') | float(0) %}
+{% set pellet_kwh_per_kg = 4.8 %}
+{% set gas_kwh_per_m3   = 10.0 %}
+{{ (kg * pellet_kwh_per_kg / gas_kwh_per_m3) | round(2) }}
+```
+
+Set unit of measurement to `m³` and device class to `Gas` so the result shows up in the HA Energy dashboard.
+
+> Why not ship this as a built-in entity? Pellet energy density varies by grade and natural-gas Wobbe Index varies by country — hard-coding the constants would be wrong for many users. The helper keeps the choice in your hands.
+
 
