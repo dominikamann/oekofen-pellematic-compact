@@ -579,12 +579,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from .migration import (
         PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY,
         async_migrate_binary_sensor_domain,
+        async_refresh_legacy_binary_sensor_repair_issue,
     )
 
     if entry.data.get(PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY):
         if hub.data:
             try:
-                renamed, legacy = await async_migrate_binary_sensor_domain(hass, entry)
+                renamed, _ = await async_migrate_binary_sensor_domain(hass, entry)
                 # Clear the flag only on a clean run (no exception). A failed
                 # run keeps the flag so we retry on the next startup.
                 new_data = {
@@ -594,9 +595,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 }
                 hass.config_entries.async_update_entry(entry, data=new_data)
                 _LOGGER.info(
-                    "V2→V3 binary-sensor domain migration complete for '%s': "
-                    "%d renamed, %d legacy flagged for manual cleanup",
-                    name, renamed, len(legacy),
+                    "V2→V3 binary-sensor domain migration complete for '%s': %d renamed",
+                    name, renamed,
                 )
             except Exception as e:
                 _LOGGER.warning(
@@ -610,6 +610,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "no API data yet (will retry on next startup)",
                 name,
             )
+
+    # Sync Repairs issue for remaining legacy binary-sensor entries on every
+    # startup. Auto-clears once the user has cleaned them up.
+    try:
+        legacy_count = await async_refresh_legacy_binary_sensor_repair_issue(hass, entry)
+        if legacy_count:
+            _LOGGER.info(
+                "%d legacy binary-sensor entities flagged for manual cleanup "
+                "(see Repairs)", legacy_count,
+            )
+    except Exception as e:
+        _LOGGER.debug("Legacy binary-sensor Repairs sync failed (non-critical): %s", e)
 
     # Register services
     await async_setup_services(hass)

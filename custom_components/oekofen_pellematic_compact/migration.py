@@ -8,6 +8,7 @@ import logging
 import re
 from typing import Dict, List, Tuple
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -302,7 +303,8 @@ async def async_migrate_binary_sensor_domain(
     from .const import DOMAIN
     from .dynamic_discovery import discover_all_entities
 
-    hub_data = hass.data.get(DOMAIN, {}).get(entry.data.get("name"), {})
+    hub_name = entry.data.get(CONF_NAME, "")
+    hub_data = hass.data.get(DOMAIN, {}).get(hub_name, {})
     hub = hub_data.get("hub")
     api_data = getattr(hub, "data", None) if hub else None
 
@@ -313,7 +315,6 @@ async def async_migrate_binary_sensor_domain(
         return 0, []
 
     discovered = discover_all_entities(api_data)
-    hub_name = entry.data.get("name", "")
     expected_unique_ids = {
         f"{hub_name.lower()}_{sensor_def['component']}_{sensor_def['key']}"
         for sensor_def in discovered["binary_sensors"]
@@ -359,9 +360,6 @@ async def async_migrate_binary_sensor_domain(
             renamed,
         )
 
-    if legacy_candidates:
-        await _create_legacy_repair_issue(hass, entry, legacy_candidates)
-
     return renamed, legacy_candidates
 
 
@@ -401,37 +399,60 @@ def _looks_like_legacy_binary_sensor(unique_id: str, entity_id: str) -> bool:
     return any(object_id_lower.endswith(s) for s in _LEGACY_BINARY_KEY_SUFFIXES)
 
 
-async def _create_legacy_repair_issue(
+async def async_refresh_legacy_binary_sensor_repair_issue(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    legacy_entity_ids: List[str],
-) -> None:
-    """Surface a Repairs issue listing legacy entities the user should clean up."""
+) -> int:
+    """Re-evaluate legacy binary-sensor candidates and sync the Repairs issue.
+
+    Scans the registry on every startup so the issue auto-clears once the user
+    has deleted the listed entities, and re-populates if new legacy IDs appear
+    (e.g. after re-running the V2→V3 rename and finding leftovers).
+
+    Returns the number of legacy entities currently flagged.
+    """
+    from .const import DOMAIN
+
     try:
         from homeassistant.helpers import issue_registry as ir
     except ImportError:
-        _LOGGER.debug("issue_registry not available; skipping Repairs issue")
-        return
+        _LOGGER.debug("issue_registry not available; skipping Repairs sync")
+        return 0
 
-    from .const import DOMAIN
+    entity_reg = er.async_get(hass)
+    entries = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
 
-    listed = "\n".join(f"- `{eid}`" for eid in sorted(legacy_entity_ids)[:20])
-    if len(legacy_entity_ids) > 20:
-        listed += f"\n- ...and {len(legacy_entity_ids) - 20} more"
+    legacy = sorted(
+        ent.entity_id
+        for ent in entries
+        if ent.domain == "sensor"
+        and _looks_like_legacy_binary_sensor(ent.unique_id, ent.entity_id)
+    )
+
+    issue_id = f"{LEGACY_BINARY_SENSOR_REPAIR_ID}_{entry.entry_id}"
+
+    if not legacy:
+        try:
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
+        except Exception as e:
+            _LOGGER.debug("Could not delete Repairs issue: %s", e)
+        return 0
+
+    listed = "\n".join(f"- `{eid}`" for eid in legacy[:20])
+    if len(legacy) > 20:
+        listed += f"\n- ...and {len(legacy) - 20} more"
 
     try:
         ir.async_create_issue(
             hass,
             DOMAIN,
-            f"{LEGACY_BINARY_SENSOR_REPAIR_ID}_{entry.entry_id}",
+            issue_id,
             is_fixable=False,
             severity=ir.IssueSeverity.WARNING,
             translation_key=LEGACY_BINARY_SENSOR_REPAIR_ID,
             translation_placeholders={"entity_list": listed},
         )
-        _LOGGER.info(
-            "V2→V3: Created Repairs issue for %d legacy binary-sensor entities",
-            len(legacy_entity_ids),
-        )
     except Exception as e:
-        _LOGGER.debug("Could not create Repairs issue: %s", e)
+        _LOGGER.debug("Could not refresh Repairs issue: %s", e)
+
+    return len(legacy)

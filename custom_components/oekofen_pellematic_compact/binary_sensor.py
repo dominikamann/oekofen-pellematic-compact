@@ -31,14 +31,21 @@ async def async_setup_entry(
         "model": ATTR_MODEL,
     }
 
+    discovery_logged = False
+
     def create_binary_sensor_entities(data: Dict[str, Any]) -> list:
+        nonlocal discovery_logged
         entities = []
         discovered = discover_all_entities(data)
+        count = len(discovered["binary_sensors"])
 
-        _LOGGER.info(
-            "Dynamically discovered %d binary sensors",
-            len(discovered["binary_sensors"]),
-        )
+        # Log INFO once on first successful discovery, DEBUG on every retry tick
+        # afterwards to avoid spamming the log every 60 s during boiler outages.
+        if not discovery_logged and count > 0:
+            _LOGGER.info("Dynamically discovered %d binary sensors", count)
+            discovery_logged = True
+        else:
+            _LOGGER.debug("Discovery pass returned %d binary sensors", count)
 
         for sensor_def in discovered["binary_sensors"]:
             try:

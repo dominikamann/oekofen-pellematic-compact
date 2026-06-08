@@ -1,13 +1,14 @@
 """Tests for the V2→V3 binary-sensor domain migration."""
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from custom_components.oekofen_pellematic_compact.migration import (
     _looks_like_legacy_binary_sensor,
     async_migrate_binary_sensor_domain,
+    async_refresh_legacy_binary_sensor_repair_issue,
 )
 
 
@@ -163,14 +164,11 @@ async def test_migration_flags_legacy_for_repair():
     ), patch(
         "custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry",
         return_value=entries,
-    ), patch(
-        "custom_components.oekofen_pellematic_compact.migration._create_legacy_repair_issue"
-    ) as repair_mock:
+    ):
         renamed, legacy = await async_migrate_binary_sensor_domain(hass, entry)
 
     assert renamed == 0
     assert legacy == ["sensor.pellematic_hot_water_1_pompe"]
-    repair_mock.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -185,3 +183,70 @@ async def test_migration_noop_when_no_api_data():
     renamed, legacy = await async_migrate_binary_sensor_domain(hass, entry)
     assert renamed == 0
     assert legacy == []
+
+
+@pytest.mark.asyncio
+async def test_refresh_repair_issue_creates_when_legacy_present():
+    """Refresh should create/update the Repairs issue when legacy entities exist."""
+    entries = [
+        _FakeEntity(
+            entity_id="sensor.pellematic_hot_water_1_pompe",
+            unique_id="pellematic_hot_water_1_pompe",
+            domain="sensor",
+        ),
+    ]
+    registry = _FakeRegistry(entries)
+
+    entry = SimpleNamespace(entry_id="abc", data={"name": "Pellematic"})
+    hass = SimpleNamespace(data={})
+
+    with patch(
+        "custom_components.oekofen_pellematic_compact.migration.er.async_get",
+        return_value=registry,
+    ), patch(
+        "custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry",
+        return_value=entries,
+    ), patch(
+        "homeassistant.helpers.issue_registry.async_create_issue"
+    ) as ir_create, patch(
+        "homeassistant.helpers.issue_registry.async_delete_issue"
+    ) as ir_delete:
+        count = await async_refresh_legacy_binary_sensor_repair_issue(hass, entry)
+
+    assert count == 1
+    ir_create.assert_called_once()
+    ir_delete.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_refresh_repair_issue_deletes_when_no_legacy_left():
+    """Once the user has cleaned up legacy entities, the issue must auto-clear."""
+    # Only modern entity_ids — no legacy candidates
+    entries = [
+        _FakeEntity(
+            entity_id="sensor.pellematic_pe1_l_temp_act",
+            unique_id="pellematic_pe1_L_temp_act",
+            domain="sensor",
+        ),
+    ]
+    registry = _FakeRegistry(entries)
+
+    entry = SimpleNamespace(entry_id="abc", data={"name": "Pellematic"})
+    hass = SimpleNamespace(data={})
+
+    with patch(
+        "custom_components.oekofen_pellematic_compact.migration.er.async_get",
+        return_value=registry,
+    ), patch(
+        "custom_components.oekofen_pellematic_compact.migration.er.async_entries_for_config_entry",
+        return_value=entries,
+    ), patch(
+        "homeassistant.helpers.issue_registry.async_create_issue"
+    ) as ir_create, patch(
+        "homeassistant.helpers.issue_registry.async_delete_issue"
+    ) as ir_delete:
+        count = await async_refresh_legacy_binary_sensor_repair_issue(hass, entry)
+
+    assert count == 0
+    ir_create.assert_not_called()
+    ir_delete.assert_called_once()
