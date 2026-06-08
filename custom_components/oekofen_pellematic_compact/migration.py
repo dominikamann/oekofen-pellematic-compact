@@ -14,6 +14,10 @@ from homeassistant.helpers import entity_registry as er
 _LOGGER = logging.getLogger(__name__)
 
 LEGACY_BINARY_SENSOR_REPAIR_ID = "legacy_binary_sensors_under_sensor_domain"
+# Flag stored in entry.data when V2→V3 binary-sensor domain migration is pending.
+# Set during async_migrate_entry (where hub.data isn't available yet) and consumed
+# by async_setup_entry after the hub has fetched API data. Cleared on success.
+PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY = "pending_binary_sensor_domain_migration"
 
 # Version where object_id was introduced
 MIGRATION_FROM_VERSION = "4.0.0"
@@ -361,10 +365,12 @@ async def async_migrate_binary_sensor_domain(
     return renamed, legacy_candidates
 
 
-# Keys that the dynamic discovery currently classifies as binary sensors
-# (format "0:x|1:y"). Used to spot pre-4.0 legacy entity IDs whose unique_id
-# no longer matches modern discovery output.
-_LEGACY_BINARY_KEY_HINTS = (
+# Object-ID suffixes that strongly indicate a binary-sensor key. Used to spot
+# pre-4.0 legacy entity IDs whose unique_id no longer matches modern discovery.
+#
+# Matching is suffix-based (object_id.endswith(suffix)) — substring matching
+# would false-positive on, e.g., `_l_pump_release` (a temperature setpoint).
+_LEGACY_BINARY_KEY_SUFFIXES = (
     "_l_pump",
     "_l_ak",
     "_l_br",
@@ -372,7 +378,7 @@ _LEGACY_BINARY_KEY_HINTS = (
     "_l_stb",
     "_l_usb_stick",
     "_l_forecast_today",
-    # German/French translated remnants (best-effort)
+    # German/French translated remnants (best-effort for v3.x installs)
     "_pompe",
     "_pumpe",
     "_brenner_kontakt",
@@ -384,9 +390,15 @@ _LEGACY_BINARY_KEY_HINTS = (
 
 
 def _looks_like_legacy_binary_sensor(unique_id: str, entity_id: str) -> bool:
-    """Heuristic: spot pre-4.0 entity IDs that likely belonged in binary_sensor."""
-    haystack = f"{unique_id} {entity_id}".lower()
-    return any(hint in haystack for hint in _LEGACY_BINARY_KEY_HINTS)
+    """Heuristic: spot pre-4.0 entity IDs that likely belonged in binary_sensor.
+
+    Uses object_id suffix matching (not substring) so that keys like
+    ``_l_pump_release`` (a temperature setpoint) are not falsely flagged just
+    because they contain a known binary-sensor suffix as an infix.
+    """
+    object_id = entity_id.split(".", 1)[1] if "." in entity_id else entity_id
+    object_id_lower = object_id.lower()
+    return any(object_id_lower.endswith(s) for s in _LEGACY_BINARY_KEY_SUFFIXES)
 
 
 async def _create_legacy_repair_issue(

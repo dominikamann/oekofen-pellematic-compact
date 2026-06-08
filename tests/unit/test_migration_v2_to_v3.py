@@ -37,6 +37,14 @@ from custom_components.oekofen_pellematic_compact.migration import (
             "sensor.pellematic_hk1_temp_heat",
             False,
         ),
+        # Regression: _l_pump is a substring of _l_pump_release (a numeric
+        # temperature setpoint, NOT a binary sensor). Suffix matching must
+        # ignore this case to avoid telling the user to delete a valid sensor.
+        (
+            "pellematic_pu1_L_pump_release",
+            "sensor.pellematic_pu1_l_pump_release",
+            False,
+        ),
     ],
 )
 def test_legacy_detection_heuristic(unique_id, entity_id, expected):

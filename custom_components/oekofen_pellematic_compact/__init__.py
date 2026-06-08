@@ -283,17 +283,22 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if entry.version == 2:
         # V2 → V3: Binary sensors were registered under the `sensor` domain by
-        # mistake. Move matching registry entries to the `binary_sensor` domain
-        # and surface a Repairs issue for legacy IDs we cannot safely migrate.
-        from .migration import async_migrate_binary_sensor_domain
+        # mistake. The actual entity-registry rename needs hub.data, which
+        # isn't available here (async_migrate_entry runs before
+        # async_setup_entry creates the hub). So we just bump the schema
+        # version and set a flag — the rename runs in async_setup_entry once
+        # the hub has fetched API data, and clears the flag on success.
+        from .migration import PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY
 
-        try:
-            await async_migrate_binary_sensor_domain(hass, entry)
-        except Exception as e:
-            _LOGGER.warning("Migration V2→V3: domain migration failed: %s", e)
-
-        hass.config_entries.async_update_entry(entry, version=3)
-        _LOGGER.info("Migration to version 3 successful")
+        new_data = {
+            **entry.data,
+            PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY: True,
+        }
+        hass.config_entries.async_update_entry(entry, data=new_data, version=3)
+        _LOGGER.info(
+            "Migration to version 3 scheduled "
+            "(binary-sensor domain rename will run after first API fetch)"
+        )
 
     return True
 
@@ -567,6 +572,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(
             entry, data={**entry.data, **flags_to_persist}
         )
+
+    # Run pending V2→V3 binary-sensor domain migration if scheduled.
+    # Must happen BEFORE platform forwarding so the binary_sensor platform
+    # finds the renamed registry entries by unique_id and reuses them.
+    from .migration import (
+        PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY,
+        async_migrate_binary_sensor_domain,
+    )
+
+    if entry.data.get(PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY):
+        if hub.data:
+            try:
+                renamed, legacy = await async_migrate_binary_sensor_domain(hass, entry)
+                # Clear the flag only on a clean run (no exception). A failed
+                # run keeps the flag so we retry on the next startup.
+                new_data = {
+                    k: v
+                    for k, v in entry.data.items()
+                    if k != PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY
+                }
+                hass.config_entries.async_update_entry(entry, data=new_data)
+                _LOGGER.info(
+                    "V2→V3 binary-sensor domain migration complete for '%s': "
+                    "%d renamed, %d legacy flagged for manual cleanup",
+                    name, renamed, len(legacy),
+                )
+            except Exception as e:
+                _LOGGER.warning(
+                    "V2→V3 binary-sensor domain migration failed for '%s', "
+                    "will retry on next startup: %s",
+                    name, e,
+                )
+        else:
+            _LOGGER.info(
+                "V2→V3 binary-sensor domain migration deferred for '%s': "
+                "no API data yet (will retry on next startup)",
+                name,
+            )
 
     # Register services
     await async_setup_services(hass)
