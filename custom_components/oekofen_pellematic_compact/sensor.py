@@ -205,6 +205,15 @@ class PellematicBinarySensor(BinarySensorEntity):
             current_value = get_api_value(raw_data)
             if current_value is None:
                 return None
+            # Firmware can deliver "true"/"false" as strings — bool("false") is True
+            # in Python, so map them explicitly before falling back to bool().
+            if isinstance(current_value, str):
+                v = current_value.strip().lower()
+                if v in ("true", "on", "1"):
+                    return True
+                if v in ("false", "off", "0"):
+                    return False
+                return None
             return bool(current_value)
         except Exception:
             return None
