@@ -7,10 +7,13 @@ to preserve user automations and dashboards.
 import logging
 import re
 from typing import Dict, List, Tuple
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 _LOGGER = logging.getLogger(__name__)
+
+LEGACY_BINARY_SENSOR_REPAIR_ID = "legacy_binary_sensors_under_sensor_domain"
 
 # Version where object_id was introduced
 MIGRATION_FROM_VERSION = "4.0.0"
@@ -262,5 +265,161 @@ async def async_check_and_warn_entity_changes(
             )
         except Exception as e:
             _LOGGER.debug("Could not create entity warning notification: %s", e)
-    
+
     return warnings
+
+
+async def async_migrate_binary_sensor_domain(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> Tuple[int, List[str]]:
+    """Move binary-sensor entities from the `sensor` domain to `binary_sensor`.
+
+    Until config version 3, binary sensors were created by sensor.py and ended
+    up under the `sensor` domain (entity_id ``sensor.<...>``). This function
+    renames matching registry entries to ``binary_sensor.<...>``.
+
+    Identification strategy:
+
+    - **Safe path:** match by ``unique_id``. We run discovery against the
+      current API data and build the set of unique_ids the new
+      ``PellematicBinarySensor`` would produce. Any registry entry whose
+      domain is ``sensor`` AND whose ``unique_id`` is in that set is renamed.
+      This covers v4.0+ installs cleanly.
+
+    - **Legacy path:** for pre-4.0 installs with translated/legacy
+      ``unique_id`` values (e.g. ``pellematic_pellematic_1_chaud_ex_ak``) the
+      safe match fails. We don't rename those automatically — instead we
+      collect them and surface a Repairs issue with actionable steps.
+
+    Returns:
+        A tuple of (renamed_count, legacy_entity_ids).
+    """
+    from .const import DOMAIN
+    from .dynamic_discovery import discover_all_entities
+
+    hub_data = hass.data.get(DOMAIN, {}).get(entry.data.get("name"), {})
+    hub = hub_data.get("hub")
+    api_data = getattr(hub, "data", None) if hub else None
+
+    if not api_data:
+        _LOGGER.debug(
+            "V2→V3: No API data available yet, skipping binary-sensor domain migration"
+        )
+        return 0, []
+
+    discovered = discover_all_entities(api_data)
+    hub_name = entry.data.get("name", "")
+    expected_unique_ids = {
+        f"{hub_name.lower()}_{sensor_def['component']}_{sensor_def['key']}"
+        for sensor_def in discovered["binary_sensors"]
+    }
+
+    entity_reg = er.async_get(hass)
+    entries = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
+
+    renamed = 0
+    legacy_candidates: List[str] = []
+
+    for ent in entries:
+        if ent.domain != "sensor":
+            continue
+
+        if ent.unique_id in expected_unique_ids:
+            object_id = ent.entity_id.split(".", 1)[1]
+            target_entity_id = f"binary_sensor.{object_id}"
+
+            if entity_reg.async_get(target_entity_id) is not None:
+                _LOGGER.warning(
+                    "V2→V3: Target %s already exists, skipping rename of %s",
+                    target_entity_id,
+                    ent.entity_id,
+                )
+                continue
+
+            entity_reg.async_update_entity(
+                ent.entity_id, new_entity_id=target_entity_id
+            )
+            _LOGGER.info(
+                "V2→V3: Renamed %s → %s (unique_id preserved)",
+                ent.entity_id,
+                target_entity_id,
+            )
+            renamed += 1
+        elif _looks_like_legacy_binary_sensor(ent.unique_id, ent.entity_id):
+            legacy_candidates.append(ent.entity_id)
+
+    if renamed:
+        _LOGGER.info(
+            "V2→V3: Migrated %d binary sensors from sensor.* to binary_sensor.*",
+            renamed,
+        )
+
+    if legacy_candidates:
+        await _create_legacy_repair_issue(hass, entry, legacy_candidates)
+
+    return renamed, legacy_candidates
+
+
+# Keys that the dynamic discovery currently classifies as binary sensors
+# (format "0:x|1:y"). Used to spot pre-4.0 legacy entity IDs whose unique_id
+# no longer matches modern discovery output.
+_LEGACY_BINARY_KEY_HINTS = (
+    "_l_pump",
+    "_l_ak",
+    "_l_br",
+    "_l_not",
+    "_l_stb",
+    "_l_usb_stick",
+    "_l_forecast_today",
+    # German/French translated remnants (best-effort)
+    "_pompe",
+    "_pumpe",
+    "_brenner_kontakt",
+    "_contact_bruleur",
+    "_emergency_stop",
+    "_safety_thermostat",
+    "_chaud_ex_ak",
+)
+
+
+def _looks_like_legacy_binary_sensor(unique_id: str, entity_id: str) -> bool:
+    """Heuristic: spot pre-4.0 entity IDs that likely belonged in binary_sensor."""
+    haystack = f"{unique_id} {entity_id}".lower()
+    return any(hint in haystack for hint in _LEGACY_BINARY_KEY_HINTS)
+
+
+async def _create_legacy_repair_issue(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    legacy_entity_ids: List[str],
+) -> None:
+    """Surface a Repairs issue listing legacy entities the user should clean up."""
+    try:
+        from homeassistant.helpers import issue_registry as ir
+    except ImportError:
+        _LOGGER.debug("issue_registry not available; skipping Repairs issue")
+        return
+
+    from .const import DOMAIN
+
+    listed = "\n".join(f"- `{eid}`" for eid in sorted(legacy_entity_ids)[:20])
+    if len(legacy_entity_ids) > 20:
+        listed += f"\n- ...and {len(legacy_entity_ids) - 20} more"
+
+    try:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            f"{LEGACY_BINARY_SENSOR_REPAIR_ID}_{entry.entry_id}",
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=LEGACY_BINARY_SENSOR_REPAIR_ID,
+            translation_placeholders={"entity_list": listed},
+        )
+        _LOGGER.info(
+            "V2→V3: Created Repairs issue for %d legacy binary-sensor entities",
+            len(legacy_entity_ids),
+        )
+    except Exception as e:
+        _LOGGER.debug("Could not create Repairs issue: %s", e)

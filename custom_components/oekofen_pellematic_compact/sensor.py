@@ -98,11 +98,10 @@ async def async_setup_entry(
         """Factory function to create sensor entities from discovery data."""
         entities = []
         discovered = discover_all_entities(data)
-        
-        _LOGGER.info("Dynamically discovered %d sensors, %d binary sensors", 
-                     len(discovered['sensors']), len(discovered['binary_sensors']))
 
-        # Create sensor entities
+        _LOGGER.info("Dynamically discovered %d sensors", len(discovered['sensors']))
+
+        # Create sensor entities (binary sensors are handled by binary_sensor.py)
         for sensor_def in discovered['sensors']:
             try:
                 sensor = PellematicSensor(
@@ -114,22 +113,7 @@ async def async_setup_entry(
                 sensor._entity_id_key = f"{sensor_def['component']}_{sensor_def['key']}"
                 entities.append(sensor)
             except Exception as e:
-                _LOGGER.error("Failed to create sensor %s_%s: %s", 
-                            sensor_def['component'], sensor_def['key'], e)
-
-        # Create binary sensor entities
-        for sensor_def in discovered['binary_sensors']:
-            try:
-                sensor = PellematicBinarySensor(
-                    hub_name=hub_name,
-                    hub=hub,
-                    device_info=device_info,
-                    sensor_definition=sensor_def,
-                )
-                sensor._entity_id_key = f"{sensor_def['component']}_{sensor_def['key']}"
-                entities.append(sensor)
-            except Exception as e:
-                _LOGGER.error("Failed to create binary sensor %s_%s: %s",
+                _LOGGER.error("Failed to create sensor %s_%s: %s",
                             sensor_def['component'], sensor_def['key'], e)
 
         # Add legacy error sensors

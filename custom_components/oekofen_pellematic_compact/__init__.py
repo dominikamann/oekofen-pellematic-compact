@@ -54,7 +54,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Current config version
-CONFIG_VERSION = 2
+CONFIG_VERSION = 3
 
 PELLEMATIC_SCHEMA = vol.Schema(
     {
@@ -71,7 +71,7 @@ CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: vol.Schema({cv.slug: PELLEMATIC_SCHEMA})}, extra=vol.ALLOW_EXTRA
 )
 
-PLATFORMS = ["sensor","select","number","climate"]
+PLATFORMS = ["sensor", "binary_sensor", "select", "number", "climate"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -280,6 +280,20 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         
         hass.config_entries.async_update_entry(entry, data=new_data, version=2)
         _LOGGER.info("Migration to version 2 successful")
+
+    if entry.version == 2:
+        # V2 → V3: Binary sensors were registered under the `sensor` domain by
+        # mistake. Move matching registry entries to the `binary_sensor` domain
+        # and surface a Repairs issue for legacy IDs we cannot safely migrate.
+        from .migration import async_migrate_binary_sensor_domain
+
+        try:
+            await async_migrate_binary_sensor_domain(hass, entry)
+        except Exception as e:
+            _LOGGER.warning("Migration V2→V3: domain migration failed: %s", e)
+
+        hass.config_entries.async_update_entry(entry, version=3)
+        _LOGGER.info("Migration to version 3 successful")
 
     return True
 
@@ -557,7 +571,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register services
     await async_setup_services(hass)
 
-    _LOGGER.info("Ökofen Pellematic '%s': Starting platform setup (sensor, select, number, climate)", name)
+    _LOGGER.info("Ökofen Pellematic '%s': Starting platform setup (%s)", name, ", ".join(PLATFORMS))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _LOGGER.info("Ökofen Pellematic '%s': Setup complete - entities should be available within 1 minute", name)
     return True
