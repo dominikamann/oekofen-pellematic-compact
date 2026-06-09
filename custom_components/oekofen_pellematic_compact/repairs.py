@@ -2,8 +2,8 @@
 
 Surfaces a fixable issue when binary sensors are still registered under the
 ``sensor.*`` domain (legacy from versions that registered them on the wrong
-platform). The fix flow lets the user confirm, deletes the orphan registry
-entries, and reloads the config entry so ``binary_sensor.py`` recreates them
+platform). The fix flow lets the user confirm; it then deletes the orphan
+registry entries and schedules a reload so ``binary_sensor.py`` recreates them
 under the right domain.
 """
 
@@ -19,41 +19,58 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 
+from .migration import _looks_like_legacy_binary_sensor
+
 _LOGGER = logging.getLogger(__name__)
 
 
 class FixLegacyBinarySensorsFlow(RepairsFlow):
-    """Delete orphan sensor.* entries and reload the entry."""
+    """Delete orphan sensor.* entries and schedule a reload."""
 
-    def __init__(self, entry_id: str, entity_ids: list[str]) -> None:
+    def __init__(self, entry_id: str) -> None:
         self._entry_id = entry_id
-        self._entity_ids = entity_ids
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        if not self._entry_id:
+            # Issue data was lost (e.g. clicked Fix in the narrow window after
+            # restart but before async_setup_entry re-populated the issue data).
+            return self.async_abort(reason="missing_data")
         return await self.async_step_confirm()
 
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         if user_input is not None:
+            # Look up orphans fresh from the registry on submit. Avoids stale
+            # data captured at issue-creation time (the orphan list can shift
+            # between sessions) and re-applies the same heuristic the issue was
+            # raised from, so we never delete something the heuristic wouldn't
+            # currently flag.
             entity_reg = er.async_get(self.hass)
-            removed = 0
-            for entity_id in self._entity_ids:
-                ent = entity_reg.async_get(entity_id)
-                if ent is None or ent.config_entry_id != self._entry_id:
-                    continue
-                entity_reg.async_remove(entity_id)
-                removed += 1
-            _LOGGER.info(
-                "Repairs: removed %d orphan sensor.* entries; reloading entry %s",
-                removed, self._entry_id,
+            registry_entries = er.async_entries_for_config_entry(
+                entity_reg, self._entry_id
             )
-            await self.hass.config_entries.async_reload(self._entry_id)
+            orphans = [
+                ent
+                for ent in registry_entries
+                if ent.domain == "sensor"
+                and _looks_like_legacy_binary_sensor(ent.unique_id, ent.entity_id)
+            ]
+
+            for ent in orphans:
+                entity_reg.async_remove(ent.entity_id)
+
+            _LOGGER.info(
+                "Repairs: removed %d orphan sensor.* entries; scheduling reload of %s",
+                len(orphans), self._entry_id,
+            )
+            # Scheduled (not awaited) reload — releases the flow immediately
+            # and cancels any in-flight setup-retry timer to avoid races.
+            self.hass.config_entries.async_schedule_reload(self._entry_id)
             return self.async_create_entry(data={})
 
-        # Reuse the placeholders set on the issue (entity_list).
         issue_reg = ir.async_get(self.hass)
         placeholders = None
         if issue := issue_reg.async_get_issue(self.handler, self.issue_id):
@@ -73,5 +90,4 @@ async def async_create_fix_flow(
 ) -> RepairsFlow:
     """Entry point HA calls when the user clicks 'Fix' on the Repairs issue."""
     entry_id = (data or {}).get("entry_id", "")
-    entity_ids = (data or {}).get("entity_ids", [])
-    return FixLegacyBinarySensorsFlow(entry_id, entity_ids)
+    return FixLegacyBinarySensorsFlow(entry_id)

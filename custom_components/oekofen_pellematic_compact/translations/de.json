@@ -79,7 +79,7 @@
         "step": {
           "confirm": {
             "title": "Binary Sensors auf binary_sensor.* umstellen",
-            "description": "Einige Entities aus älteren Versionen sind eigentlich Binary Sensors (Pumpe an/aus, Fehlerkontakte etc.), aber noch unter der Domain `sensor.*` registriert. Sie bekommen erst dann korrekte Binary-Sensor-Historie wenn sie umgestellt sind.\n\nBetroffene Entities:\n\n{entity_list}\n\nKlicke **Senden** um diese Einträge zu löschen und unter `binary_sensor.*` neu anzulegen.\n\n**Wichtig:** Die bisherige Recorder-Historie dieser Entities geht verloren (HA speichert pro entity_id). Automationen und Dashboards, die noch die alten `sensor.*`-IDs referenzieren, musst du manuell auf die neuen `binary_sensor.*`-IDs umstellen."
+            "description": "Einige Entities aus älteren Versionen sind eigentlich Binary Sensors (Pumpe an/aus, Fehlerkontakte etc.), aber noch unter der Domain `sensor.*` registriert. Sie bekommen erst dann korrekte Binary-Sensor-Historie wenn sie umgestellt sind.\n\n**Beim Klick auf Senden werden {count} Entity-Einträge gelöscht** und beim nächsten Reload unter `binary_sensor.*` neu angelegt.\n\nDie ersten 20 sind hier gelistet:\n\n{entity_list}\n\n**Wichtig:** Die bisherige Recorder-Historie dieser Entities geht verloren (HA speichert pro entity_id). Automationen und Dashboards, die noch die alten `sensor.*`-IDs referenzieren, musst du manuell auf die neuen `binary_sensor.*`-IDs umstellen."
           }
         }
       }

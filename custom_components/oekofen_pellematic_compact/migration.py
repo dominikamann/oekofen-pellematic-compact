@@ -6,11 +6,11 @@ to preserve user automations and dashboards.
 
 import logging
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -277,12 +277,15 @@ async def async_check_and_warn_entity_changes(
 # would false-positive on, e.g., `_l_pump_release` (a temperature setpoint).
 _LEGACY_BINARY_KEY_SUFFIXES = (
     "_l_pump",
+    "_l_pummp",  # firmware typo present in real fixtures
     "_l_ak",
     "_l_br",
     "_l_not",
     "_l_stb",
     "_l_usb_stick",
     "_l_forecast_today",
+    "_l_batt_enabled",
+    "_l_output_mode",
     # German/French translated remnants (best-effort for v3.x installs)
     "_pompe",
     "_pumpe",
@@ -326,12 +329,6 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
     """
     from .const import DOMAIN
 
-    try:
-        from homeassistant.helpers import issue_registry as ir
-    except ImportError:
-        _LOGGER.debug("issue_registry not available; skipping Repairs sync")
-        return 0
-
     entity_reg = er.async_get(hass)
     entries = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
 
@@ -356,6 +353,9 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
         listed += f"\n- ...and {len(orphans) - 20} more"
 
     try:
+        # data only carries scalar values so we stay within HA's typed
+        # contract (dict[str, str|int|float|None]). The flow re-queries the
+        # registry on submit to get the current orphan list.
         ir.async_create_issue(
             hass,
             DOMAIN,
@@ -363,8 +363,11 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
             is_fixable=True,
             severity=ir.IssueSeverity.WARNING,
             translation_key=LEGACY_BINARY_SENSOR_REPAIR_ID,
-            translation_placeholders={"entity_list": listed},
-            data={"entry_id": entry.entry_id, "entity_ids": orphans},
+            translation_placeholders={
+                "count": str(len(orphans)),
+                "entity_list": listed,
+            },
+            data={"entry_id": entry.entry_id},
         )
     except Exception as e:
         _LOGGER.debug("Could not refresh Repairs issue: %s", e)

@@ -238,6 +238,25 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate old config entry to new version."""
     _LOGGER.debug("Migrating config entry from version %s", entry.version)
 
+    if entry.version > CONFIG_VERSION:
+        # Recovery path for users who installed an intermediate broken release
+        # that bumped the entry to a higher version. Strip the obsolete pending
+        # flag (if present) and set the version back to the current one. Without
+        # this, HA's async_migrate keeps calling us on every restart because
+        # entry.version != handler.VERSION.
+        new_data = {
+            k: v for k, v in entry.data.items()
+            if k != "pending_binary_sensor_domain_migration"
+        }
+        hass.config_entries.async_update_entry(
+            entry, data=new_data, version=CONFIG_VERSION
+        )
+        _LOGGER.info(
+            "Recovered config entry from intermediate version %s → %s",
+            entry.version, CONFIG_VERSION,
+        )
+        return True
+
     if entry.version == 1:
         # Migrate from version 1 to version 2
         new_data = {**entry.data}
@@ -558,6 +577,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if flags_to_persist:
         hass.config_entries.async_update_entry(
             entry, data={**entry.data, **flags_to_persist}
+        )
+
+    # Strip the obsolete pending-migration flag if a user came from an
+    # intermediate broken release that persisted it but stayed on V2 somehow.
+    # (The V3-stranded path is handled by async_migrate_entry above.)
+    if "pending_binary_sensor_domain_migration" in entry.data:
+        hass.config_entries.async_update_entry(
+            entry,
+            data={
+                k: v for k, v in entry.data.items()
+                if k != "pending_binary_sensor_domain_migration"
+            },
         )
 
     # Sync Repairs issue for orphan sensor.* entries that should be under the

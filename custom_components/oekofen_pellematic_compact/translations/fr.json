@@ -79,7 +79,7 @@
         "step": {
           "confirm": {
             "title": "Déplacer les capteurs binaires vers binary_sensor.*",
-            "description": "Certaines entités issues d'anciennes versions sont en réalité des capteurs binaires (pompe on/off, contacts d'alarme, etc.) mais sont encore enregistrées sous le domaine `sensor.*`. Elles n'obtiendront un historique binaire correct qu'une fois déplacées.\n\nEntités concernées :\n\n{entity_list}\n\nClique sur **Envoyer** pour supprimer ces entrées et les recréer sous `binary_sensor.*`.\n\n**Important :** l'historique recorder de ces entités sera perdu (HA stocke par entity_id). Les automatisations et tableaux de bord qui référencent encore les anciennes ID `sensor.*` doivent être mis à jour vers les nouvelles ID `binary_sensor.*`."
+            "description": "Certaines entités issues d'anciennes versions sont en réalité des capteurs binaires (pompe on/off, contacts d'alarme, etc.) mais sont encore enregistrées sous le domaine `sensor.*`. Elles n'obtiendront un historique binaire correct qu'une fois déplacées.\n\n**Cliquer Envoyer supprimera {count} entrées d'entités** qui seront recréées sous `binary_sensor.*` au prochain rechargement.\n\nLes 20 premières sont listées ci-dessous :\n\n{entity_list}\n\n**Important :** l'historique recorder de ces entités sera perdu (HA stocke par entity_id). Les automatisations et tableaux de bord qui référencent encore les anciennes ID `sensor.*` doivent être mis à jour vers les nouvelles ID `binary_sensor.*`."
           }
         }
       }
