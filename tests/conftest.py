@@ -3,6 +3,11 @@ import json
 import re
 from pathlib import Path
 
+# Enable the `hass` fixture from pytest-homeassistant-custom-component for
+# tests that need a real Home Assistant entity registry (e.g. the Repairs
+# flow tests). Pure-Python tests don't touch it.
+pytest_plugins = "pytest_homeassistant_custom_component"
+
 
 def load_fixture(filename):
     """Load a fixture file.

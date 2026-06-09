@@ -54,7 +54,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Current config version
-CONFIG_VERSION = 3
+CONFIG_VERSION = 2
 
 PELLEMATIC_SCHEMA = vol.Schema(
     {
@@ -281,24 +281,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(entry, data=new_data, version=2)
         _LOGGER.info("Migration to version 2 successful")
 
-    if entry.version == 2:
-        # V2 → V3: Binary sensors were registered under the `sensor` domain by
-        # mistake. The actual entity-registry rename needs hub.data, which
-        # isn't available here (async_migrate_entry runs before
-        # async_setup_entry creates the hub). So we just bump the schema
-        # version and set a flag — the rename runs in async_setup_entry once
-        # the hub has fetched API data, and clears the flag on success.
-        from .migration import PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY
-
-        new_data = {
-            **entry.data,
-            PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY: True,
-        }
-        hass.config_entries.async_update_entry(entry, data=new_data, version=3)
-        _LOGGER.info(
-            "Migration to version 3 scheduled "
-            "(binary-sensor domain rename will run after first API fetch)"
-        )
+    # V2→V3 was previously used for a cross-domain entity_id rename of binary
+    # sensors. That was unsound — HA's entity registry rejects cross-domain
+    # renames (raises ValueError "New entity ID should be same domain"). The
+    # cleanup is now surfaced via the Repairs platform on each async_setup_entry
+    # (see async_refresh_legacy_binary_sensor_repair_issue in migration.py).
 
     return True
 
@@ -573,55 +560,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry, data={**entry.data, **flags_to_persist}
         )
 
-    # Run pending V2→V3 binary-sensor domain migration if scheduled.
-    # Must happen BEFORE platform forwarding so the binary_sensor platform
-    # finds the renamed registry entries by unique_id and reuses them.
-    from .migration import (
-        PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY,
-        async_migrate_binary_sensor_domain,
-        async_refresh_legacy_binary_sensor_repair_issue,
-    )
+    # Sync Repairs issue for orphan sensor.* entries that should be under the
+    # binary_sensor.* domain. The Repairs flow lets the user opt into deleting
+    # them (binary_sensor.py then recreates them under the right domain). Auto-
+    # clears once the user has cleaned them up.
+    from .migration import async_refresh_legacy_binary_sensor_repair_issue
 
-    if entry.data.get(PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY):
-        if hub.data:
-            try:
-                renamed, _ = await async_migrate_binary_sensor_domain(hass, entry)
-                # Clear the flag only on a clean run (no exception). A failed
-                # run keeps the flag so we retry on the next startup.
-                new_data = {
-                    k: v
-                    for k, v in entry.data.items()
-                    if k != PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY
-                }
-                hass.config_entries.async_update_entry(entry, data=new_data)
-                _LOGGER.info(
-                    "V2→V3 binary-sensor domain migration complete for '%s': %d renamed",
-                    name, renamed,
-                )
-            except Exception as e:
-                _LOGGER.warning(
-                    "V2→V3 binary-sensor domain migration failed for '%s', "
-                    "will retry on next startup: %s",
-                    name, e,
-                )
-        else:
-            _LOGGER.info(
-                "V2→V3 binary-sensor domain migration deferred for '%s': "
-                "no API data yet (will retry on next startup)",
-                name,
-            )
-
-    # Sync Repairs issue for remaining legacy binary-sensor entries on every
-    # startup. Auto-clears once the user has cleaned them up.
     try:
-        legacy_count = await async_refresh_legacy_binary_sensor_repair_issue(hass, entry)
-        if legacy_count:
+        orphan_count = await async_refresh_legacy_binary_sensor_repair_issue(hass, entry)
+        if orphan_count:
             _LOGGER.info(
-                "%d legacy binary-sensor entities flagged for manual cleanup "
-                "(see Repairs)", legacy_count,
+                "%d binary-sensor entities still under sensor.* — Repairs issue raised",
+                orphan_count,
             )
     except Exception as e:
-        _LOGGER.debug("Legacy binary-sensor Repairs sync failed (non-critical): %s", e)
+        _LOGGER.debug("Repairs sync failed (non-critical): %s", e)
 
     # Register services
     await async_setup_services(hass)

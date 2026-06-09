@@ -15,10 +15,6 @@ from homeassistant.helpers import entity_registry as er
 _LOGGER = logging.getLogger(__name__)
 
 LEGACY_BINARY_SENSOR_REPAIR_ID = "legacy_binary_sensors_under_sensor_domain"
-# Flag stored in entry.data when V2→V3 binary-sensor domain migration is pending.
-# Set during async_migrate_entry (where hub.data isn't available yet) and consumed
-# by async_setup_entry after the hub has fetched API data. Cleared on success.
-PENDING_BINARY_SENSOR_DOMAIN_MIGRATION_KEY = "pending_binary_sensor_domain_migration"
 
 # Version where object_id was introduced
 MIGRATION_FROM_VERSION = "4.0.0"
@@ -274,95 +270,6 @@ async def async_check_and_warn_entity_changes(
     return warnings
 
 
-async def async_migrate_binary_sensor_domain(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> Tuple[int, List[str]]:
-    """Move binary-sensor entities from the `sensor` domain to `binary_sensor`.
-
-    Until config version 3, binary sensors were created by sensor.py and ended
-    up under the `sensor` domain (entity_id ``sensor.<...>``). This function
-    renames matching registry entries to ``binary_sensor.<...>``.
-
-    Identification strategy:
-
-    - **Safe path:** match by ``unique_id``. We run discovery against the
-      current API data and build the set of unique_ids the new
-      ``PellematicBinarySensor`` would produce. Any registry entry whose
-      domain is ``sensor`` AND whose ``unique_id`` is in that set is renamed.
-      This covers v4.0+ installs cleanly.
-
-    - **Legacy path:** for pre-4.0 installs with translated/legacy
-      ``unique_id`` values (e.g. ``pellematic_pellematic_1_chaud_ex_ak``) the
-      safe match fails. We don't rename those automatically — instead we
-      collect them and surface a Repairs issue with actionable steps.
-
-    Returns:
-        A tuple of (renamed_count, legacy_entity_ids).
-    """
-    from .const import DOMAIN
-    from .dynamic_discovery import discover_all_entities
-
-    hub_name = entry.data.get(CONF_NAME, "")
-    hub_data = hass.data.get(DOMAIN, {}).get(hub_name, {})
-    hub = hub_data.get("hub")
-    api_data = getattr(hub, "data", None) if hub else None
-
-    if not api_data:
-        _LOGGER.debug(
-            "V2→V3: No API data available yet, skipping binary-sensor domain migration"
-        )
-        return 0, []
-
-    discovered = discover_all_entities(api_data)
-    expected_unique_ids = {
-        f"{hub_name.lower()}_{sensor_def['component']}_{sensor_def['key']}"
-        for sensor_def in discovered["binary_sensors"]
-    }
-
-    entity_reg = er.async_get(hass)
-    entries = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
-
-    renamed = 0
-    legacy_candidates: List[str] = []
-
-    for ent in entries:
-        if ent.domain != "sensor":
-            continue
-
-        if ent.unique_id in expected_unique_ids:
-            object_id = ent.entity_id.split(".", 1)[1]
-            target_entity_id = f"binary_sensor.{object_id}"
-
-            if entity_reg.async_get(target_entity_id) is not None:
-                _LOGGER.warning(
-                    "V2→V3: Target %s already exists, skipping rename of %s",
-                    target_entity_id,
-                    ent.entity_id,
-                )
-                continue
-
-            entity_reg.async_update_entity(
-                ent.entity_id, new_entity_id=target_entity_id
-            )
-            _LOGGER.info(
-                "V2→V3: Renamed %s → %s (unique_id preserved)",
-                ent.entity_id,
-                target_entity_id,
-            )
-            renamed += 1
-        elif _looks_like_legacy_binary_sensor(ent.unique_id, ent.entity_id):
-            legacy_candidates.append(ent.entity_id)
-
-    if renamed:
-        _LOGGER.info(
-            "V2→V3: Migrated %d binary sensors from sensor.* to binary_sensor.*",
-            renamed,
-        )
-
-    return renamed, legacy_candidates
-
-
 # Object-ID suffixes that strongly indicate a binary-sensor key. Used to spot
 # pre-4.0 legacy entity IDs whose unique_id no longer matches modern discovery.
 #
@@ -403,13 +310,19 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> int:
-    """Re-evaluate legacy binary-sensor candidates and sync the Repairs issue.
+    """Detect orphan sensor.* entries that should live under binary_sensor.*
+    and surface a fixable Repairs issue.
 
-    Scans the registry on every startup so the issue auto-clears once the user
-    has deleted the listed entities, and re-populates if new legacy IDs appear
-    (e.g. after re-running the V2→V3 rename and finding leftovers).
+    Runs on every async_setup_entry. Uses object_id suffix matching against
+    the known binary-sensor keys (L_pump, L_ak, L_br, L_not, L_stb,
+    L_usb_stick, L_forecast_today plus French/German translated remnants),
+    which covers both v4.0+ orphans and pre-4.0 translated IDs.
 
-    Returns the number of legacy entities currently flagged.
+    The user fixes the issue from the Repairs UI; see repairs.py for the
+    flow that deletes the listed entries and triggers a reload so the
+    binary_sensor platform recreates them.
+
+    Returns the number of orphan entities currently flagged.
     """
     from .const import DOMAIN
 
@@ -422,7 +335,7 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
     entity_reg = er.async_get(hass)
     entries = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
 
-    legacy = sorted(
+    orphans = sorted(
         ent.entity_id
         for ent in entries
         if ent.domain == "sensor"
@@ -431,28 +344,29 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
 
     issue_id = f"{LEGACY_BINARY_SENSOR_REPAIR_ID}_{entry.entry_id}"
 
-    if not legacy:
+    if not orphans:
         try:
             ir.async_delete_issue(hass, DOMAIN, issue_id)
         except Exception as e:
             _LOGGER.debug("Could not delete Repairs issue: %s", e)
         return 0
 
-    listed = "\n".join(f"- `{eid}`" for eid in legacy[:20])
-    if len(legacy) > 20:
-        listed += f"\n- ...and {len(legacy) - 20} more"
+    listed = "\n".join(f"- `{eid}`" for eid in orphans[:20])
+    if len(orphans) > 20:
+        listed += f"\n- ...and {len(orphans) - 20} more"
 
     try:
         ir.async_create_issue(
             hass,
             DOMAIN,
             issue_id,
-            is_fixable=False,
+            is_fixable=True,
             severity=ir.IssueSeverity.WARNING,
             translation_key=LEGACY_BINARY_SENSOR_REPAIR_ID,
             translation_placeholders={"entity_list": listed},
+            data={"entry_id": entry.entry_id, "entity_ids": orphans},
         )
     except Exception as e:
         _LOGGER.debug("Could not refresh Repairs issue: %s", e)
 
-    return len(legacy)
+    return len(orphans)

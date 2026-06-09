@@ -74,8 +74,15 @@
   },
   "issues": {
     "legacy_binary_sensors_under_sensor_domain": {
-      "title": "Anciens capteurs binaires encore sous le domaine sensor.*",
-      "description": "Certaines entités issues d'anciennes versions de cette intégration sont en réalité des capteurs binaires (pompe on/off, contacts d'alarme, etc.) mais sont encore enregistrées sous le domaine `sensor.*`. Elles n'obtiennent donc pas l'historique binaire correct.\n\nEntités concernées :\n\n{entity_list}\n\n**Correction :** ouvre *Paramètres → Appareils et services → Entités*, supprime chaque entité listée ci-dessus, puis recharge l'intégration Ökofen Pellematic. Elles seront recréées sous `binary_sensor.*`.\n\nLes automatisations et tableaux de bord qui référencent encore les anciennes ID `sensor.*` doivent être mis à jour vers les nouvelles ID `binary_sensor.*`."
+      "title": "Capteurs binaires encore sous le domaine sensor.*",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Déplacer les capteurs binaires vers binary_sensor.*",
+            "description": "Certaines entités issues d'anciennes versions sont en réalité des capteurs binaires (pompe on/off, contacts d'alarme, etc.) mais sont encore enregistrées sous le domaine `sensor.*`. Elles n'obtiendront un historique binaire correct qu'une fois déplacées.\n\nEntités concernées :\n\n{entity_list}\n\nClique sur **Envoyer** pour supprimer ces entrées et les recréer sous `binary_sensor.*`.\n\n**Important :** l'historique recorder de ces entités sera perdu (HA stocke par entity_id). Les automatisations et tableaux de bord qui référencent encore les anciennes ID `sensor.*` doivent être mis à jour vers les nouvelles ID `binary_sensor.*`."
+          }
+        }
+      }
     }
   }
 }

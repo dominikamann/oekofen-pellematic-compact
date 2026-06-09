@@ -74,8 +74,15 @@
   },
   "issues": {
     "legacy_binary_sensors_under_sensor_domain": {
-      "title": "Old binary sensors still under the sensor.* domain",
-      "description": "Some entities from older versions of this integration look like binary sensors (pump on/off, fault contacts, etc.) but are still registered under the `sensor.*` domain. They will not get proper binary-sensor history.\n\nAffected entities:\n\n{entity_list}\n\n**How to fix:** open *Settings → Devices & Services → Entities*, delete each entity above, then reload the Ökofen Pellematic integration. They will be recreated as `binary_sensor.*` entries.\n\nAutomations and dashboards that reference the old `sensor.*` IDs must be updated to the new `binary_sensor.*` IDs."
+      "title": "Binary sensors are still under the sensor.* domain",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Move binary sensors to binary_sensor.*",
+            "description": "Some entities from older versions look like binary sensors (pump on/off, fault contacts, etc.) but are still registered under the `sensor.*` domain. They will not get proper binary-sensor history until they are moved.\n\nAffected entities:\n\n{entity_list}\n\nClick **Submit** to delete these entries and recreate them under `binary_sensor.*`.\n\n**Important:** historical recorder data for these entities will be lost (HA stores history per entity_id). Automations and dashboards that reference the old `sensor.*` IDs must be updated to the new `binary_sensor.*` IDs."
+          }
+        }
+      }
     }
   }
 }

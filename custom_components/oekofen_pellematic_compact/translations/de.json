@@ -74,8 +74,15 @@
   },
   "issues": {
     "legacy_binary_sensors_under_sensor_domain": {
-      "title": "Alte Binary Sensors noch unter sensor.*-Domain",
-      "description": "Einige Entities aus älteren Versionen dieser Integration sind eigentlich Binary Sensors (Pumpe an/aus, Fehlerkontakte etc.), aber noch unter der Domain `sensor.*` registriert. Sie bekommen daher keine korrekte Binary-Sensor-Historie.\n\nBetroffene Entities:\n\n{entity_list}\n\n**Behebung:** Öffne *Einstellungen → Geräte & Dienste → Entitäten*, lösche die oben gelisteten Entities und lade die Ökofen-Pellematic-Integration neu. Sie werden dann als `binary_sensor.*` neu angelegt.\n\nAutomationen und Dashboards, die noch die alten `sensor.*`-IDs referenzieren, musst du manuell auf die neuen `binary_sensor.*`-IDs umstellen."
+      "title": "Binary Sensors noch unter sensor.*-Domain",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Binary Sensors auf binary_sensor.* umstellen",
+            "description": "Einige Entities aus älteren Versionen sind eigentlich Binary Sensors (Pumpe an/aus, Fehlerkontakte etc.), aber noch unter der Domain `sensor.*` registriert. Sie bekommen erst dann korrekte Binary-Sensor-Historie wenn sie umgestellt sind.\n\nBetroffene Entities:\n\n{entity_list}\n\nKlicke **Senden** um diese Einträge zu löschen und unter `binary_sensor.*` neu anzulegen.\n\n**Wichtig:** Die bisherige Recorder-Historie dieser Entities geht verloren (HA speichert pro entity_id). Automationen und Dashboards, die noch die alten `sensor.*`-IDs referenzieren, musst du manuell auf die neuen `binary_sensor.*`-IDs umstellen."
+          }
+        }
+      }
     }
   }
 }
