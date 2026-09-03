@@ -297,7 +297,7 @@ _LEGACY_BINARY_KEY_SUFFIXES = (
 )
 
 
-def _looks_like_legacy_binary_sensor(unique_id: str, entity_id: str) -> bool:
+def _looks_like_legacy_binary_sensor(entity_id: str) -> bool:
     """Heuristic: spot pre-4.0 entity IDs that likely belonged in binary_sensor.
 
     Uses object_id suffix matching (not substring) so that keys like
@@ -336,7 +336,7 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
         ent.entity_id
         for ent in entries
         if ent.domain == "sensor"
-        and _looks_like_legacy_binary_sensor(ent.unique_id, ent.entity_id)
+        and _looks_like_legacy_binary_sensor(ent.entity_id)
     )
 
     issue_id = f"{LEGACY_BINARY_SENSOR_REPAIR_ID}_{entry.entry_id}"

@@ -56,7 +56,7 @@ class FixLegacyBinarySensorsFlow(RepairsFlow):
                 ent
                 for ent in registry_entries
                 if ent.domain == "sensor"
-                and _looks_like_legacy_binary_sensor(ent.unique_id, ent.entity_id)
+                and _looks_like_legacy_binary_sensor(ent.entity_id)
             ]
 
             for ent in orphans:

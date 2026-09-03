@@ -21,32 +21,24 @@ from custom_components.oekofen_pellematic_compact.migration import (
 
 
 @pytest.mark.parametrize(
-    "unique_id,entity_id,expected",
+    "entity_id,expected",
     [
         # Modern v4.0+ orphans (entity_id ends with a known binary key)
-        ("pellematic_circ1_L_pump", "sensor.pellematic_circ1_l_pump", True),
-        ("pellematic_pe1_L_ak", "sensor.pellematic_pe1_l_ak", True),
+        ("sensor.pellematic_circ1_l_pump", True),
+        ("sensor.pellematic_pe1_l_ak", True),
         # Pre-4.0 translated IDs
-        ("pellematic_hot_water_1_pompe", "sensor.pellematic_hot_water_1_pompe", True),
-        (
-            "pellematic_pellematic_1_emergency_stop",
-            "sensor.pellematic_pellematic_1_emergency_stop",
-            True,
-        ),
+        ("sensor.pellematic_hot_water_1_pompe", True),
+        ("sensor.pellematic_pellematic_1_emergency_stop", True),
         # Regular sensors must NOT match
-        ("pellematic_pe1_l_temp_act", "sensor.pellematic_pe1_l_temp_act", False),
-        ("pellematic_hk1_temp_heat", "sensor.pellematic_hk1_temp_heat", False),
+        ("sensor.pellematic_pe1_l_temp_act", False),
+        ("sensor.pellematic_hk1_temp_heat", False),
         # Regression: _l_pump is a substring of _l_pump_release (temperature
         # setpoint, NOT a binary sensor). Suffix matching must skip this.
-        (
-            "pellematic_pu1_L_pump_release",
-            "sensor.pellematic_pu1_l_pump_release",
-            False,
-        ),
+        ("sensor.pellematic_pu1_l_pump_release", False),
     ],
 )
-def test_heuristic_uses_suffix_match(unique_id, entity_id, expected):
-    assert _looks_like_legacy_binary_sensor(unique_id, entity_id) is expected
+def test_heuristic_uses_suffix_match(entity_id, expected):
+    assert _looks_like_legacy_binary_sensor(entity_id) is expected
 
 
 async def test_refresh_creates_fixable_issue_when_orphans_present(hass):

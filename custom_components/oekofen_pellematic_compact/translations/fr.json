@@ -76,6 +76,9 @@
     "legacy_binary_sensors_under_sensor_domain": {
       "title": "Capteurs binaires encore sous le domaine sensor.*",
       "fix_flow": {
+        "abort": {
+          "missing_data": "Cette réparation n'a pas pu s'exécuter car son contexte a été perdu (cela peut arriver si vous cliquez sur Réparer juste après un redémarrage). Veuillez recharger la page et réessayer."
+        },
         "step": {
           "confirm": {
             "title": "Déplacer les capteurs binaires vers binary_sensor.*",

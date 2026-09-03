@@ -76,6 +76,9 @@
     "legacy_binary_sensors_under_sensor_domain": {
       "title": "Binary sensors are still under the sensor.* domain",
       "fix_flow": {
+        "abort": {
+          "missing_data": "This repair could not run because its context was lost (this can happen if you click Fix right after a restart). Please reload the page and try again."
+        },
         "step": {
           "confirm": {
             "title": "Move binary sensors to binary_sensor.*",
