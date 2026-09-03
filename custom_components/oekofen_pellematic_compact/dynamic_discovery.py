@@ -38,6 +38,44 @@ COMPONENT_NAMES = {
     "thirdparty": "Third Party Sensor",
 }
 
+# Localized component-prefix overlays. COMPONENT_NAMES (above) is the English
+# base / fallback. Only the prefix is localized here; the field part of an
+# entity name still comes from the boiler's API "text" (already localized).
+# Proper nouns (pe/stirling/power/system) are intentionally omitted so they
+# fall through to the English base and stay identical in every language.
+COMPONENT_NAMES_TRANSLATIONS = {
+    "de": {
+        "hk": "Heizkreis",
+        "autocomfort_hk": "Auto Comfort Heizkreis",
+        "pu": "Pufferspeicher",
+        "ww": "Warmwasser",
+        "sk": "Solarkollektor",
+        "se": "Solarertrag",
+        "wp": "Wärmepumpe",
+        "wp_data": "Wärmepumpe Daten",
+        "circ": "Zirkulation",
+        "weather": "Wetter",
+        "forecast": "Vorhersage",
+        "wireless": "Funksensor",
+        "thirdparty": "Fremdsensor",
+    },
+    "fr": {
+        "hk": "Circuit de chauffage",
+        "autocomfort_hk": "Circuit de chauffage Auto Comfort",
+        "pu": "Ballon tampon",
+        "ww": "ECS",              # from PR #190 (native speaker) — Eau Chaude Sanitaire
+        "sk": "Solaire",          # from PR #190 (native speaker)
+        "se": "Gain solaire",
+        "wp": "Pompe à chaleur",
+        "wp_data": "Données pompe à chaleur",
+        "circ": "Circulation",
+        "weather": "Météo",
+        "forecast": "Prévisions",
+        "wireless": "Capteur sans fil",
+        "thirdparty": "Capteur tiers",
+    },
+}
+
 # Keys to ignore (metadata/info fields)
 IGNORE_KEYS = {
     "system_info",
@@ -395,21 +433,24 @@ def normalize_unit(unit: str) -> str:
     return unit_map.get(unit_fixed, unit_fixed)
 
 
-def get_component_display_name(component: str, index: int = 0) -> str:
+def get_component_display_name(component: str, index: int = 0, language: str = "en") -> str:
     """Get human-readable component name.
-    
+
     Args:
         component: Component key (e.g., "hk1", "pe2", "system")
         index: Numeric index extracted from component (e.g., 1 from "hk1")
-        
+        language: HA UI language (e.g., "de", "fr"); falls back to English.
+
     Returns:
         Localized component name (e.g., "Heizkreis 1", "Pellematic 2")
     """
     # Extract base component type (e.g., "hk" from "hk1")
     base = ''.join(c for c in component if not c.isdigit())
-    
-    # Get translated name
-    display_name = COMPONENT_NAMES.get(base, base.upper())
+
+    # Prefer a localized prefix; fall back to the English base, then the raw key.
+    display_name = COMPONENT_NAMES_TRANSLATIONS.get(language, {}).get(
+        base, COMPONENT_NAMES.get(base, base.upper())
+    )
     
     # Add index if present
     if index > 0:
@@ -423,7 +464,8 @@ def create_sensor_definition(
     key: str,
     data: dict,
     index: int = 0,
-    keys_need_disambiguation: set = None
+    keys_need_disambiguation: set = None,
+    language: str = "en"
 ) -> dict:
     """Create sensor definition from API data.
     
@@ -449,7 +491,7 @@ def create_sensor_definition(
     if component == "system":
         name = base_name
     else:
-        component_name = get_component_display_name(component, index)
+        component_name = get_component_display_name(component, index, language)
         name = f"{component_name} {base_name}"
     
     return {
@@ -473,10 +515,11 @@ def create_number_definition(
     key: str,
     data: dict,
     index: int = 0,
-    keys_need_disambiguation: set = None
+    keys_need_disambiguation: set = None,
+    language: str = "en"
 ) -> dict:
     """Create number entity definition from API data."""
-    definition = create_sensor_definition(component, key, data, index, keys_need_disambiguation)
+    definition = create_sensor_definition(component, key, data, index, keys_need_disambiguation, language)
     definition["device_class"] = infer_number_device_class(data, key)
     definition["step"] = 0.1 if definition["unit"] in (UnitOfTemperature.CELSIUS, UnitOfTemperature.KELVIN) else 1
     
@@ -488,10 +531,11 @@ def create_select_definition(
     key: str,
     data: dict,
     index: int = 0,
-    keys_need_disambiguation: set = None
+    keys_need_disambiguation: set = None,
+    language: str = "en"
 ) -> dict:
     """Create select entity definition from API data."""
-    definition = create_sensor_definition(component, key, data, index, keys_need_disambiguation)
+    definition = create_sensor_definition(component, key, data, index, keys_need_disambiguation, language)
     definition["options"] = parse_select_options(data.get("format", ""))
     
     return definition
@@ -499,7 +543,8 @@ def create_select_definition(
 
 def discover_entities_from_component(
     component_key: str,
-    component_data: dict
+    component_data: dict,
+    language: str = "en"
 ) -> dict:
     """Discover all entities from a single component.
     
@@ -573,11 +618,11 @@ def discover_entities_from_component(
         if key.startswith("L_"):
             # Read-only sensor (API convention: L_ prefix = read-only)
             if is_binary_sensor(data):
-                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
+                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation, language)
                 definition["device_class"] = infer_binary_device_class(data, key)
                 entities["binary_sensors"].append(definition)
             else:
-                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
+                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation, language)
                 entities["sensors"].append(definition)
         elif is_read_only_statistic(key):
             # Even without L_ prefix, this is a read-only statistic/counter
@@ -586,20 +631,20 @@ def discover_entities_from_component(
                 "Key '%s.%s' identified as read-only statistic, creating sensor instead of number",
                 component_key, key
             )
-            definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
+            definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation, language)
             entities["sensors"].append(definition)
         else:
             # Writable entity (no L_ prefix and not a statistic = writable per API spec)
             if is_select(data):
-                definition = create_select_definition(component_key, key, data, index, keys_need_disambiguation)
+                definition = create_select_definition(component_key, key, data, index, keys_need_disambiguation, language)
                 entities["selects"].append(definition)
             elif is_binary_sensor(data):
                 # Writable binary option (e.g., night_mode with "0:Off|1:On")
                 # Treat as select with 2 options instead of binary_sensor
-                definition = create_select_definition(component_key, key, data, index, keys_need_disambiguation)
+                definition = create_select_definition(component_key, key, data, index, keys_need_disambiguation, language)
                 entities["selects"].append(definition)
             elif is_number(data):
-                definition = create_number_definition(component_key, key, data, index, keys_need_disambiguation)
+                definition = create_number_definition(component_key, key, data, index, keys_need_disambiguation, language)
                 entities["numbers"].append(definition)
             else:
                 # Fallback: treat as read-only sensor
@@ -608,18 +653,19 @@ def discover_entities_from_component(
                     "Writable key '%s.%s' not recognized as select/number, treating as read-only sensor",
                     component_key, key
                 )
-                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation)
+                definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation, language)
                 entities["sensors"].append(definition)
     
     return entities
 
 
-def discover_all_entities(api_data: dict) -> dict:
+def discover_all_entities(api_data: dict, language: str = "en") -> dict:
     """Discover all entities from complete API response.
-    
+
     Args:
         api_data: Complete API response
-    
+        language: HA UI language for localized component prefixes (default English)
+
     Returns:
         Dictionary with all discovered entities organized by type
     """
@@ -634,7 +680,7 @@ def discover_all_entities(api_data: dict) -> dict:
         if component_key == "error":
             continue
         
-        entities = discover_entities_from_component(component_key, component_data)
+        entities = discover_entities_from_component(component_key, component_data, language)
         
         # Merge into all_entities
         for entity_type in all_entities:

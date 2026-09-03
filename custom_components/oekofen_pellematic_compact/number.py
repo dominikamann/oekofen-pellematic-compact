@@ -46,7 +46,7 @@ async def async_setup_entry(
     def create_number_entities(data: Dict[str, Any]) -> list:
         """Factory function to create number entities from discovery data."""
         entities = []
-        discovered = discover_all_entities(data)
+        discovered = discover_all_entities(data, hass.config.language)
         
         _LOGGER.info("Dynamically discovered %d number entities", len(discovered['numbers']))
         

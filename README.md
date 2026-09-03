@@ -53,6 +53,14 @@ OR
  
 ![401221389-5b7e7316-5a60-4428-93fd-7f5761fa9ed7](https://github.com/user-attachments/assets/7e84f405-fed4-425f-aa96-9504b01bd6ce)
 
+## Entity names and language
+
+Entity names combine a **component prefix** (e.g. "Heating Circuit", "Hot Water") with the
+field label reported by the boiler's API. The prefix is localized to your Home Assistant UI
+language (English, German and French are shipped); the field label comes from the boiler in
+its own configured language. If you change the Home Assistant language, reload the
+integration entry for the prefixes to update. Entity IDs never change — only display names.
+
 ## Tips: derived sensors (e.g. gas-equivalent energy)
 
 The integration exposes the raw sensors needed to derive your own values — for example pellet consumption in kg (`sensor.pellematic_pe1_storage_fill_today`, `sensor.pellematic_pe1_storage_fill_yesterday`, `sensor.pellematic_pe1_l_storage_fill`). Anything that's a fixed-constant calculation on top of those (gas-equivalent volume, CO₂ avoided, cost per day, ...) is best done as a Home Assistant **Template Helper** so you can pick the constants that match your pellet quality and local gas tariff.

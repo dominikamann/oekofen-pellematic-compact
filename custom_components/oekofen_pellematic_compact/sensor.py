@@ -100,7 +100,7 @@ async def async_setup_entry(
         """Factory function to create sensor entities from discovery data."""
         nonlocal discovery_logged
         entities = []
-        discovered = discover_all_entities(data)
+        discovered = discover_all_entities(data, hass.config.language)
         count = len(discovered['sensors'])
 
         # Log INFO once on first successful discovery, DEBUG on every retry tick
