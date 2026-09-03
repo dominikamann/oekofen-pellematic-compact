@@ -12213,6 +12213,144 @@
       "unique_id": "pellematic_ww1_name"
     }
   ],
+  "api_response_us310.json": [
+    {
+      "entity_id": "sensor.error_error_1",
+      "unique_id": "pellematic_error_error_1"
+    },
+    {
+      "entity_id": "sensor.error_error_2",
+      "unique_id": "pellematic_error_error_2"
+    },
+    {
+      "entity_id": "sensor.error_error_3",
+      "unique_id": "pellematic_error_error_3"
+    },
+    {
+      "entity_id": "sensor.error_error_4",
+      "unique_id": "pellematic_error_error_4"
+    },
+    {
+      "entity_id": "sensor.error_error_5",
+      "unique_id": "pellematic_error_error_5"
+    },
+    {
+      "entity_id": "sensor.pe1_L_ak",
+      "unique_id": "pellematic_pe1_L_ak"
+    },
+    {
+      "entity_id": "sensor.pe1_L_avg_runtime",
+      "unique_id": "pellematic_pe1_L_avg_runtime"
+    },
+    {
+      "entity_id": "sensor.pe1_L_br",
+      "unique_id": "pellematic_pe1_L_br"
+    },
+    {
+      "entity_id": "sensor.pe1_L_ext_temp",
+      "unique_id": "pellematic_pe1_L_ext_temp"
+    },
+    {
+      "entity_id": "sensor.pe1_L_frt_temp_act",
+      "unique_id": "pellematic_pe1_L_frt_temp_act"
+    },
+    {
+      "entity_id": "sensor.pe1_L_frt_temp_set",
+      "unique_id": "pellematic_pe1_L_frt_temp_set"
+    },
+    {
+      "entity_id": "sensor.pe1_L_modulation",
+      "unique_id": "pellematic_pe1_L_modulation"
+    },
+    {
+      "entity_id": "sensor.pe1_L_not",
+      "unique_id": "pellematic_pe1_L_not"
+    },
+    {
+      "entity_id": "sensor.pe1_L_runtime",
+      "unique_id": "pellematic_pe1_L_runtime"
+    },
+    {
+      "entity_id": "sensor.pe1_L_starts",
+      "unique_id": "pellematic_pe1_L_starts"
+    },
+    {
+      "entity_id": "sensor.pe1_L_state",
+      "unique_id": "pellematic_pe1_L_state"
+    },
+    {
+      "entity_id": "sensor.pe1_L_statetext",
+      "unique_id": "pellematic_pe1_L_statetext"
+    },
+    {
+      "entity_id": "sensor.pe1_L_stb",
+      "unique_id": "pellematic_pe1_L_stb"
+    },
+    {
+      "entity_id": "sensor.pe1_L_storage_fill",
+      "unique_id": "pellematic_pe1_L_storage_fill"
+    },
+    {
+      "entity_id": "sensor.pe1_L_storage_max",
+      "unique_id": "pellematic_pe1_L_storage_max"
+    },
+    {
+      "entity_id": "sensor.pe1_L_storage_min",
+      "unique_id": "pellematic_pe1_L_storage_min"
+    },
+    {
+      "entity_id": "sensor.pe1_L_storage_popper",
+      "unique_id": "pellematic_pe1_L_storage_popper"
+    },
+    {
+      "entity_id": "sensor.pe1_L_temp_act",
+      "unique_id": "pellematic_pe1_L_temp_act"
+    },
+    {
+      "entity_id": "sensor.pe1_L_temp_set",
+      "unique_id": "pellematic_pe1_L_temp_set"
+    },
+    {
+      "entity_id": "sensor.pe1_L_type",
+      "unique_id": "pellematic_pe1_L_type"
+    },
+    {
+      "entity_id": "sensor.pe1_L_uw",
+      "unique_id": "pellematic_pe1_L_uw"
+    },
+    {
+      "entity_id": "sensor.pe1_L_uw_release",
+      "unique_id": "pellematic_pe1_L_uw_release"
+    },
+    {
+      "entity_id": "sensor.pe1_L_uw_speed",
+      "unique_id": "pellematic_pe1_L_uw_speed"
+    },
+    {
+      "entity_id": "sensor.pe1_mode",
+      "unique_id": "pellematic_pe1_mode"
+    },
+    {
+      "entity_id": "sensor.pe1_storage_fill_today",
+      "unique_id": "pellematic_pe1_storage_fill_today"
+    },
+    {
+      "entity_id": "sensor.pe1_storage_fill_yesterday",
+      "unique_id": "pellematic_pe1_storage_fill_yesterday"
+    },
+    {
+      "entity_id": "sensor.system_L_ambient",
+      "unique_id": "pellematic_system_L_ambient"
+    },
+    {
+      "entity_id": "sensor.system_L_errors",
+      "unique_id": "pellematic_system_L_errors"
+    },
+    {
+      "entity_id": "sensor.system_L_usb_stick",
+      "unique_id": "pellematic_system_L_usb_stick"
+    }
+  ],
   "api_response_v324_peter.json": [
     {
       "entity_id": "binary_sensor.hk1_L_pump",

@@ -8,6 +8,7 @@ from typing import Optional, Callable, Any, Dict, Set
 from collections.abc import Awaitable
 import json
 import urllib
+import http.client
 
 import voluptuous as vol
 
@@ -98,84 +99,121 @@ def _api_response_has_metadata(data: dict) -> bool:
     return False
 
 
-def _detect_api_config(host: str) -> tuple[str, str, bool]:
-    """Detect charset and API suffix from API response (blocking function for executor).
-    
-    Detection logic:
-    - Try '?' first and check if response contains metadata (val, unit, factor)
-    - If HAS metadata → Modern firmware (v3.52+): use '?', old_firmware=False
-    - If NO metadata → Old firmware (v3.10d-): use '??', old_firmware=True
-    
-    Args:
-        host: The API host URL (without ? or ??)
-        
-    Returns:
-        Tuple of (charset, api_suffix, old_firmware)
-        
-    Raises:
-        Exception: If API is unreachable or invalid
+def _charset_from_raw(raw_data: bytes) -> str:
+    """Pick 'utf-8' or 'iso-8859-1' for a raw API response.
+
+    Handles mixed-encoding responses (mostly UTF-8 with a few ISO-8859-1 bytes)
+    by preferring UTF-8 unless more than 20% of the non-ASCII characters are
+    undecodable.
     """
-    if not host or host == DEFAULT_HOST:
-        raise ValueError(f"Invalid host: {host}")
-    
-    # Remove any existing suffix
-    clean_host = host.strip().rstrip('?')
-    charset = DEFAULT_CHARSET  # Default fallback
-    
-    # Try with single ? first (modern firmware)
-    url_single = clean_host + '?'
-    req = urllib.request.Request(url_single)
-    response = None
-    
-    _LOGGER.debug("Checking API with '?' to detect firmware type...")
     try:
-        response = urllib.request.urlopen(req, timeout=10)  # Increased timeout to 10s for slow APIs
+        raw_data.decode('utf-8')
+        return 'utf-8'
+    except UnicodeDecodeError:
+        decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')
+        replacement_count = decoded_utf8_replace.count('�')
+        non_ascii_count = sum(1 for char in decoded_utf8_replace if ord(char) > 127)
+        if non_ascii_count > 0 and replacement_count / non_ascii_count < 0.2:
+            return 'utf-8'
+        return 'iso-8859-1'
+
+
+def _probe_api_url(url: str, timeout: int = 10) -> Optional[tuple[Dict[str, Any], str]]:
+    """Fetch and parse one API URL, returning (data, charset) or None on failure.
+
+    Never raises for connection/parse problems so callers can transparently try
+    the other suffix. Empty or non-dict responses are treated as failures.
+    """
+    req = urllib.request.Request(url)
+    response = None
+    try:
+        response = urllib.request.urlopen(req, timeout=timeout)
         raw_data = response.read()
-        
-        if not raw_data:
-            raise ValueError("Empty API response")
-        
-        # Detect charset with mixed encoding support
-        try:
-            raw_data.decode('utf-8')
-            charset = 'utf-8'
-        except UnicodeDecodeError:
-            # Try UTF-8 with replace to detect mixed encoding
-            decoded_utf8_replace = raw_data.decode('utf-8', errors='replace')
-            replacement_count = decoded_utf8_replace.count('�')
-            non_ascii_count = sum(1 for char in decoded_utf8_replace if ord(char) > 127)
-            
-            # If less than 20% of non-ASCII chars are problematic, prefer UTF-8
-            # This handles mixed encoding where most content is UTF-8 but some fields have ISO-8859-1 bytes
-            # Increased threshold from 10% to 20% to handle smaller responses
-            if non_ascii_count > 0 and replacement_count / non_ascii_count < 0.2:
-                charset = 'utf-8'
-            else:
-                charset = 'iso-8859-1'
-        
-        # Decode and parse
-        str_response = raw_data.decode(charset, 'ignore')
-        str_response = str_response.replace("L_statetext:", 'L_statetext":')
-        data = json.loads(str_response, strict=False)
-        
-        # Check if metadata exists
-        if _api_response_has_metadata(data):
-            # Modern firmware - has metadata with single ?
-            _LOGGER.info("API response has metadata with '?' - modern firmware detected")
-            return charset, '?', False  # old_firmware=False
-        else:
-            # Old firmware - no metadata with ?
-            _LOGGER.info("API response has no metadata with '?' - old firmware detected")
-            return charset, '??', True  # old_firmware=True
     except Exception as e:
-        # If ? fails completely, raise error
-        _LOGGER.error("Failed to fetch with '?': %s", e)
-        raise
+        _LOGGER.debug("API probe failed for suffix on %s: %s", url[-2:], e)
+        return None
     finally:
         if response is not None:
             response.close()
-    
-    # No second request here: the '?' response is enough to determine firmware type.
+
+    if not raw_data:
+        return None
+
+    charset = _charset_from_raw(raw_data)
+    try:
+        str_response = raw_data.decode(charset, 'ignore')
+        str_response = str_response.replace("L_statetext:", 'L_statetext":')
+        data = json.loads(str_response, strict=False)
+    except Exception as e:
+        _LOGGER.debug("API probe parse failed: %s", e)
+        return None
+
+    if not isinstance(data, dict) or not data:
+        return None
+    return data, charset
+
+
+def _detect_api_config(host: str) -> tuple[str, str, bool]:
+    """Detect charset and API suffix from API response (blocking function for executor).
+
+    Suffix and metadata are *independent* (issue #191). Some firmware returns
+    bare values (no metadata) yet only works with a single '?' (US 3.10 drops
+    the connection on '??'); other old firmware (Euro v3.10d) exposes richer
+    metadata via '??'. So we choose the suffix empirically, preferring '?':
+
+    - '?' has metadata            → modern firmware:      '?',  old_firmware=False
+    - '?' bare, '??' has metadata → Euro old firmware:    '??', old_firmware=True
+    - '?' bare, '??' worse/broken → US-style old firmware: '?', old_firmware=True
+    - '?' unusable, '??' works    → old firmware:          '??', old_firmware=True
+
+    The old_firmware flag now purely reflects "response has no metadata" (bare
+    data format) and no longer forces the suffix.
+
+    Args:
+        host: The API host URL (without ? or ??)
+
+    Returns:
+        Tuple of (charset, api_suffix, old_firmware)
+
+    Raises:
+        Exception: If API is unreachable/invalid with both '?' and '??'
+    """
+    if not host or host == DEFAULT_HOST:
+        raise ValueError(f"Invalid host: {host}")
+
+    clean_host = host.strip().rstrip('?')
+
+    _LOGGER.debug("Detecting API config: probing '?'...")
+    single = _probe_api_url(clean_host + '?')
+    if single is not None:
+        data, charset = single
+        if _api_response_has_metadata(data):
+            _LOGGER.info("API '?' response has metadata - modern firmware, suffix '?'")
+            return charset, '?', False
+
+        # Bare data on '?'. Probe '??' and only switch if it is strictly richer.
+        _LOGGER.debug("API '?' returned bare data - probing '??' for richer metadata...")
+        double = _probe_api_url(clean_host + '??')
+        if double is not None and _api_response_has_metadata(double[0]):
+            _LOGGER.info("API '??' response has metadata - old firmware, suffix '??'")
+            return double[1], '??', True
+
+        _LOGGER.info(
+            "API '?' returns bare data and '??' is not richer/available "
+            "- old firmware, keeping suffix '?'"
+        )
+        return charset, '?', True
+
+    # '?' unusable - fall back to '??'
+    _LOGGER.debug("API '?' unusable - probing '??'...")
+    double = _probe_api_url(clean_host + '??')
+    if double is not None:
+        _LOGGER.info("API '?' unusable but '??' works - old firmware, suffix '??'")
+        return double[1], '??', True
+
+    raise ConnectionError(
+        f"Could not fetch usable data from {host} with either '?' or '??'"
+    )
 
 
 def _detect_api_charset(host: str) -> str:
@@ -716,7 +754,9 @@ class PellematicHub:
         self._sensors = []
         self.data = {}
         self._last_fetch_time = 0.0  # Track last API call time for rate limiting
-        self._min_fetch_interval = 2.5  # Minimum seconds between API calls (Ökofen requirement)
+        # Ökofen requires >= 2500ms between requests; use a small margin so timing
+        # jitter doesn't trip the boiler's "Wait at least 2500ms" 401 (issue #191).
+        self._min_fetch_interval = 3.0  # Minimum seconds between API calls
 
     @callback
     def async_add_pellematic_sensor(self, update_callback) -> None:
@@ -828,6 +868,12 @@ class PellematicHub:
         return discover_components_from_api(self.data)
 
 
+# Networking tunables for the Ökofen API (see issue #191).
+FETCH_TIMEOUT_SECONDS = 10  # Read timeout; old/US firmware is slow to respond.
+FETCH_MAX_ATTEMPTS = 2  # One retry on a dropped connection (IncompleteRead).
+FETCH_RETRY_DELAY_SECONDS = 3.0  # Wait out the boiler's min request interval before retrying.
+
+
 def fetch_data(url: str, charset: str = DEFAULT_CHARSET, api_suffix: str = DEFAULT_API_SUFFIX) -> Dict[str, Any]:
     """Get data from API.
     
@@ -844,19 +890,32 @@ def fetch_data(url: str, charset: str = DEFAULT_CHARSET, api_suffix: str = DEFAU
 
     # Append the API suffix
     url += api_suffix
-        
-    req = urllib.request.Request(url)
-    response = None
-    str_response = None
 
-    try:
-        response = urllib.request.urlopen(
-            req, timeout=3
-        )  # Ökofen API recommended timeout is 2.5s
-        str_response = response.read().decode(charset, "ignore")
-    finally:
-        if response is not None:
-            response.close()
+    req = urllib.request.Request(url)
+
+    # Old/US firmware (e.g. 3.10) can be slow and occasionally drops the body
+    # mid-transfer (IncompleteRead, 0 bytes). Use a generous read timeout and
+    # retry a dropped connection once, waiting out the boiler's minimum request
+    # interval so the retry doesn't hit a "Wait at least 2500ms" 401 (issue #191).
+    str_response = None
+    for attempt in range(FETCH_MAX_ATTEMPTS):
+        response = None
+        try:
+            response = urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_SECONDS)
+            str_response = response.read().decode(charset, "ignore")
+            break
+        except http.client.IncompleteRead as e:
+            _LOGGER.warning(
+                "Incomplete read from Ökofen API (attempt %d/%d): %s",
+                attempt + 1, FETCH_MAX_ATTEMPTS, e,
+            )
+            if attempt + 1 < FETCH_MAX_ATTEMPTS:
+                time.sleep(FETCH_RETRY_DELAY_SECONDS)
+                continue
+            raise
+        finally:
+            if response is not None:
+                response.close()
 
     # Hotfix for pellematic update 4.02 (invalid json)
     str_response = str_response.replace("L_statetext:", 'L_statetext":')
@@ -902,8 +961,8 @@ def send_data(url: str, charset: str = DEFAULT_CHARSET) -> str:
     str_response = None
     try:
         response = urllib.request.urlopen(
-            req, timeout=3
-        )  # Ökofen API recommended timeout is 2.5s
+            req, timeout=FETCH_TIMEOUT_SECONDS
+        )
         str_response = response.read().decode(charset, "ignore")
     except urllib.error.HTTPError as err:
         _LOGGER.error(

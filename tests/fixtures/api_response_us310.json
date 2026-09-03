@@ -1,0 +1,37 @@
+{
+   "system":{
+      "L_ambient":"-200",
+      "L_errors":"0",
+      "L_usb_stick":"false"
+   },
+   "pe1":{
+      "L_temp_act":"813",
+      "L_temp_set":"80",
+      "L_ext_temp":"-32768",
+      "L_frt_temp_act":"842",
+      "L_frt_temp_set":"80",
+      "L_br":"false",
+      "L_ak":"false",
+      "L_not":"true",
+      "L_stb":"true",
+      "L_modulation":"0",
+      "L_uw_speed":"0",
+      "L_state":"99",
+      "L_statetext":"Off",
+      "L_type":"1",
+      "L_starts":"15444",
+      "L_runtime":"4968",
+      "L_avg_runtime":"19",
+      "L_uw_release":"600",
+      "L_uw":"0",
+      "L_storage_fill":"0",
+      "L_storage_min":"400",
+      "L_storage_max":"6000",
+      "L_storage_popper":"0",
+      "storage_fill_today":"0",
+      "storage_fill_yesterday":"0",
+      "mode":"1"
+   },
+   "error":{
+   }
+}

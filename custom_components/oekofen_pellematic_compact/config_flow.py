@@ -265,7 +265,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             _LOGGER.debug("Auto-detecting firmware type by checking API response with '?'...")
             try:
                 data, charset_detected = self._fetch_with_suffix(host, "?", detect_charset=True)
-                
+
                 # Check if response contains metadata (val, unit, factor)
                 if api_response_has_metadata(data):
                     # Modern firmware - has metadata with single ?
@@ -273,18 +273,44 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                     if detect_charset:
                         return data, charset_detected, "?", False  # old_firmware=False
                     return data, "?", False
-                else:
-                    # Old firmware - no metadata with ?
-                    _LOGGER.info("API response has no metadata with '?' - old firmware detected")
+
+                # Bare data on '?'. Suffix and metadata are independent (issue #191):
+                # only switch to '??' if it yields *richer* metadata. US 3.10 drops
+                # the connection on '??' and must keep '?'.
+                _LOGGER.info("API '?' returned bare data - probing '??' for richer metadata...")
+                double = None
+                try:
+                    double_data, double_charset = self._fetch_with_suffix(host, "??", detect_charset=True)
+                    if api_response_has_metadata(double_data):
+                        double = (double_data, double_charset)
+                except Exception as probe_err:
+                    _LOGGER.debug("API '??' probe failed: %s", probe_err)
+
+                if double is not None:
+                    _LOGGER.info("API '??' has richer metadata - old firmware, suffix '??'")
                     if detect_charset:
-                        return data, charset_detected, "??", True  # old_firmware=True
-                    return data, "??", True
-                    
+                        return double[0], double[1], "??", True
+                    return double[0], "??", True
+
+                _LOGGER.info("API '?' bare and '??' not richer/available - old firmware, keeping suffix '?'")
+                if detect_charset:
+                    return data, charset_detected, "?", True  # old_firmware=True (bare data)
+                return data, "?", True
+
             except Exception as e:
                 import logging
                 _LOGGER = logging.getLogger(__name__)
-                _LOGGER.error("Failed to fetch API data: %s", e)
-                raise
+                # '?' itself failed - fall back to '??' before giving up.
+                _LOGGER.warning("API '?' failed (%s) - trying '??' as fallback...", e)
+                try:
+                    double_data, double_charset = self._fetch_with_suffix(host, "??", detect_charset=True)
+                except Exception as e2:
+                    _LOGGER.error("Failed to fetch API data with '?' and '??': %s", e2)
+                    raise
+                _LOGGER.info("API '??' works while '?' failed - old firmware, suffix '??'")
+                if detect_charset:
+                    return double_data, double_charset, "??", True
+                return double_data, "??", True
         else:
             # Not detecting suffix - use existing one
             if detect_charset:
