@@ -72,7 +72,7 @@ COMPONENT_NAMES_TRANSLATIONS = {
         "weather": "Météo",
         "forecast": "Prévisions",
         "wireless": "Capteur sans fil",
-        "thirdparty": "Capteur tiers",
+        "thirdparty": "Capteur externe",
     },
 }
 
