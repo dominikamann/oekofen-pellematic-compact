@@ -19,7 +19,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 
-from .migration import _looks_like_legacy_binary_sensor
+from .migration import _looks_like_legacy_binary_sensor, get_api_data_for_entry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,11 +52,20 @@ class FixLegacyBinarySensorsFlow(RepairsFlow):
             registry_entries = er.async_entries_for_config_entry(
                 entity_reg, self._entry_id
             )
+            # Same API-aware verdict the issue was raised from — without it the
+            # flow would delete healthy modulation-pump sensors that discovery
+            # then recreates, looping the repair forever.
+            config_entry = self.hass.config_entries.async_get_entry(self._entry_id)
+            api_data = (
+                get_api_data_for_entry(self.hass, config_entry)
+                if config_entry
+                else None
+            )
             orphans = [
                 ent
                 for ent in registry_entries
                 if ent.domain == "sensor"
-                and _looks_like_legacy_binary_sensor(ent.entity_id)
+                and _looks_like_legacy_binary_sensor(ent.entity_id, api_data)
             ]
 
             for ent in orphans:

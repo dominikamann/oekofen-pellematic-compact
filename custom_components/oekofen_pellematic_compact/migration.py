@@ -6,7 +6,7 @@ to preserve user automations and dashboards.
 
 import logging
 import re
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -297,16 +297,130 @@ _LEGACY_BINARY_KEY_SUFFIXES = (
 )
 
 
-def _looks_like_legacy_binary_sensor(entity_id: str) -> bool:
+# Maps a legacy object_id suffix back to the API key(s) it could stand for, so
+# the suffix verdict can be checked against live API metadata. Translated
+# suffixes map to every key they might represent (firmware typo included).
+_SUFFIX_TO_API_KEYS = {
+    "_l_pump": ("L_pump",),
+    "_l_pummp": ("L_pummp",),
+    "_l_ak": ("L_ak",),
+    "_l_br": ("L_br",),
+    "_l_not": ("L_not",),
+    "_l_stb": ("L_stb",),
+    "_l_usb_stick": ("L_usb_stick",),
+    "_l_forecast_today": ("L_forecast_today",),
+    "_l_batt_enabled": ("L_batt_enabled",),
+    "_l_output_mode": ("L_output_mode",),
+    "_pompe": ("L_pump", "L_pummp"),
+    "_pumpe": ("L_pump", "L_pummp"),
+    "_brenner_kontakt": ("L_ak",),
+    "_contact_bruleur": ("L_ak",),
+    "_chaud_ex_ak": ("L_ak",),
+    "_emergency_stop": ("L_not",),
+    "_safety_thermostat": ("L_stb",),
+}
+
+
+def _component_slugs(component_key: str) -> set[str]:
+    """Entity-ID slugs a component may appear as (raw key + localized names).
+
+    ``sk1`` → ``{"sk1", "solar_collector_1", "solarkollektor_1", "solaire_1"}``.
+    Pre-4.0 entity IDs embedded the *display* name, so the raw key alone is not
+    enough to locate the component an orphan belongs to.
+    """
+    from .dynamic_discovery import (
+        COMPONENT_NAMES_TRANSLATIONS,
+        get_component_display_name,
+    )
+
+    slugs = {component_key.lower()}
+
+    index = 0
+    for char in component_key:
+        if char.isdigit():
+            index = index * 10 + int(char)
+
+    for language in ("en", *COMPONENT_NAMES_TRANSLATIONS):
+        display = get_component_display_name(component_key, index, language)
+        slug = re.sub(r"[^a-z0-9]+", "_", display.lower()).strip("_")
+        if slug:
+            slugs.add(slug)
+
+    return slugs
+
+
+def _looks_like_legacy_binary_sensor(
+    entity_id: str, api_data: dict | None = None
+) -> bool:
     """Heuristic: spot pre-4.0 entity IDs that likely belonged in binary_sensor.
 
     Uses object_id suffix matching (not substring) so that keys like
     ``_l_pump_release`` (a temperature setpoint) are not falsely flagged just
     because they contain a known binary-sensor suffix as an infix.
+
+    The suffix alone is ambiguous, though: ``L_pump`` is a genuine on/off
+    sensor on ``hk``/``ww``/``circ`` (``format: "0:Aus|1:Ein"``) but a
+    speed-modulation percentage on ``sk``/``pu`` (``unit: "%"``, no format).
+    Flagging the latter caused an endless repair loop — the flow deleted the
+    entity, discovery correctly recreated the same ``sensor.*``, and the issue
+    reappeared. So when ``api_data`` is supplied we resolve the orphan back to
+    its component/key and let the discovery classifier decide.
+
+    Falls back to the pure name heuristic only when no API data is available
+    or the entity cannot be resolved to a component in it.
     """
+    from .dynamic_discovery import is_binary_sensor
+
     object_id = entity_id.split(".", 1)[1] if "." in entity_id else entity_id
     object_id_lower = object_id.lower()
-    return any(object_id_lower.endswith(s) for s in _LEGACY_BINARY_KEY_SUFFIXES)
+
+    matched = [s for s in _LEGACY_BINARY_KEY_SUFFIXES if object_id_lower.endswith(s)]
+    if not matched:
+        return False
+
+    if not api_data:
+        return True
+
+    # Longest suffix wins (e.g. prefer "_l_pump_release" style specificity).
+    for suffix in sorted(matched, key=len, reverse=True):
+        for component_key, component_data in api_data.items():
+            if not isinstance(component_data, dict):
+                continue
+            if not any(
+                object_id_lower.endswith(f"{slug}{suffix}")
+                for slug in _component_slugs(component_key)
+            ):
+                continue
+
+            # Resolved to a component — mirror discovery's own classification,
+            # including its normalization of bare values (old firmware sends
+            # `0` instead of a metadata dict, which yields no `format` and so
+            # can only ever become a sensor).
+            candidates = [
+                component_data[k] if isinstance(component_data[k], dict)
+                else {"val": component_data[k]}
+                for k in _SUFFIX_TO_API_KEYS.get(suffix, ())
+                if k in component_data
+            ]
+            if candidates:
+                return any(is_binary_sensor(d) for d in candidates)
+
+    return True
+
+
+def get_api_data_for_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict | None:
+    """Best-effort lookup of the hub's last API response for an entry.
+
+    Returns None when the hub has not fetched yet — callers then fall back to
+    the name-only heuristic.
+    """
+    from .const import DOMAIN
+
+    try:
+        hub = hass.data[DOMAIN][entry.data["name"]]["hub"]
+    except (KeyError, TypeError):
+        return None
+    return getattr(hub, "data", None) or None
 
 
 async def async_refresh_legacy_binary_sensor_repair_issue(
@@ -332,11 +446,12 @@ async def async_refresh_legacy_binary_sensor_repair_issue(
     entity_reg = er.async_get(hass)
     entries = er.async_entries_for_config_entry(entity_reg, entry.entry_id)
 
+    api_data = get_api_data_for_entry(hass, entry)
     orphans = sorted(
         ent.entity_id
         for ent in entries
         if ent.domain == "sensor"
-        and _looks_like_legacy_binary_sensor(ent.entity_id)
+        and _looks_like_legacy_binary_sensor(ent.entity_id, api_data)
     )
 
     issue_id = f"{LEGACY_BINARY_SENSOR_REPAIR_ID}_{entry.entry_id}"
