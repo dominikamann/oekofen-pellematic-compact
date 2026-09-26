@@ -357,3 +357,8 @@ homeassistant.log
 *.db
 *.db-shm
 *.db-wal
+
+# CodeGraph index (local, machine-specific)
+.codegraph/
+.DS_Store
+.mcp.json
