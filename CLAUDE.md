@@ -74,6 +74,8 @@ Config entry version is currently `2`. `async_migrate_entry` handles V1→V2 (ad
 
 The binary-sensor domain fix lives in `migration.py::async_refresh_legacy_binary_sensor_repair_issue` (called on every `async_setup_entry`) plus `repairs.py::FixLegacyBinarySensorsFlow`. Both auto-clear once the registry no longer has orphan `sensor.*` entries that look like binary sensors.
 
+Whether an orphan "looks like a binary sensor" is decided by `_looks_like_legacy_binary_sensor()` in two stages: (1) resolve the object_id against the live API response — component slug anywhere in the ID, the remaining words matched against the raw key *or* the slugified `text` — and mirror discovery's classification via `_discovery_makes_binary_sensor()`; (2) only for IDs that name nothing in the current response, fall back to `_LEGACY_BINARY_KEY_SUFFIXES` + `_SUFFIX_TO_API_KEYS`. Never widen the verdict beyond `is_binary_sensor()` alone: writable two-option fields (`heat_once`, `oekomode`) pass that check but become **selects**, and flagging anything discovery recreates as a non-binary entity produces an endless repair loop (issues #191-style regressions: modulation pumps, and #192 for translated names like French `L_pump_release` = "T démarrage pompe"). `tests/unit/test_repair_no_loop_against_fixtures.py` asserts both directions for every legacy ID shape of every fixture.
+
 ### Service
 
 `oekofen_pellematic_compact.rediscover_components` re-fetches the API, recomputes component counts, updates the config entry, and reloads it. Useful when the user adds hardware (a new heating circuit) without re-adding the integration.
@@ -91,3 +93,4 @@ The binary-sensor domain fix lives in `migration.py::async_refresh_legacy_binary
 - README is the user-facing doc; `MIGRATION_GUIDE.md` is the source of truth for the entity ID migration behavior — keep it in sync when changing `migration.py`.
 - The integration has no external Python dependencies (`requirements: []` in manifest); use `urllib` rather than adding `aiohttp`/`requests`.
 - Blocking HTTP calls (`urllib.request.urlopen`) are wrapped via `hass.async_add_executor_job` — keep that pattern, don't call them from the event loop directly.
+- Commit messages and PR descriptions carry **no AI/Claude attribution** (no `Co-Authored-By: Claude`, no "Generated with" footer) — the project's commit history stays tool-agnostic.

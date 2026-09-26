@@ -354,9 +354,11 @@ def _looks_like_legacy_binary_sensor(
 ) -> bool:
     """Heuristic: spot pre-4.0 entity IDs that likely belonged in binary_sensor.
 
-    Uses object_id suffix matching (not substring) so that keys like
-    ``_l_pump_release`` (a temperature setpoint) are not falsely flagged just
-    because they contain a known binary-sensor suffix as an infix.
+    Two stages: resolve the ID against the live API response and mirror
+    discovery's classification (stage 1), and only if it names nothing we
+    recognise fall back to object_id suffix matching (stage 2). Suffix matching
+    is never substring matching, so keys like ``_l_pump_release`` (a temperature
+    setpoint) are not falsely flagged for containing a known suffix as an infix.
 
     The suffix alone is ambiguous, though: ``L_pump`` is a genuine on/off
     sensor on ``hk``/``ww``/``circ`` (``format: "0:Aus|1:Ein"``) but a
@@ -366,13 +368,28 @@ def _looks_like_legacy_binary_sensor(
     reappeared. So when ``api_data`` is supplied we resolve the orphan back to
     its component/key and let the discovery classifier decide.
 
-    Falls back to the pure name heuristic only when no API data is available
-    or the entity cannot be resolved to a component in it.
-    """
-    from .dynamic_discovery import is_binary_sensor
+    The translated suffixes are ambiguous in a second way (issue #192): a
+    legacy object_id carries the whole slugified display text, so the French
+    ``pu1.L_pump_release`` ("T démarrage pompe") ends in ``_pompe`` although it
+    is a temperature. Resolution therefore matches the component slug anywhere
+    in the object_id and maps the *remaining* words back to a concrete API key
+    (raw key or slugified ``text``) before classifying.
 
+    Falls back to the pure name heuristic only when no API data is available
+    or the entity cannot be resolved to a component/key in it.
+    """
     object_id = entity_id.split(".", 1)[1] if "." in entity_id else entity_id
     object_id_lower = object_id.lower()
+
+    # Stage 1: with API data, resolve the ID against the live response and let
+    # the discovery classifier decide. This is both stricter and wider than the
+    # suffix list: stricter because a temperature named "T démarrage pompe"
+    # resolves to `L_pump_release`, wider because a binary key whose localized
+    # text nobody put in the list ("Brennerkontakt" → `L_br`) is still found.
+    if api_data:
+        verdict = _classify_against_api(object_id_lower, api_data)
+        if verdict is not None:
+            return verdict
 
     matched = [s for s in _LEGACY_BINARY_KEY_SUFFIXES if object_id_lower.endswith(s)]
     if not matched:
@@ -381,31 +398,118 @@ def _looks_like_legacy_binary_sensor(
     if not api_data:
         return True
 
+    # Stage 2: the ID named no key in the response (different firmware
+    # language, hardware since removed). Fall back to the suffix→key map, which
+    # still ties the verdict to live metadata where the component exists.
     # Longest suffix wins (e.g. prefer "_l_pump_release" style specificity).
     for suffix in sorted(matched, key=len, reverse=True):
         for component_key, component_data in api_data.items():
             if not isinstance(component_data, dict):
                 continue
-            if not any(
-                object_id_lower.endswith(f"{slug}{suffix}")
-                for slug in _component_slugs(component_key)
-            ):
+            remainder = _remainder_after_component_slug(
+                object_id_lower, component_key, suffix
+            )
+            if remainder is None:
                 continue
 
             # Resolved to a component — mirror discovery's own classification,
             # including its normalization of bare values (old firmware sends
             # `0` instead of a metadata dict, which yields no `format` and so
             # can only ever become a sensor).
+            #
+            # The suffix says which key the translated word stood for
+            # ("solar_collector_1_pompe" → L_pump, even though this firmware
+            # calls it "Pumpe").
             candidates = [
-                component_data[k] if isinstance(component_data[k], dict)
-                else {"val": component_data[k]}
+                (k, _normalize_api_def(component_data[k]))
                 for k in _SUFFIX_TO_API_KEYS.get(suffix, ())
                 if k in component_data
             ]
             if candidates:
-                return any(is_binary_sensor(d) for d in candidates)
+                return any(
+                    _discovery_makes_binary_sensor(k, d) for k, d in candidates
+                )
 
     return True
+
+
+def _classify_against_api(object_id_lower: str, api_data: dict) -> bool | None:
+    """Resolve a legacy object_id to a datapoint in the live API response.
+
+    Returns discovery's verdict for it, or None when the ID names no component
+    or no key we recognise — then the caller falls back to the name heuristic.
+    """
+    for component_key, component_data in api_data.items():
+        if not isinstance(component_data, dict):
+            continue
+        remainder = _remainder_after_component_slug(object_id_lower, component_key)
+        if remainder is None:
+            continue
+        candidates = _api_keys_for_name(component_data, remainder)
+        if candidates:
+            return any(
+                _discovery_makes_binary_sensor(key, data) for key, data in candidates
+            )
+    return None
+
+
+def _discovery_makes_binary_sensor(key: str, data: dict) -> bool:
+    """Mirror `discover_all_entities`: only read-only (`L_`) two-option fields
+    become binary sensors — a *writable* two-option field (``heat_once``,
+    ``oekomode``) becomes a select, so it must never be reported as an orphan.
+    """
+    from .dynamic_discovery import IGNORE_KEYS, is_binary_sensor
+
+    if key in IGNORE_KEYS or not key.startswith("L_"):
+        return False
+    if "val" not in data:
+        return False  # discovery skips these outright
+    return is_binary_sensor(data)
+
+
+def _normalize_api_def(value) -> dict:
+    """Wrap bare old-firmware values the way discovery does."""
+    return value if isinstance(value, dict) else {"val": value}
+
+
+def _remainder_after_component_slug(
+    object_id_lower: str, component_key: str, suffix: str | None = None
+) -> str | None:
+    """Return the object_id part that follows the component slug, or None.
+
+    ``("chaudiere_buffer_storage_1_t_demarrage_pompe", "pu1")`` →
+    ``"t_demarrage_pompe"``. The slug must appear as a whole ``_``-delimited
+    segment group; when ``suffix`` is given the remainder must also end with
+    it, so an unrelated component cannot claim the ID. Longest slug first, so a
+    localized name wins over the bare key when both happen to appear.
+    """
+    padded = f"_{object_id_lower}"
+    for slug in sorted(_component_slugs(component_key), key=len, reverse=True):
+        needle = f"_{slug}_"
+        index = padded.rfind(needle)
+        if index == -1:
+            continue
+        remainder = padded[index + len(needle):]
+        if suffix is None or remainder.endswith(suffix.lstrip("_")):
+            return remainder
+    return None
+
+
+def _api_keys_for_name(component_data: dict, name: str) -> list:
+    """``(key, definition)`` pairs in a component whose key or display text
+    slugifies to ``name`` — how legacy IDs referenced a datapoint before v4.0.
+    """
+    from homeassistant.util import slugify
+
+    matches = []
+    for key, value in component_data.items():
+        if key.lower() == name:
+            matches.append((key, _normalize_api_def(value)))
+            continue
+        text = value.get("text") if isinstance(value, dict) else None
+        if isinstance(text, str) and text and slugify(text) == name:
+            matches.append((key, _normalize_api_def(value)))
+    return matches
 
 
 def get_api_data_for_entry(hass: HomeAssistant, entry: ConfigEntry) -> dict | None:
