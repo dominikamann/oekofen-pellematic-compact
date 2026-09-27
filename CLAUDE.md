@@ -42,6 +42,7 @@ The pipeline:
    - Keys without `L_` that match `is_read_only_statistic(...)` (totals, runtimes, `_yesterday`, etc.) → sensor, not number
    - Writable + `format` with >2 options → select
    - Writable + `format` with 2 options → select (not binary, because it's settable)
+   - Select options are strings `"<api value>_<label slug>"` (`parse_select_options`), where the prefix is the **API value, not a list index** — `select.py` maps both directions through that prefix. Never index into `options`: `autocomfort` reports `-1` when the feature is off (Python's negative indexing then picked the last option), and `format` need not number its entries contiguously.
    - Writable + `min`/`max` → number
    - Otherwise → sensor fallback
 3. **Platform files** (`sensor.py`, `binary_sensor.py`, `select.py`, `number.py`, `climate.py`) — each `async_setup_entry` calls `discover_all_entities()` via the shared `setup_platform_with_retry()` helper in `__init__.py`. If the API hasn't returned data yet, setup is retried every 60 s; this is why entities can appear up to a minute after install.

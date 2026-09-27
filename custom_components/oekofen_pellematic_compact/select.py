@@ -10,6 +10,7 @@ from .const import (
     DOMAIN,
     ATTR_MANUFACTURER,
     ATTR_MODEL,
+    get_api_value,
 )
 from .dynamic_discovery import discover_all_entities
 
@@ -22,6 +23,35 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 _LOGGER = logging.getLogger(__name__)
+
+# Boolean spellings old firmware uses instead of 0/1 (e.g. ww1.heat_once).
+_BOOLEAN_OPTION_VALUES = {"false": "0", "true": "1"}
+
+
+def _api_value_as_option_prefix(value) -> Optional[str]:
+    """Normalize an API value to the prefix used in the option list.
+
+    Handles the shapes real responses use for the same field: 1, "1", 1.0
+    and "true". Returns None when the value carries no selection.
+    """
+    if value is None or isinstance(value, bool):
+        return "1" if value is True else ("0" if value is False else None)
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        if text.lower() in _BOOLEAN_OPTION_VALUES:
+            return _BOOLEAN_OPTION_VALUES[text.lower()]
+        try:
+            value = float(text)
+        except ValueError:
+            return text
+
+    if isinstance(value, float):
+        return str(int(value)) if value.is_integer() else str(value)
+    return str(value)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -162,12 +192,36 @@ class PellematicSelect(SelectEntity):
             raise
 
     def _update_current_option(self):
+        """Return the option the API value stands for, or None.
+
+        Options are "<api value>_<label>", so the value is matched against
+        each option's prefix -- it is NOT a position in the list. Indexing
+        into the list made `autocomfort` = -1 (feature unavailable) show the
+        last option, and it silently shifted every option after a gap in a
+        format string like "0:Off|2:On|10:Buffer". This mirrors
+        async_select_option(), which has always sent the prefix.
+        """
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
-            current_value = raw_data["val"]
-            return self._attr_options[int(current_value)]
-        except:
+        except (KeyError, TypeError):
             return None
+
+        wanted = _api_value_as_option_prefix(get_api_value(raw_data))
+        if wanted is None:
+            return None
+
+        for option in self._attr_options or ():
+            if option.split("_", 1)[0] == wanted:
+                return option
+
+        # A value outside the declared options means "not available" (or a
+        # firmware we do not know); reporting nothing beats reporting a
+        # neighbouring option as if it were the truth.
+        _LOGGER.debug(
+            "%s.%s: API value %r matches none of the options %s",
+            self._prefix, self._key, wanted, self._attr_options,
+        )
+        return None
 
     @callback
     def _update_state(self):
