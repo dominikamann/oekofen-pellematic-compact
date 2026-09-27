@@ -12,6 +12,7 @@ It communicates locally with the heater. This is not an official integration by 
 
 - 🚀 **Automatic entity discovery** - All sensors automatically detected from API
 - 🌍 **Multilingual support** - Names in DE/FR/EN directly from your Ökofen system
+- ✨ **Do you want to get more out of your heater?** ~90 extra values (heating curve, burner settings, ash level, ...) with no firmware change - check [Discussion #194](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/194)
 - 🐛 **v4.2.10** - Stop flooding the HA log with "Value 00:00-00:00 could not be scaled with factor 1" on newer firmware with GreenMode schedule fields (#184)
 - ⚠️ If your heater’s software version is 3.10 (or similarly old), do NOT install an integration version 4.0.0 or newer. Last working version for this old heater software is https://github.com/dominikamann/oekofen-pellematic-compact/releases/tag/v3.6.6. Update: It now also works in many cases with the latest version. Please try and report issues. Thank you.
 
@@ -40,6 +41,23 @@ Go to your Ökofen Pellematic
     IMPORTANT: Do not activate the compatibility mode. This mode is not supported/recommended.
 
  Use the provided URL as HOST in Component-Configuration (<http://[ip]:[port]/[password]/all>)
+
+## Want more values? Heating curve, burner settings, ash level
+
+The standard JSON interface leaves a lot out: the heating curve and heating limits, the
+burner hysteresis and minimum runtimes, the ash box level, and more. It turns out the
+Pelletronic Touch can expose them - a `json.properties` file on a USB stick in the Touch
+adds about **90 additional values** to `/all?`, and no firmware change is needed.
+
+Since v4 builds all entities from the API, the extra values appear in Home Assistant after
+a reload of the integration - no changes to this integration required.
+
+➡️ **[How to set it up: Discussion #194](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/194)** (thanks to @zakx for working this out
+and sharing the file!)
+
+Two things to keep in mind: use **read-only `L_` keys only** - a key without the `L_` prefix
+becomes writable over the network, protected only by the short JSON password - and the file
+is tested on Touch V4.02b, so check your own `/all?` output afterwards.
 
 ## Password or url change
 
