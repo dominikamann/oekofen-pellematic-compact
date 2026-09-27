@@ -13,8 +13,6 @@ It communicates locally with the heater. This is not an official integration by 
 - 🚀 **Automatic entity discovery** - All sensors automatically detected from API
 - 🌍 **Multilingual support** - Names in DE/FR/EN directly from your Ökofen system
 - ✨ **Do you want to get more out of your heater?** ~90 extra values (heating curve, burner settings, ash level, ...) with no firmware change - check [Discussion #194](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/194)
-- 🐛 **v4.2.10** - Stop flooding the HA log with "Value 00:00-00:00 could not be scaled with factor 1" on newer firmware with GreenMode schedule fields (#184)
-- ⚠️ If your heater’s software version is 3.10 (or similarly old), do NOT install an integration version 4.0.0 or newer. Last working version for this old heater software is https://github.com/dominikamann/oekofen-pellematic-compact/releases/tag/v3.6.6. Update: It now also works in many cases with the latest version. Please try and report issues. Thank you.
 
 ![grafik](https://github.com/user-attachments/assets/dbc94d82-ca22-4264-8bf6-36b373ce910b)
 
