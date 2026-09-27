@@ -162,3 +162,52 @@ def test_every_fixture_option_is_the_one_the_api_reports(fixture):
                 f"val={value!r} shown as {option!r}"
             )
     assert not wrong, f"{fixture.name}: {wrong}"
+
+
+# ------------------------------------------- valueless format strings (review)
+
+
+def _select_with_options(options, val):
+    """Build a select directly from an option list, bypassing discovery."""
+    api_data = {"hk1": {"mode": {"val": val, "format": "x"}}}
+    select = PellematicSelect(
+        hub_name="Pellematic",
+        hub=_StubHub(api_data),
+        device_info={},
+        select_definition={
+            "component": "hk1",
+            "key": "mode",
+            "name": "Mode",
+            "options": options,
+        },
+    )
+    select._update_state()
+    return select
+
+
+@pytest.mark.parametrize(
+    "val,expected",
+    [
+        (0, "aus"),
+        (2, "ein"),
+        # A position outside the list, and the negative-index trap again.
+        (5, None),
+        (-1, None),
+    ],
+)
+def test_options_without_a_value_prefix_fall_back_to_position(val, expected):
+    """`parse_select_options` also accepts a `format` with no "value:label"
+    pairs ("Aus|Auto|Ein"), and `is_select` builds a select from it. Such options
+    carry no value, so the reported number can only be a position — matching by
+    prefix alone would leave those entities `unknown` forever. No fixture has
+    this shape; the fallback exists for unseen firmware."""
+    assert _select_with_options(["aus", "auto", "ein"], val).current_option == expected
+
+
+def test_value_prefixed_options_never_fall_back_to_position():
+    """The regression must not come back through the fallback: as long as the
+    options carry values, -1 stays unknown instead of picking the last one."""
+    select = _select_with_options(["0_aus", "1_auto", "3_abends"], -1)
+    assert select.current_option is None
+    # ...and a gap in the numbering is still resolved by value, not position.
+    assert _select_with_options(["0_aus", "1_auto", "3_abends"], 3).current_option == "3_abends"

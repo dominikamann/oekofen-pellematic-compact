@@ -28,6 +28,21 @@ _LOGGER = logging.getLogger(__name__)
 _BOOLEAN_OPTION_VALUES = {"false": "0", "true": "1"}
 
 
+def _options_carry_value_prefix(options) -> bool:
+    """True when the options were built from "value:label" pairs.
+
+    `parse_select_options` also accepts a `format` without any colon
+    ("Aus|Auto|Ein"), and `is_select` creates a select for it. Those options
+    carry no value, so the API value can only be a position in the list.
+    No known firmware sends that shape -- none of the test fixtures contains
+    one -- but silently reporting `unknown` forever would be worse than the
+    positional guess it used to make.
+    """
+    return any(
+        option.split("_", 1)[0].lstrip("-").isdigit() for option in options or ()
+    )
+
+
 def _api_value_as_option_prefix(value) -> Optional[str]:
     """Normalize an API value to the prefix used in the option list.
 
@@ -210,7 +225,18 @@ class PellematicSelect(SelectEntity):
         if wanted is None:
             return None
 
-        for option in self._attr_options or ():
+        options = self._attr_options or ()
+
+        if not _options_carry_value_prefix(options):
+            # Valueless options: fall back to a position, but never let a
+            # negative value wrap around to the end of the list.
+            try:
+                position = int(wanted)
+            except ValueError:
+                return None
+            return options[position] if 0 <= position < len(options) else None
+
+        for option in options:
             if option.split("_", 1)[0] == wanted:
                 return option
 
@@ -219,7 +245,7 @@ class PellematicSelect(SelectEntity):
         # neighbouring option as if it were the truth.
         _LOGGER.debug(
             "%s.%s: API value %r matches none of the options %s",
-            self._prefix, self._key, wanted, self._attr_options,
+            self._prefix, self._key, wanted, options,
         )
         return None
 

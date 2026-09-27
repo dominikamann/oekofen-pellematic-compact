@@ -201,3 +201,34 @@ def test_bare_value_firmware_has_no_metadata_dict():
     assert _sanitize_oekofen_value("580", "580") == 580
     # A sentinel is still recognised without any metadata.
     assert _sanitize_oekofen_value(-32768, -32768) is None
+
+
+# ------------------------------------ counters without range metadata (review)
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        # Monotonic counters ship without min/max in real responses, and they
+        # do reach the sentinel band: fixtures already show L_counter = 69391,
+        # L_starts = 16381, L_runtime = 17780 h. Blanking those at exactly
+        # 32765..32767 would hide the reading until the counter moves on and
+        # leave a gap in the long-term statistics.
+        {"val": 32766, "factor": 1, "text": "Zaehler"},
+        {"val": 32765, "unit": "h", "factor": 1, "text": "Brennerlaufzeit"},
+        {"val": 32767, "factor": 1, "text": "Brennerstarts"},
+    ],
+)
+def test_high_band_without_range_metadata_is_kept(raw):
+    assert _sanitize_oekofen_value(raw, raw["val"]) == raw["val"]
+
+
+def test_low_band_without_range_metadata_is_still_dropped():
+    """Counters never go negative, so -32768 is always the "sensor absent"
+    marker — pe1.L_ext_temp on firmware that sends no metadata at all."""
+    assert _sanitize_oekofen_value({"val": -32768, "factor": 0.1}, -32768) is None
+
+
+def test_high_band_is_dropped_once_an_int16_range_is_declared():
+    raw = {"val": 32766, "factor": 1, "min": -32768, "max": 32767}
+    assert _sanitize_oekofen_value(raw, raw["val"]) is None

@@ -75,12 +75,22 @@ def _is_sentinel_value(
 
     A key whose declared range reaches past the int16 edge can hold such a
     number as a real reading (times in ms go up to 14400000), so the band is
-    only treated as a sentinel while the range stays inside int16. Keys without
-    metadata (old firmware) are filtered too — that is where `L_ext_temp`
-    = -32768 comes from.
+    only treated as a sentinel while the range stays inside int16.
+
+    The two bands are not symmetric on purpose:
+
+    * The **high** band needs a declared `max`. Without one there is no way to
+      tell a marker from a monotonic counter, and counters do reach it — real
+      responses carry `L_counter` = 69391, `L_starts` = 16381, `L_runtime`
+      = 17780 h and `L_total_runtime` with no `min`/`max` at all. Filtering
+      those would blank the reading until the counter moves on and tear a hole
+      in the long-term statistics, so a metadata-less high value is kept.
+    * The **low** band fires without metadata as well: counters never go
+      negative, and -32768 raw is the marker for an absent sensor whatever the
+      unit. That is `pe1.L_ext_temp` on firmware that sends no metadata.
     """
     if _SENTINEL_HIGH_MIN <= value <= _SENTINEL_HIGH_MAX:
-        return max_v is None or max_v <= _SENTINEL_HIGH_MAX
+        return max_v is not None and max_v <= _SENTINEL_HIGH_MAX
     if _SENTINEL_LOW_MIN <= value <= _SENTINEL_LOW_MAX:
         return min_v is None or min_v >= _SENTINEL_LOW_MIN
     return False
