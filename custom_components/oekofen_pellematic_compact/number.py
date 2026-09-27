@@ -13,6 +13,9 @@ from .const import (
     get_api_value,
 )
 from .dynamic_discovery import discover_all_entities
+# Same value hygiene as the sensor platform: writable fields carry the int16
+# sentinels too (pu2.ext_mintemp_on = 32766 on a 8…90 °C number).
+from .sensor import _sanitize_oekofen_value
 
 from homeassistant.const import (
     CONF_NAME,
@@ -184,7 +187,13 @@ class PellematicNumber(NumberEntity):
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
             api_value = get_api_value(raw_data)
-            
+
+            # Drop "no sensor connected" markers instead of showing them as a
+            # value far outside the entity's own min/max (issue #193).
+            api_value = _sanitize_oekofen_value(raw_data, api_value)
+            if api_value is None:
+                return None
+
             # Convert API value to float first (handles both string and numeric types)
             numeric_value = float(api_value) if not isinstance(api_value, (int, float)) else api_value
             

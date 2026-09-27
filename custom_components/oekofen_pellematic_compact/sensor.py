@@ -41,8 +41,77 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 _LOGGER = logging.getLogger(__name__)
 
-def _sanitize_oekofen_value(raw_data: Dict[str, Any], value: Any) -> Optional[Any]:
-    """Sanitize value from Ökofen API."""
+
+# Ökofen reports "no sensor connected / value unavailable" as the int16
+# extremes. Observed in real responses: 32765, 32766, 32767 and -32768.
+_SENTINEL_HIGH_MIN = 32765
+_SENTINEL_HIGH_MAX = 32767
+_SENTINEL_LOW_MIN = -32768
+_SENTINEL_LOW_MAX = -32766
+
+
+def _as_number(value: Any) -> Optional[float]:
+    """Coerce API metadata to a number, or None.
+
+    Old firmware ships `min`/`max` as strings ("-32768"), which used to switch
+    the sentinel filter off entirely — `L_ext_temp` then showed -3276.8 °C.
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, numbers.Number):
+        return value
+    if isinstance(value, str):
+        try:
+            return float(value) if ("." in value or "e" in value.lower()) else int(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _is_sentinel_value(
+    value: numbers.Number, min_v: Optional[float], max_v: Optional[float]
+) -> bool:
+    """True for the int16 "not available" markers, and only for those.
+
+    A key whose declared range reaches past the int16 edge can hold such a
+    number as a real reading (times in ms go up to 14400000), so the band is
+    only treated as a sentinel while the range stays inside int16. Keys without
+    metadata (old firmware) are filtered too — that is where `L_ext_temp`
+    = -32768 comes from.
+    """
+    if _SENTINEL_HIGH_MIN <= value <= _SENTINEL_HIGH_MAX:
+        return max_v is None or max_v <= _SENTINEL_HIGH_MAX
+    if _SENTINEL_LOW_MIN <= value <= _SENTINEL_LOW_MAX:
+        return min_v is None or min_v >= _SENTINEL_LOW_MIN
+    return False
+
+
+def _is_out_of_scale(
+    value: numbers.Number, min_v: Optional[float], max_v: Optional[float]
+) -> bool:
+    """True for readings more than a full range beyond the declared limits.
+
+    Firmware glitches produce values of a different magnitude altogether
+    (`L_storage_max` = 304366 kg for a declared 150…30000 kg store). Settings
+    that merely sit slightly outside their advertised range are real user data
+    (`solarheat_off_tmp` = 810 with max 800) and must survive.
+    """
+    if min_v is None or max_v is None:
+        return False
+    range_size = max_v - min_v
+    if range_size <= 0:
+        return False
+    return value > max_v + range_size or value < min_v - range_size
+
+
+def _sanitize_oekofen_value(raw_data: Any, value: Any) -> Optional[Any]:
+    """Sanitize value from Ökofen API.
+
+    `raw_data` is the API entry the value came from: the metadata dict of modern
+    firmware, or the bare value itself on firmware <= v3.10d — callers on both
+    platforms pass whatever the response held, so it must not be assumed to be
+    a dict.
+    """
     # Drop clearly invalid/sentinel values coming from the Ökofen JSON API
     if value is None:
         return None
@@ -59,20 +128,19 @@ def _sanitize_oekofen_value(raw_data: Dict[str, Any], value: Any) -> Optional[An
             # keep non-numeric strings for text sensors
             return value
 
-    # Filter sentinel/overflow values close to min/max (e.g. 32765, 32767, -32768)
-    # Only apply this filter for large ranges to avoid filtering legitimate percentage values
-    if isinstance(value, numbers.Number):
-        min_v = raw_data.get("min")
-        max_v = raw_data.get("max")
-        
-        # Only filter if we have a large range (> 1000) to avoid filtering 0% or 100% for pumps
-        if isinstance(max_v, numbers.Number) and isinstance(min_v, numbers.Number):
-            range_size = max_v - min_v
-            if range_size > 1000:  # Only for large ranges like -32768 to 32767
-                if value >= (max_v - 2):
-                    return None
-                if value <= (min_v + 2):
-                    return None
+    # Drop sentinels and physically impossible readings — but nothing else.
+    # "Close to min/max" is *not* a usable criterion: many keys have a genuine
+    # range whose limit is a normal setting (issue #193), e.g. times delivered
+    # in ms (`factor` 1/60000), where `L_cfg_uw_runon` sits exactly at its
+    # max 7200000 = 120 min.
+    if isinstance(value, numbers.Number) and not isinstance(value, bool):
+        metadata = raw_data if isinstance(raw_data, dict) else {}
+        min_v = _as_number(metadata.get("min"))
+        max_v = _as_number(metadata.get("max"))
+        if _is_sentinel_value(value, min_v, max_v) or _is_out_of_scale(
+            value, min_v, max_v
+        ):
+            return None
 
     return value
 
