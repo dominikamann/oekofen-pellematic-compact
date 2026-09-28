@@ -1,11 +1,13 @@
 """Regression test for issue #193 against the reporter's real API response.
 
-`api_response_v402b_zakx.json` is the anonymized `/all?` output of the
-installation from the report (firmware V4.02b) — the only response we have that
-exposes the `L_cfg_*` keys. Its times are delivered in milliseconds
-(`factor` 1/60000), so a perfectly normal "120 min" sits exactly at `max`
-7200000 and used to be blanked as `unknown` by the old "within 2 of min/max"
-rule.
+`api_response_v402b_jsonprops.json` is the anonymized `/all?` output of the
+installation from the report (Touch V4.02b) — the only response we have that
+exposes the `L_cfg_*` keys. They are not stock firmware: they come from the
+`json.properties` file on a USB stick described in discussion #194, which makes
+the Touch publish ~90 extra read-only keys. Its times are delivered in
+milliseconds (`factor` 1/60000), so a perfectly normal "120 min" sits exactly at
+`max` 7200000 and used to be blanked as `unknown` by the old "within 2 of
+min/max" rule.
 
 The synthetic cases live in `test_sensor_sentinel_filter.py`; this file pins the
 behavior to the untouched response, so a future change to the sanitizer has to
@@ -25,7 +27,7 @@ from custom_components.oekofen_pellematic_compact.sensor import (
     _sanitize_oekofen_value,
 )
 
-FIXTURE = "api_response_v402b_zakx.json"
+FIXTURE = "api_response_v402b_jsonprops.json"
 
 
 class _StubHub:

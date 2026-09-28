@@ -294,7 +294,9 @@ _LEGACY_BINARY_KEY_SUFFIXES = (
     "_emergency_stop",
     "_safety_thermostat",
     "_chaud_ex_ak",
-    # Firmware V4.02b (issue #193 fixture) two-option read-only keys
+    # Read-only two-option keys published by the `json.properties` USB trick
+    # (discussion #194, fixture api_response_v402b_jsonprops.json) — not part of
+    # a stock response, but real installations run with them.
     "_l_cfg_ambient_avg_mode",
     "_l_cfg_auto_extern",
     "_l_cfg_ash_measurement",

@@ -13703,7 +13703,7 @@
       "unique_id": "pellematic_ww1_name"
     }
   ],
-  "api_response_v402b_zakx.json": [
+  "api_response_v402b_jsonprops.json": [
     {
       "entity_id": "binary_sensor.hk1_L_cfg_mixer",
       "unique_id": "pellematic_hk1_L_cfg_mixer"
