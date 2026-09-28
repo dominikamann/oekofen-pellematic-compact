@@ -294,6 +294,18 @@ _LEGACY_BINARY_KEY_SUFFIXES = (
     "_emergency_stop",
     "_safety_thermostat",
     "_chaud_ex_ak",
+    # Firmware V4.02b (issue #193 fixture) two-option read-only keys
+    "_l_cfg_ambient_avg_mode",
+    "_l_cfg_auto_extern",
+    "_l_cfg_ash_measurement",
+    "_l_cfg_cycle_mode",
+    "_l_cfg_mixer",
+    "_l_cfg_priority",
+    "_l_cfg_request_type",
+    "_l_cfg_timeprog",
+    "_l_ke_burner_request",
+    "_l_ash_end_switch",
+    "_l_ash_warn_mode",
 )
 
 
@@ -318,6 +330,17 @@ _SUFFIX_TO_API_KEYS = {
     "_chaud_ex_ak": ("L_ak",),
     "_emergency_stop": ("L_not",),
     "_safety_thermostat": ("L_stb",),
+    "_l_cfg_ambient_avg_mode": ("L_cfg_ambient_avg_mode",),
+    "_l_cfg_auto_extern": ("L_cfg_auto_extern",),
+    "_l_cfg_ash_measurement": ("L_cfg_ash_measurement",),
+    "_l_cfg_cycle_mode": ("L_cfg_cycle_mode",),
+    "_l_cfg_mixer": ("L_cfg_mixer",),
+    "_l_cfg_priority": ("L_cfg_priority",),
+    "_l_cfg_request_type": ("L_cfg_request_type",),
+    "_l_cfg_timeprog": ("L_cfg_timeprog",),
+    "_l_ke_burner_request": ("L_ke_burner_request",),
+    "_l_ash_end_switch": ("L_ash_end_switch",),
+    "_l_ash_warn_mode": ("L_ash_warn_mode",),
 }
 
 
