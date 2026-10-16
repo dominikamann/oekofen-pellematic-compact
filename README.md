@@ -5,7 +5,7 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/dominikamann/oekofen-pellematic-compact/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/actions/workflows/tests.yml)
 [![hassfest](https://img.shields.io/github/actions/workflow/status/dominikamann/oekofen-pellematic-compact/hassfest%20Action.yml?branch=main&label=hassfest&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/actions/workflows/hassfest%20Action.yml)
 [![Commit activity](https://img.shields.io/github/commit-activity/y/dominikamann/oekofen-pellematic-compact?color=brightgreen&label=commits&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/commits/main)
-[![License](https://img.shields.io/github/license/dominikamann/oekofen-pellematic-compact?style=flat-square)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
 A community integration that brings your **Ökofen Pellematic** pellet heater (and Ökofen heat
