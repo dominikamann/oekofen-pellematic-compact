@@ -72,7 +72,7 @@ CONFIG_SCHEMA = vol.Schema(
     {DOMAIN: vol.Schema({cv.slug: PELLEMATIC_SCHEMA})}, extra=vol.ALLOW_EXTRA
 )
 
-PLATFORMS = ["sensor", "binary_sensor", "select", "number", "climate"]
+PLATFORMS = ["sensor", "binary_sensor", "select", "number", "climate", "button"]
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -581,6 +581,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register the hub.
     hass.data[DOMAIN][name] = {"hub": hub}
 
+    from .diagnosis import DiagnosisMonitor
+
+    diagnosis = DiagnosisMonitor(hass, hub, entry.entry_id, name)
+    await diagnosis.async_start()
+    hass.data[DOMAIN][name]["diagnosis"] = diagnosis
+
     # Run one-time entity ID migration and entity ID warning check.
     # Flags are persisted in entry.data so each check runs at most once.
     # Both flags are written in a single async_update_entry call at the end
@@ -725,6 +731,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.error("Failed to unload some platforms for '%s'", name)
         return False
 
+    diagnosis = hass.data[DOMAIN][entry.data["name"]].get("diagnosis")
+    if diagnosis is not None:
+        await diagnosis.async_stop()
     hass.data[DOMAIN].pop(entry.data["name"])
     _LOGGER.info("Successfully unloaded Ökofen Pellematic integration '%s'", name)
     return True
@@ -805,8 +814,13 @@ class PellematicHub:
             update_result = False
 
         if update_result:
-            for update_callback in self._sensors:
-                update_callback()
+            self.async_notify_listeners()
+
+    @callback
+    def async_notify_listeners(self) -> None:
+        """Tell every listener that the data (or derived state) changed."""
+        for update_callback in list(self._sensors):
+            update_callback()
 
     @property
     def name(self) -> str:

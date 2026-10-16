@@ -15,6 +15,7 @@ from .const import (
     get_api_value,
 )
 from .dynamic_discovery import discover_all_entities
+from .diagnosis_entities import create_diagnosis_sensors
 
 from homeassistant.const import (
     CONF_NAME,
@@ -224,6 +225,10 @@ async def async_setup_entry(
                 entities.append(sensor)
             except Exception as e:
                 _LOGGER.error("Failed to create error sensor %d: %s", error_count, e)
+
+        monitor = hass.data[DOMAIN][hub_name].get("diagnosis")
+        if monitor is not None:
+            entities.extend(create_diagnosis_sensors(hub_name, hub, device_info, monitor, data))
 
         return entities
     

@@ -33,6 +33,59 @@
     }
   },
   "entity": {
+    "sensor": {
+      "diagnosis": {
+        "name": "Diagnose",
+        "state": {
+          "ok": "OK",
+          "learning": "Lernt",
+          "notice": "Hinweis",
+          "inefficient": "Ineffizient",
+          "cleaning_soon": "Reinigung bald fällig",
+          "maintenance_due": "Wartung fällig",
+          "cleaning_due": "Reinigung fällig",
+          "warning": "Warnung",
+          "fault": "Störung"
+        }
+      },
+      "last_message": {
+        "name": "Letzte Meldung"
+      },
+      "message_count": {
+        "name": "Meldungen gesamt"
+      },
+      "flue_gas_index": {
+        "name": "Pellematic {number} Saugzug-Index"
+      },
+      "ignition_time": {
+        "name": "Pellematic {number} Zünddauer"
+      },
+      "burner_starts_per_day": {
+        "name": "Pellematic {number} Brennerstarts pro Tag"
+      },
+      "burner_runtime_per_start": {
+        "name": "Pellematic {number} Laufzeit pro Start"
+      },
+      "full_load_hours_since_maintenance": {
+        "name": "Pellematic {number} Volllaststunden seit Wartung"
+      },
+      "compressor_starts_per_day": {
+        "name": "Wärmepumpe {number} Verdichterstarts pro Tag"
+      },
+      "compressor_runtime_per_cycle": {
+        "name": "Wärmepumpe {number} Verdichterlaufzeit pro Takt"
+      }
+    },
+    "binary_sensor": {
+      "diagnosis_problem": {
+        "name": "Diagnose Problem"
+      }
+    },
+    "button": {
+      "maintenance_done": {
+        "name": "Pellematic {number} Wartung erledigt"
+      }
+    },
     "select": {
       "heater": {
         "state": {

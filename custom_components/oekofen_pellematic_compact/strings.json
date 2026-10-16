@@ -33,6 +33,59 @@
     }
   },
   "entity": {
+    "sensor": {
+      "diagnosis": {
+        "name": "Diagnosis",
+        "state": {
+          "ok": "OK",
+          "learning": "Learning",
+          "notice": "Notice",
+          "inefficient": "Inefficient",
+          "cleaning_soon": "Cleaning due soon",
+          "maintenance_due": "Maintenance due",
+          "cleaning_due": "Cleaning due",
+          "warning": "Warning",
+          "fault": "Fault"
+        }
+      },
+      "last_message": {
+        "name": "Last message"
+      },
+      "message_count": {
+        "name": "Messages total"
+      },
+      "flue_gas_index": {
+        "name": "Pellematic {number} flue gas fan index"
+      },
+      "ignition_time": {
+        "name": "Pellematic {number} ignition time"
+      },
+      "burner_starts_per_day": {
+        "name": "Pellematic {number} burner starts per day"
+      },
+      "burner_runtime_per_start": {
+        "name": "Pellematic {number} burner runtime per start"
+      },
+      "full_load_hours_since_maintenance": {
+        "name": "Pellematic {number} full-load hours since maintenance"
+      },
+      "compressor_starts_per_day": {
+        "name": "Heat pump {number} compressor starts per day"
+      },
+      "compressor_runtime_per_cycle": {
+        "name": "Heat pump {number} compressor runtime per cycle"
+      }
+    },
+    "binary_sensor": {
+      "diagnosis_problem": {
+        "name": "Diagnosis problem"
+      }
+    },
+    "button": {
+      "maintenance_done": {
+        "name": "Pellematic {number} maintenance done"
+      }
+    },
 	"select": {
       "heater": {
         "state": {

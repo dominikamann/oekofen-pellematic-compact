@@ -33,6 +33,59 @@
     }
   },
   "entity": {
+    "sensor": {
+      "diagnosis": {
+        "name": "Diagnostic",
+        "state": {
+          "ok": "OK",
+          "learning": "Apprentissage",
+          "notice": "Remarque",
+          "inefficient": "Inefficace",
+          "cleaning_soon": "Nettoyage bientôt nécessaire",
+          "maintenance_due": "Entretien nécessaire",
+          "cleaning_due": "Nettoyage nécessaire",
+          "warning": "Avertissement",
+          "fault": "Défaut"
+        }
+      },
+      "last_message": {
+        "name": "Dernier message"
+      },
+      "message_count": {
+        "name": "Messages au total"
+      },
+      "flue_gas_index": {
+        "name": "Pellematic {number} indice extracteur de fumées"
+      },
+      "ignition_time": {
+        "name": "Pellematic {number} durée d'allumage"
+      },
+      "burner_starts_per_day": {
+        "name": "Pellematic {number} démarrages brûleur par jour"
+      },
+      "burner_runtime_per_start": {
+        "name": "Pellematic {number} durée par démarrage"
+      },
+      "full_load_hours_since_maintenance": {
+        "name": "Pellematic {number} heures pleine charge depuis entretien"
+      },
+      "compressor_starts_per_day": {
+        "name": "Pompe à chaleur {number} démarrages compresseur par jour"
+      },
+      "compressor_runtime_per_cycle": {
+        "name": "Pompe à chaleur {number} durée par cycle compresseur"
+      }
+    },
+    "binary_sensor": {
+      "diagnosis_problem": {
+        "name": "Problème diagnostic"
+      }
+    },
+    "button": {
+      "maintenance_done": {
+        "name": "Pellematic {number} entretien effectué"
+      }
+    },
     "select": {
       "heater": {
         "state": {

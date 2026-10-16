@@ -10,6 +10,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import ATTR_MANUFACTURER, ATTR_MODEL, DOMAIN
 from .dynamic_discovery import discover_all_entities
+from .diagnosis_entities import create_diagnosis_binary_sensors
 from .sensor import PellematicBinarySensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,6 +65,10 @@ async def async_setup_entry(
                     sensor_def["key"],
                     e,
                 )
+
+        monitor = hass.data[DOMAIN][hub_name].get("diagnosis")
+        if monitor is not None:
+            entities.extend(create_diagnosis_binary_sensors(hub_name, hub, device_info, monitor))
 
         return entities
 
