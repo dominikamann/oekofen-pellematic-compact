@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest an idea, a new value or a new diagnostic check
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the problem or use case, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+  - type: textarea
+    id: data
+    attributes:
+      label: Data from your heater
+      description: |
+        If the idea depends on values of your heater, an anonymized `/all?` response or a history
+        export helps a lot. Real cases make the diagnostics better for everyone.

@@ -3,6 +3,8 @@
 # Home Assistant Development Server Start Script
 # For Ökofen Pellematic Compact Integration Testing
 
+cd "$(dirname "$0")/.." || exit 1  # run from the repository root
+
 echo "🏠 Starting Home Assistant Development Server..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""

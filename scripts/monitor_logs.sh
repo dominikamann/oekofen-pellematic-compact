@@ -1,6 +1,8 @@
 #!/bin/bash
 # Monitor Home Assistant logs for Ökofen integration activity
 
+cd "$(dirname "$0")/.." || exit 1  # run from the repository root
+
 echo "=== Monitoring Ökofen Integration Logs ==="
 echo "Try to change a value in Home Assistant UI now..."
 echo ""
