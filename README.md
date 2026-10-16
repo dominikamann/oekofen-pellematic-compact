@@ -8,8 +8,9 @@
 [![License](https://img.shields.io/github/license/dominikamann/oekofen-pellematic-compact?style=flat-square)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
-Monitor and control your **Ökofen Pellematic** pellet heater (and Ökofen heat pumps) in Home
-Assistant - locally, through the heater's built-in JSON interface. No cloud, no extra hardware.
+A community integration that brings your **Ökofen Pellematic** pellet heater (and Ökofen heat
+pumps) into Home Assistant - through Ökofen's official local JSON interface. No cloud, no extra
+hardware.
 
 - 🚀 **Automatic entity discovery** - every value your heater reports becomes an entity: boiler, heating circuits, hot water, buffer, solar, heat pump, Smart PV
 - 🎛️ **Control** - operating modes, set points and heating circuits as selects, numbers and climate entities
@@ -17,7 +18,7 @@ Assistant - locally, through the heater's built-in JSON interface. No cloud, no 
 - 🌍 **Multilingual** - entity names in German, English and French
 - ✨ **More values** - about 90 extra values (heating curve, burner settings, ash level) with no firmware change ([details](#more-values-heating-curve-burner-settings-ash-level))
 
-> This is a community project and not an official integration by Ökofen.
+> This is a community project. It uses the JSON interface Ökofen provides, but it is not developed or supported by Ökofen.
 
 ![grafik](https://github.com/user-attachments/assets/dbc94d82-ca22-4264-8bf6-36b373ce910b)
 
