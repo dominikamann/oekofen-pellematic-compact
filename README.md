@@ -9,7 +9,7 @@
 [![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
 A community integration that brings your **Ökofen Pellematic** pellet heater (and Ökofen heat
-pumps) into Home Assistant - through Ökofen's official local JSON interface. No cloud, no extra
+pumps) into **Home Assistant** - through Ökofen's official local JSON interface. No cloud, no extra
 hardware.
 
 - 🚀 **Automatic entity discovery** - every value your heater reports becomes an entity: boiler, heating circuits, hot water, buffer, solar, heat pump, Smart PV
