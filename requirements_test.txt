@@ -1,0 +1,2 @@
+# Test dependencies (pulls in a matching Home Assistant)
+pytest-homeassistant-custom-component==0.13.337

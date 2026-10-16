@@ -1,10 +1,12 @@
 # Ökofen Pellematic Integration for Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
-![commit_activity](https://img.shields.io/github/commit-activity/y/dominikamann/oekofen-pellematic-compact?color=brightgreen&label=Commits&style=flat-square)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/dominikamann/oekofen-pellematic-compact?style=flat-square)
-[![downloads](https://img.shields.io/github/downloads/dominikamann/oekofen-pellematic-compact/total)](https://github.com/dominikamann/oekofen-pellematic-compact/releases)
-[![dominik support](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
+[![GitHub release](https://img.shields.io/github/v/release/dominikamann/oekofen-pellematic-compact?style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/releases)
+[![Tests](https://img.shields.io/github/actions/workflow/status/dominikamann/oekofen-pellematic-compact/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/actions/workflows/tests.yml)
+[![hassfest](https://img.shields.io/github/actions/workflow/status/dominikamann/oekofen-pellematic-compact/hassfest%20Action.yml?branch=main&label=hassfest&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/actions/workflows/hassfest%20Action.yml)
+[![Commit activity](https://img.shields.io/github/commit-activity/y/dominikamann/oekofen-pellematic-compact?color=brightgreen&label=commits&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/commits/main)
+[![License](https://img.shields.io/github/license/dominikamann/oekofen-pellematic-compact?style=flat-square)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
 Monitor and control your **Ökofen Pellematic** pellet heater (and Ökofen heat pumps) in Home
 Assistant - locally, through the heater's built-in JSON interface. No cloud, no extra hardware.
@@ -263,7 +265,8 @@ Set unit of measurement to `m³` and device class to `Gas` so the result shows u
   anonymized `/all?` responses from your heater ([#150](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/150))
   make the integration better for everyone, especially for heat pumps and older firmware.
 - **Bugs:** [Issues](https://github.com/dominikamann/oekofen-pellematic-compact/issues), ideally with the
-  integration's debug log.
+  integration's debug log. Remove the password from every URL you share.
+- **Development:** see [CONTRIBUTING.md](CONTRIBUTING.md). Security problems: [SECURITY.md](SECURITY.md).
 - **License:** [Apache 2.0](LICENSE)
 
 ---

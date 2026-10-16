@@ -1,0 +1,54 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more of the information below you provide,
+        the faster it can be fixed. **Remove the password from every URL you paste.**
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: v4.4.0
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.10.1"
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Heater and firmware
+      description: Model and Pelletronic Touch software version (shown on the touch display)
+      placeholder: Pellematic Compact 16 kW, Touch V4.02b
+    validations:
+      required: true
+  - type: textarea
+    id: json
+    attributes:
+      label: JSON response of the heater
+      description: |
+        The output of `http://<ip>:<port>/<password>/all?` (anonymize location and password).
+        It is the most helpful piece of information. How to get it: [Discussion #150](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/150)
+      render: json
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: |
+        Enable debug logging for the integration (Settings → Devices & services → Ökofen Pellematic
+        Compact → Enable debug logging), reproduce the problem and paste the relevant lines.
+      render: text

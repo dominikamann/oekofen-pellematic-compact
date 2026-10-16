@@ -362,3 +362,6 @@ homeassistant.log
 .codegraph/
 .DS_Store
 .mcp.json
+
+# Local AI assistant notes
+CLAUDE.md

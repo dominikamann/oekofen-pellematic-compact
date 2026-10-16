@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/dominikamann/oekofen-pellematic-compact/discussions
+    about: Ask questions, share setups and discuss ideas with other users
+  - name: Share test data from your heater
+    url: https://github.com/dominikamann/oekofen-pellematic-compact/discussions/150
+    about: Anonymized JSON responses make the integration work for more firmware versions and hardware
