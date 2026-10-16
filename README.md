@@ -99,4 +99,6 @@ Set unit of measurement to `m³` and device class to `Gas` so the result shows u
 
 > Why not ship this as a built-in entity? Pellet energy density varies by grade and natural-gas Wobbe Index varies by country — hard-coding the constants would be wrong for many users. The helper keeps the choice in your hands.
 
+---
 
+<p align="center">Proudly provided by <a href="https://amannlabs.eu">amannlabs.eu</a></p>
