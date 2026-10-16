@@ -4,7 +4,10 @@ import copy
 from unittest.mock import patch
 
 from homeassistant.helpers import entity_registry as er
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from datetime import timedelta
+
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.oekofen_pellematic_compact.const import (
     CONF_API_SUFFIX,
@@ -53,7 +56,9 @@ def _entity_ids(hass, entry):
 
 async def test_pellet_installation(hass, enable_custom_integrations):
     data = load_fixture("api_response_ext_zx.json")
-    entry = await _setup(hass, data)
+    quiet = copy.deepcopy(data)
+    quiet["error"] = {}
+    entry = await _setup(hass, quiet)
 
     ids = _entity_ids(hass, entry)
     for entity_id in (
@@ -70,6 +75,11 @@ async def test_pellet_installation(hass, enable_custom_integrations):
     ):
         assert entity_id in ids, entity_id
     assert not any("compressor" in i for i in ids)
+
+    assert hass.states.get("sensor.pellematic_last_message").state == "No messages"
+    runtime = hass.states.get("sensor.pellematic_pe1_burner_runtime_per_start")
+    assert runtime.state != "unknown" and runtime.attributes["basis"] == "lifetime"
+    assert hass.states.get("sensor.pellematic_diagnosis").attributes.get("friendly_name")
 
     messages, findings = [], []
     hass.bus.async_listen(EVENT_MESSAGE, messages.append)
@@ -127,4 +137,16 @@ async def test_flue_gas_index_needs_the_key(hass, enable_custom_integrations):
     ids = _entity_ids(hass, entry)
     assert "sensor.pellematic_diagnosis" in ids
     assert "sensor.pellematic_pe1_flue_gas_index" not in ids
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_diagnosis_is_persisted_while_polling(hass, hass_storage, enable_custom_integrations):
+    """The store must be written during operation, not only at shutdown."""
+    data = load_fixture("api_response_ext_zx.json")
+    entry = await _setup(hass, data)
+    await _poll(hass, data)  # a new boiler message triggers a save
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=5))
+    await hass.async_block_till_done()
+    stored = hass_storage[f"{DOMAIN}.diagnosis.{entry.entry_id}"]["data"]
+    assert stored["messages"]["count"] == 1
     assert await hass.config_entries.async_unload(entry.entry_id)

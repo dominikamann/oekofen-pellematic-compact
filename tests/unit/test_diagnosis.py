@@ -397,3 +397,16 @@ def test_every_fixture_runs_through_the_diagnosis():
         assert diagnosis.status in {
             STATUS_OK, STATUS_LEARNING, STATUS_NOTICE, STATUS_WARNING, STATUS_FAULT, STATUS_CLEANING_SOON
         }, path
+
+
+def test_figures_are_shown_before_they_are_judged():
+    heater = HeaterHealth()
+    heater.update(_pe(OFF, starts=4190, runtime=8394), 0)
+    # Right after install: lifetime average from the boiler's own counters.
+    assert heater.runtime_per_start_display == (120, "lifetime")
+    assert heater.starts_per_day_display is None
+    heater.update(_pe(OFF, starts=4194, runtime=8402), 0.6 * DAY)
+    assert heater.starts_per_day_display == pytest.approx(6.7, abs=0.1)
+    assert heater.runtime_per_start_display == (120, "7_days")
+    assert heater.starts_per_day is None  # not judged before two days
+    assert heater.findings() == []

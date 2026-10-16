@@ -23,7 +23,14 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
 from homeassistant.util import slugify
 
-from .diagnosis import STATUS_OPTIONS, DiagnosisMonitor, is_problem, utc_iso
+from .diagnosis import (
+    MESSAGES,
+    NO_MESSAGES,
+    STATUS_OPTIONS,
+    DiagnosisMonitor,
+    is_problem,
+    utc_iso,
+)
 
 
 class _DiagnosisEntity:
@@ -31,6 +38,7 @@ class _DiagnosisEntity:
 
     _attr_has_entity_name = True
     _attr_should_poll = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(self, domain, hub_name, hub, device_info, monitor, component, kind) -> None:
         self._hub = hub
@@ -102,8 +110,6 @@ class DiagnosisProblemSensor(_DiagnosisEntity, BinarySensorEntity):
 class DiagnosisValueSensor(_DiagnosisEntity, SensorEntity):
     """A figure computed by the diagnosis (index, rate, duration, counter)."""
 
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-
     def __init__(
         self,
         hub_name,
@@ -140,7 +146,6 @@ class DiagnosisValueSensor(_DiagnosisEntity, SensorEntity):
 class MaintenanceDoneButton(_DiagnosisEntity, ButtonEntity):
     """Resets full-load hours and ignition reference after a cleaning."""
 
-    _attr_entity_category = EntityCategory.CONFIG
     _attr_icon = "mdi:broom"
 
     def __init__(self, hub_name, hub, device_info, monitor, component) -> None:
@@ -171,7 +176,9 @@ def create_diagnosis_sensors(hub_name, hub, device_info, monitor: DiagnosisMonit
         DiagnosisSensor(*args),
         DiagnosisValueSensor(
             *args, None, "last_message",
-            value=lambda d: d.messages.last["text"][:255] if d.messages.last else None,
+            value=lambda d: (
+                d.messages.last["text"][:255] if d.messages.last else MESSAGES[d.language][NO_MESSAGES]
+            ),
             attributes=lambda d: {
                 "time": (d.messages.last or {}).get("time"),
                 "code": (d.messages.last or {}).get("code"),
@@ -217,12 +224,13 @@ def create_diagnosis_sensors(hub_name, hub, device_info, monitor: DiagnosisMonit
         if "L_starts" in pe and "L_runtime" in pe:
             entities.append(DiagnosisValueSensor(
                 *args, name, "burner_starts_per_day",
-                value=lambda d, h=heater: h(d).starts_per_day,
+                value=lambda d, h=heater: h(d).starts_per_day_display,
                 unit="starts/d", icon="mdi:counter",
             ))
             entities.append(DiagnosisValueSensor(
                 *args, name, "burner_runtime_per_start",
-                value=lambda d, h=heater: h(d).runtime_per_start,
+                value=lambda d, h=heater: h(d).runtime_per_start_display[0],
+                attributes=lambda d, h=heater: {"basis": h(d).runtime_per_start_display[1]},
                 unit=UnitOfTime.MINUTES, icon="mdi:timer-outline",
                 device_class=SensorDeviceClass.DURATION,
             ))
@@ -243,7 +251,7 @@ def create_diagnosis_sensors(hub_name, hub, device_info, monitor: DiagnosisMonit
         if "L_activation_count" in wp:
             entities.append(DiagnosisValueSensor(
                 *args, name, "compressor_starts_per_day",
-                value=lambda d, p=pump: p(d).starts_per_day,
+                value=lambda d, p=pump: p(d).starts_per_day_display,
                 attributes=lambda d: {"experimental": True},
                 unit="starts/d", icon="mdi:counter",
             ))

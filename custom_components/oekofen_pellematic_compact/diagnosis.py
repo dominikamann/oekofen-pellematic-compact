@@ -30,6 +30,7 @@ from __future__ import annotations
 import logging
 import math
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -38,7 +39,9 @@ from .const import DOMAIN, get_api_value
 _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
-SAVE_DELAY_SECONDS = 60
+# Store.async_delay_save restarts its timer on every call, and the hub polls
+# more often than any sensible delay - so the monitor saves on its own clock.
+SAVE_INTERVAL_SECONDS = 300
 EVENT_MESSAGE = f"{DOMAIN}_message"
 EVENT_FINDING = f"{DOMAIN}_finding"
 DAY = 86400.0
@@ -76,7 +79,8 @@ IGNITION_FAILURES_WARN = 3  # failed ignitions within the window
 WINDOW_DAYS = 7
 
 # Burner cycling (rolling WINDOW_DAYS average)
-MIN_WINDOW_DAYS = 2
+MIN_WINDOW_DAYS = 2  # before a cycling finding is raised
+MIN_DISPLAY_DAYS = 0.5  # before the rate is shown at all
 MIN_STARTS_FOR_RUNTIME = 3
 STARTS_NOTICE = 10
 STARTS_INEFFICIENT = 15
@@ -145,6 +149,7 @@ SHORT_CYCLING = "short_cycling"
 FLOW_TEMPERATURE_LOW = "flow_temperature_low"
 OUTSIDE_SENSOR_SUN = "outside_sensor_sun"
 HEAT_PUMP_SHORT_CYCLING = "heat_pump_short_cycling"
+NO_MESSAGES = "no_messages"  # text of the last-message sensor before the first one
 
 MESSAGES = {
     "en": {
@@ -159,6 +164,7 @@ MESSAGES = {
         FLOW_TEMPERATURE_LOW: "Flow temperature {value} K below set point for hours - check mixer, pump and boiler",
         OUTSIDE_SENSOR_SUN: "Outside sensor implausible on {value} days (sun?) - shade it or move it to the north side",
         HEAT_PUMP_SHORT_CYCLING: "Compressor cycling ({value}) - check flow rate, buffer and heating curve (experimental)",
+        NO_MESSAGES: "No messages",
     },
     "de": {
         FAULT: "Kessel in Störung: {value}",
@@ -172,6 +178,7 @@ MESSAGES = {
         FLOW_TEMPERATURE_LOW: "Vorlauf seit Stunden {value} K unter Soll - Mischer, Pumpe und Kessel prüfen",
         OUTSIDE_SENSOR_SUN: "Außenfühler an {value} Tagen unplausibel (Sonne?) - beschatten oder an die Nordseite versetzen",
         HEAT_PUMP_SHORT_CYCLING: "Verdichter taktet ({value}) - Durchfluss, Puffer und Heizkurve prüfen (experimentell)",
+        NO_MESSAGES: "Keine Meldungen",
     },
     "fr": {
         FAULT: "Chaudière en défaut : {value}",
@@ -185,6 +192,7 @@ MESSAGES = {
         FLOW_TEMPERATURE_LOW: "Départ {value} K sous la consigne depuis des heures - vérifier vanne, circulateur et chaudière",
         OUTSIDE_SENSOR_SUN: "Sonde extérieure incohérente {value} jours (soleil ?) - l'ombrager ou la déplacer au nord",
         HEAT_PUMP_SHORT_CYCLING: "Cycles courts du compresseur ({value}) - vérifier débit, ballon et courbe (expérimental)",
+        NO_MESSAGES: "Aucun message",
     },
 }
 
@@ -273,7 +281,13 @@ class CounterRate:
         self.snapshots = [s for s in self.snapshots if now - s[0] <= (WINDOW_DAYS + 1) * DAY]
         self._current = [now, *values]
 
-    def deltas(self, now: float) -> Optional[tuple[float, list[float]]]:
+    @property
+    def current(self) -> Optional[list[float]]:
+        return getattr(self, "_current", None)
+
+    def deltas(
+        self, now: float, min_days: float = MIN_WINDOW_DAYS
+    ) -> Optional[tuple[float, list[float]]]:
         """(days, [delta per counter]) over the window, or None while too short."""
         current = getattr(self, "_current", None)
         if current is None:
@@ -283,9 +297,19 @@ class CounterRate:
             return None
         oldest = inside[0]
         days = (current[0] - oldest[0]) / DAY
-        if days < MIN_WINDOW_DAYS:
+        if days < min_days:
             return None
         return days, [c - o for c, o in zip(current[1:], oldest[1:])]
+
+
+def _rate(window) -> Optional[float]:
+    return round(window[1][0] / window[0], 1) if window else None
+
+
+def _minutes_per_start(window) -> Optional[float]:
+    if not window or window[1][0] < MIN_STARTS_FOR_RUNTIME:
+        return None
+    return round(60.0 * window[1][1] / window[1][0])
 
 
 class HeaterHealth:
@@ -354,16 +378,29 @@ class HeaterHealth:
 
     @property
     def starts_per_day(self) -> Optional[float]:
-        window = self.cycling.deltas(self._now)
-        return round(window[1][0] / window[0], 1) if window else None
+        """Starts per day over the window; None until it is long enough to judge."""
+        return _rate(self.cycling.deltas(self._now))
 
     @property
     def runtime_per_start(self) -> Optional[float]:
         """Average burner minutes per start over the window."""
-        window = self.cycling.deltas(self._now)
-        if not window or window[1][0] < MIN_STARTS_FOR_RUNTIME:
-            return None
-        return round(60.0 * window[1][1] / window[1][0])
+        return _minutes_per_start(self.cycling.deltas(self._now))
+
+    @property
+    def starts_per_day_display(self) -> Optional[float]:
+        """Shown earlier than it is judged, so the sensor is not 'unknown' for days."""
+        return _rate(self.cycling.deltas(self._now, MIN_DISPLAY_DAYS))
+
+    @property
+    def runtime_per_start_display(self) -> tuple[Optional[float], Optional[str]]:
+        """(minutes, basis): the window once available, the lifetime counters before."""
+        window = _minutes_per_start(self.cycling.deltas(self._now, MIN_DISPLAY_DAYS))
+        if window is not None:
+            return window, "7_days"
+        current = self.cycling.current
+        if current and current[1] > 0:
+            return round(60.0 * current[2] / current[1]), "lifetime"
+        return None, None
 
     @property
     def full_load_hours(self) -> float:
@@ -620,8 +657,11 @@ class HeatPumpHealth:
 
     @property
     def starts_per_day(self) -> Optional[float]:
-        window = self.cycling.deltas(self._now)
-        return round(window[1][0] / window[0], 1) if window else None
+        return _rate(self.cycling.deltas(self._now))
+
+    @property
+    def starts_per_day_display(self) -> Optional[float]:
+        return _rate(self.cycling.deltas(self._now, MIN_DISPLAY_DAYS))
 
     def update(self, wp: dict, now: float) -> None:
         self._now = now
@@ -830,11 +870,14 @@ class DiagnosisMonitor:
         self._hub_name = hub_name
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.diagnosis.{entry_id}")
         self.diagnosis = Diagnosis(language=hass.config.language)
+        self._last_save = 0.0
 
     async def async_start(self) -> None:
         stored = await self._store.async_load()
         self.diagnosis = Diagnosis(stored, self._hass.config.language)
         self._hub.async_add_pellematic_sensor(self._handle_update)
+        if self._hub.data:
+            self._handle_update()  # the hub pre-fetched: no need to wait a poll
 
     async def async_stop(self) -> None:
         self._hub.async_remove_pellematic_sensor(self._handle_update)
@@ -844,7 +887,11 @@ class DiagnosisMonitor:
         from homeassistant.util import dt as dt_util
 
         self.diagnosis.heater(heater).maintenance_done(dt_util.utcnow().timestamp())
-        self._store.async_delay_save(self.diagnosis.as_dict, SAVE_DELAY_SECONDS)
+        self._save_soon()
+
+    def _save_soon(self) -> None:
+        self._last_save = time.monotonic()
+        self._store.async_delay_save(self.diagnosis.as_dict, 1)
 
     def _handle_update(self) -> None:
         from homeassistant.util import dt as dt_util
@@ -858,7 +905,8 @@ class DiagnosisMonitor:
             self._hass.bus.async_fire(EVENT_MESSAGE, {"hub": self._hub_name, **entry})
         for change in changes:
             self._hass.bus.async_fire(EVENT_FINDING, {"hub": self._hub_name, **change})
-        self._store.async_delay_save(self.diagnosis.as_dict, SAVE_DELAY_SECONDS)
+        if messages or changes or time.monotonic() - self._last_save >= SAVE_INTERVAL_SECONDS:
+            self._save_soon()
 
 
 def utc_iso(timestamp: Optional[float]) -> Optional[str]:

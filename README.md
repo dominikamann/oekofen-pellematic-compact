@@ -6,14 +6,16 @@
 [![downloads](https://img.shields.io/github/downloads/dominikamann/oekofen-pellematic-compact/total)](https://github.com/dominikamann/oekofen-pellematic-compact/releases)
 [![dominik support](https://img.shields.io/badge/support-me-ff5e5b?style=flat-square&logo=ko-fi)](https://github.com/sponsors/dominikamann)
 
+Monitor and control your **Ökofen Pellematic** pellet heater (and Ökofen heat pumps) in Home
+Assistant - locally, through the heater's built-in JSON interface. No cloud, no extra hardware.
 
-Home Assistant integration `oekofen-pellematic-compact` is designed for Ökofen Pellematic Heaters with enabled TCP/JSON-Interface.
-It communicates locally with the heater. This is not an official integration by Ökofen.
+- 🚀 **Automatic entity discovery** - every value your heater reports becomes an entity: boiler, heating circuits, hot water, buffer, solar, heat pump, Smart PV
+- 🎛️ **Control** - operating modes, set points and heating circuits as selects, numbers and climate entities
+- 🩺 **Diagnostics & Predictive Warnings** - detects fouling, due maintenance, ignition problems, short cycling and more *before* the heater fails, with entities and events made for automations ([details](#-diagnostics--predictive-warnings))
+- 🌍 **Multilingual** - entity names in German, English and French
+- ✨ **More values** - about 90 extra values (heating curve, burner settings, ash level) with no firmware change ([details](#more-values-heating-curve-burner-settings-ash-level))
 
-- 🚀 **Automatic entity discovery** - All sensors automatically detected from API
-- 🌍 **Multilingual support** - Names in DE/FR/EN directly from your Ökofen system
-- 🩺 **Diagnosis module** - Detects fouling, due maintenance, ignition problems, short cycling and more before the boiler fails, with ready-to-use entities and events for automations - see [Diagnosis module](#-diagnosis-module-know-before-your-heater-breaks)
-- ✨ **Do you want to get more out of this integration and your heater?** ~90 extra values (heating curve, burner settings, ash level, ...) with no firmware change - check [Discussion #194](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/194)
+> This is a community project and not an official integration by Ökofen.
 
 ![grafik](https://github.com/user-attachments/assets/dbc94d82-ca22-4264-8bf6-36b373ce910b)
 
@@ -21,51 +23,58 @@ It communicates locally with the heater. This is not an official integration by 
 
 ![grafik](https://github.com/user-attachments/assets/eba66675-940d-4799-b475-afbf0e70f34d)
 
+## Contents
+
+- [Installation](#installation)
+- [Enable the JSON interface](#enable-the-json-interface)
+- [Configuration](#configuration)
+- [Diagnostics & Predictive Warnings](#-diagnostics--predictive-warnings)
+- [More values: heating curve, burner settings, ash level](#more-values-heating-curve-burner-settings-ash-level)
+- [Entity names and language](#entity-names-and-language)
+- [Changing the URL or password](#changing-the-url-or-password)
+- [Tips: derived sensors](#tips-derived-sensors)
+- [Support and contributing](#support-and-contributing)
+
 ## Installation
 
-Copy the content of the 'custom_components' folder to your home-assistant folder 'config/custom_components' or install through HACS.
-After reboot of Home-Assistant, this integration can be configured through the integration setup UI
+**HACS (recommended)**
 
-Click here to install over HACS:
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dominikamann&repository=oekofen-pellematic-compact&category=integration)
+
+Open the link above, download the integration and restart Home Assistant.
+
+**Manual**
+
+Copy `custom_components/oekofen_pellematic_compact` into the `custom_components` folder of your
+Home Assistant configuration and restart Home Assistant.
+
+## Enable the JSON interface
+
+On the heater's touch display: **General settings → Network settings ("IP Config")**, scroll down
+and **activate the JSON interface**. Note the URL it shows - `http://<ip>:<port>/<password>/all`.
+
+> **Important:** do not activate the compatibility mode. It is not supported.
 
 ![grafik](https://user-images.githubusercontent.com/29973737/211389542-0800d1cf-6df9-45d4-8607-5f90689a8628.png)
 
-## Enable JSON-Interface on your Ökofen Pellematic
+## Configuration
 
-Go to your Ökofen Pellematic 
-  -> Touchscreen -> Open General Settings -> Network Settings/"IP Config"
-    -> Scroll down -> Activate JSON Interface
-    
-    IMPORTANT: Do not activate the compatibility mode. This mode is not supported/recommended.
+**Settings → Devices & services → Add integration → Ökofen Pellematic Compact**, then enter the
+JSON interface URL. Character set, API variant and connected components (heating circuits, hot
+water, buffer, solar, heat pump, ...) are detected automatically. Entities appear within about a
+minute.
 
- Use the provided URL as HOST in Component-Configuration (<http://[ip]:[port]/[password]/all>)
+If you add hardware later, for example a new heating circuit, call the action
+`oekofen_pellematic_compact.rediscover_components` - no need to re-add the integration.
 
-## Want more values? Heating curve, burner settings, ash level
-
-The standard JSON interface leaves a lot out: the heating curve and heating limits, the
-burner hysteresis and minimum runtimes, the ash box level, and more. It turns out the
-Pelletronic Touch can expose them - a `json.properties` file on a USB stick in the Touch
-adds about **90 additional values** to `/all?`, and no firmware change is needed.
-
-Since v4 builds all entities from the API, the extra values appear in Home Assistant after
-a reload of the integration - no changes to this integration required.
-
-➡️ **[How to set it up: Discussion #194](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/194)** (thanks to @zakx for working this out
-and sharing the file!)
-
-Two things to keep in mind: use **read-only `L_` keys only** - a key without the `L_` prefix
-becomes writable over the network, protected only by the short JSON password - and the file
-is tested on Touch V4.02b, so check your own `/all?` output afterwards.
-
-## 🩺 Diagnosis module: know before your heater breaks
+## 🩺 Diagnostics & Predictive Warnings
 
 Your boiler only reports a fault once it gives up. Long before that it starts working around
 problems: it spins the flue-gas fan harder as the heat exchanger fouls, it starts twenty times a
 day because the buffer settings are off, it heats with a wrong outside temperature because the
 sensor sits in the sun. None of that shows up on the touch display.
 
-The diagnosis module watches the values your heater already sends, compares them with learned
+The diagnostics module watches the values your heater already sends, compares them with learned
 normal values and published reference values, and tells you **what is wrong, how urgent it is
 and what to check**. Everything runs locally, needs no configuration and only uses the values your
 firmware actually delivers.
@@ -185,6 +194,8 @@ content: >
 - **Learning:** the normal flue-gas fan speed is learned during the first 20 hours of full-load
   operation; until then the status is `learning`. In winter that takes a few days. The value adapts
   slowly to seasonal drift but never to a fouling boiler.
+- **First hours:** burner runtime per start is shown right away from the boiler's own counters,
+  starts per day after 12 hours. Short cycling is only judged after two days of data.
 - **Maintenance counter:** counting starts when you install this version. Press
   *Maintenance done* after your next service so it runs from there.
 - **Heat pumps:** the heat pump checks are marked experimental. They are built on reference values
@@ -192,17 +203,22 @@ content: >
 - The reference values come from Ökofen's operating manual, the Fraunhofer heat pump field test, the
   German heat pump association (BWP) and installer experience from heizungsforum.de and Paradigma.
 
-## Password or url change
+## More values: heating curve, burner settings, ash level
 
-If you upgrade your Ökofen Pellematic firmawre or change your password, you can simply change it in the homessistant configuration by : 
-- connecting via ssh to your homeassistant : `ssh root@homeassistant`
-- edit your configuration via : `vi /root/config/.storage/core.config_entries`
-- search for pellematic configuration and change the url in the "host" key of pellematic configuration
-- restart your homeassistant core
+The standard JSON interface leaves a lot out: the heating curve and heating limits, the
+burner hysteresis and minimum runtimes, the ash box level, and more. It turns out the
+Pelletronic Touch can expose them - a `json.properties` file on a USB stick in the Touch
+adds about **90 additional values** to `/all?`, and no firmware change is needed.
 
-OR
- 
-![401221389-5b7e7316-5a60-4428-93fd-7f5761fa9ed7](https://github.com/user-attachments/assets/7e84f405-fed4-425f-aa96-9504b01bd6ce)
+Since v4 builds all entities from the API, the extra values appear in Home Assistant after
+a reload of the integration - no changes to this integration required.
+
+➡️ **[How to set it up: Discussion #194](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/194)** (thanks to @zakx for working this out
+and sharing the file!)
+
+Two things to keep in mind: use **read-only `L_` keys only** - a key without the `L_` prefix
+becomes writable over the network, protected only by the short JSON password - and the file
+is tested on Touch V4.02b, so check your own `/all?` output afterwards.
 
 ## Entity names and language
 
@@ -212,7 +228,14 @@ language (English, German and French are shipped); the field label comes from th
 its own configured language. If you change the Home Assistant language, reload the
 integration entry for the prefixes to update. Entity IDs never change — only display names.
 
-## Tips: derived sensors (e.g. gas-equivalent energy)
+## Changing the URL or password
+
+After a firmware update or a new JSON password, open the integration and choose
+**Reconfigure** to enter the new URL:
+
+![401221389-5b7e7316-5a60-4428-93fd-7f5761fa9ed7](https://github.com/user-attachments/assets/7e84f405-fed4-425f-aa96-9504b01bd6ce)
+
+## Tips: derived sensors
 
 The integration exposes the raw sensors needed to derive your own values — for example pellet consumption in kg (`sensor.pellematic_pe1_storage_fill_today`, `sensor.pellematic_pe1_storage_fill_yesterday`, `sensor.pellematic_pe1_l_storage_fill`). Anything that's a fixed-constant calculation on top of those (gas-equivalent volume, CO₂ avoided, cost per day, ...) is best done as a Home Assistant **Template Helper** so you can pick the constants that match your pellet quality and local gas tariff.
 
@@ -233,6 +256,15 @@ The integration exposes the raw sensors needed to derive your own values — for
 Set unit of measurement to `m³` and device class to `Gas` so the result shows up in the HA Energy dashboard.
 
 > Why not ship this as a built-in entity? Pellet energy density varies by grade and natural-gas Wobbe Index varies by country — hard-coding the constants would be wrong for many users. The helper keeps the choice in your hands.
+
+## Support and contributing
+
+- **Questions, ideas and test data:** [Discussions](https://github.com/dominikamann/oekofen-pellematic-compact/discussions) -
+  anonymized `/all?` responses from your heater ([#150](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/150))
+  make the integration better for everyone, especially for heat pumps and older firmware.
+- **Bugs:** [Issues](https://github.com/dominikamann/oekofen-pellematic-compact/issues), ideally with the
+  integration's debug log.
+- **License:** [Apache 2.0](LICENSE)
 
 ---
 
