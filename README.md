@@ -2,6 +2,7 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=flat-square)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/v/release/dominikamann/oekofen-pellematic-compact?style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/releases)
+[![Since](https://img.shields.io/badge/since-Dec%202022-8A2BE2.svg?style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/commit/0aa1ab7c30a2fa58399ab335612a8fba13ac6f74)
 [![Tests](https://img.shields.io/github/actions/workflow/status/dominikamann/oekofen-pellematic-compact/tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/actions/workflows/tests.yml)
 [![hassfest](https://img.shields.io/github/actions/workflow/status/dominikamann/oekofen-pellematic-compact/hassfest%20Action.yml?branch=main&label=hassfest&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/actions/workflows/hassfest%20Action.yml)
 [![Commit activity](https://img.shields.io/github/commit-activity/y/dominikamann/oekofen-pellematic-compact?color=brightgreen&label=commits&style=flat-square)](https://github.com/dominikamann/oekofen-pellematic-compact/commits/main)
