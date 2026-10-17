@@ -63,7 +63,7 @@ MAX_SAMPLE_SECONDS = 300  # cap the weight of a sample after a polling gap
 # Flue-gas fan index: samples only at (near) full load, so they are comparable.
 FULL_LOAD_MODULATION = 95
 RECENT_TAU_SECONDS = 8 * 3600  # EWMA time constant, counted in full-load time
-BASELINE_LEARN_SECONDS = 20 * 3600  # full-load time before a baseline exists
+BASELINE_LEARN_SECONDS = 5 * 3600  # full-load time before a baseline exists
 BASELINE_TAU_SECONDS = 300 * 3600  # slow drift adaption once learned
 BASELINE_ADAPT_BELOW = 105.0  # never learn a fouling boiler as the new normal
 INDEX_SOON = 115.0
