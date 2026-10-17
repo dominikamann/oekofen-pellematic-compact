@@ -20,8 +20,6 @@ hardware.
 
 > This is a community project. It uses the JSON interface Ökofen provides, but it is not developed or supported by Ökofen.
 
-![grafik](https://github.com/user-attachments/assets/dbc94d82-ca22-4264-8bf6-36b373ce910b)
-
 ![grafik](https://github.com/user-attachments/assets/2800924e-7eef-47db-b73c-383a5b483a47)
 
 ![grafik](https://github.com/user-attachments/assets/eba66675-940d-4799-b475-afbf0e70f34d)
