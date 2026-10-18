@@ -1,9 +1,12 @@
 {
   "domain": "oekofen_pellematic_compact",
-  "name": "\u00d6kofen Pellematic Compact",
+  "name": "Ökofen Pellematic Compact",
+  "after_dependencies": [
+    "recorder"
+  ],
   "codeowners": [
-      "@dominikamann"
-    ],
+    "@dominikamann"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/dominikamann/oekofen-pellematic-compact",

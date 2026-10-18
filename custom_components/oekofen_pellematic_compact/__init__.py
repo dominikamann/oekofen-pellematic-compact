@@ -656,6 +656,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.info("Ökofen Pellematic '%s': Starting platform setup (%s)", name, ", ".join(PLATFORMS))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    diagnosis.async_load_history()  # needs the registered entities
     _LOGGER.info("Ökofen Pellematic '%s': Setup complete - entities should be available within 1 minute", name)
     return True
 

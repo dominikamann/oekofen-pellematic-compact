@@ -66,6 +66,17 @@ RECENT_TAU_SECONDS = 8 * 3600  # EWMA time constant, counted in full-load time
 BASELINE_LEARN_SECONDS = 5 * 3600  # full-load time before a baseline exists
 BASELINE_TAU_SECONDS = 300 * 3600  # slow drift adaption once learned
 BASELINE_ADAPT_BELOW = 105.0  # never learn a fouling boiler as the new normal
+BASELINE_TAU_DOWN_SECONDS = 50 * 3600  # a cleaner boiler than learned is adopted faster
+BASELINE_DOWN_BELOW = 95.0
+# The recorder's hourly statistics give a baseline at once, even if the boiler
+# is already fouling: a low quantile of a year of full-load hours stays at the
+# clean level (one installation: 40.0-41.2 % at any date, also at 65 % fouled).
+HISTORY_DAYS = 365
+HISTORY_MIN_HOURS = 20
+HISTORY_QUANTILE = 0.2
+HISTORY_RECENT_HOURS = 3  # the latest full-load hours seed the current reading
+HISTORY_RECENT_MAX_AGE = 7 * 86400
+HISTORY_REPLACE_BELOW = 0.95  # a learned baseline only yields to a clearly lower one
 INDEX_SOON = 115.0
 INDEX_DUE = 130.0
 INDEX_HYSTERESIS = 5.0
@@ -256,6 +267,34 @@ def parse_message(raw: Any) -> Optional[dict]:
     }
 
 
+def baseline_from_history(
+    fan_rows: list[tuple[float, float]], modulation_rows: list[tuple[float, float]], now: float
+) -> Optional[tuple[float, Optional[float], int]]:
+    """(baseline, recent, hours) from hourly means (start, mean) of fan and modulation.
+
+    Only hours with a mean modulation at full load count. None with too few of them.
+    """
+    modulation = dict(modulation_rows)
+    hours = sorted(
+        (start, fan)
+        for start, fan in fan_rows
+        if fan and fan > 0 and (modulation.get(start) or 0) >= FULL_LOAD_MODULATION
+    )
+    if len(hours) < HISTORY_MIN_HOURS:
+        return None
+    values = sorted(fan for _, fan in hours)
+    position = HISTORY_QUANTILE * (len(values) - 1)
+    low, high = values[math.floor(position)], values[math.ceil(position)]
+    baseline = low + (high - low) * (position - math.floor(position))
+    latest = hours[-HISTORY_RECENT_HOURS:]
+    recent = (
+        sum(fan for _, fan in latest) / len(latest)
+        if now - latest[-1][0] <= HISTORY_RECENT_MAX_AGE
+        else None
+    )
+    return baseline, recent, len(hours)
+
+
 def _finding(code: str, status: str, value: Any = None, **extra) -> dict:
     return {"code": code, "status": status, "value": value, **extra}
 
@@ -323,6 +362,10 @@ class HeaterHealth:
         self.learn_sum: float = stored.get("learn_sum", 0.0)
         self.recent: Optional[float] = stored.get("recent")
         self.flue_level: int = stored.get("flue_level", 0)
+        self.baseline_source: Optional[str] = stored.get(
+            "baseline_source", "learned" if self.baseline else None
+        )
+        self.history_checked: bool = stored.get("history_checked", False)
         # Ignition
         self.ignition_last: Optional[float] = stored.get("ignition_last")
         self.ignition_avg: Optional[float] = stored.get("ignition_avg")
@@ -350,6 +393,8 @@ class HeaterHealth:
             "learn_sum": self.learn_sum,
             "recent": self.recent,
             "flue_level": self.flue_level,
+            "baseline_source": self.baseline_source,
+            "history_checked": self.history_checked,
             "ignition_last": self.ignition_last,
             "ignition_avg": self.ignition_avg,
             "ignition_count": self.ignition_count,
@@ -440,6 +485,22 @@ class HeaterHealth:
         self.has_counters = starts is not None and runtime is not None
         self.cycling.update(now, starts, runtime)
 
+    def seed_from_history(self, baseline: float, recent: Optional[float]) -> bool:
+        """Use a baseline from the recorder history; True if it was taken.
+
+        Replaces live learning in progress, and a learned baseline only when the
+        history shows a clearly cleaner boiler (it was learned while fouling).
+        """
+        self.history_checked = True
+        if self.baseline and baseline >= self.baseline * HISTORY_REPLACE_BELOW:
+            return False
+        self.baseline = baseline
+        self.baseline_source = "history"
+        if self.recent is None and recent is not None:
+            self.recent = recent
+        self._update_flue_level()
+        return True
+
     def maintenance_done(self, now: float) -> None:
         """Reset the maintenance counters (button 'Maintenance done').
 
@@ -510,8 +571,14 @@ class HeaterHealth:
             self.learn_sum += fan * weight
             if self.learn_seconds >= BASELINE_LEARN_SECONDS:
                 self.baseline = self.learn_sum / self.learn_seconds
+                self.baseline_source = "learned"
         elif self.flue_gas_index is not None and self.flue_gas_index < BASELINE_ADAPT_BELOW:
-            self.baseline += (1 - math.exp(-weight / BASELINE_TAU_SECONDS)) * (fan - self.baseline)
+            tau = (
+                BASELINE_TAU_DOWN_SECONDS
+                if self.flue_gas_index < BASELINE_DOWN_BELOW
+                else BASELINE_TAU_SECONDS
+            )
+            self.baseline += (1 - math.exp(-weight / tau)) * (fan - self.baseline)
 
         self._update_flue_level()
 
@@ -871,6 +938,7 @@ class DiagnosisMonitor:
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.diagnosis.{entry_id}")
         self.diagnosis = Diagnosis(language=hass.config.language)
         self._last_save = 0.0
+        self._history_task = None
 
     async def async_start(self) -> None:
         stored = await self._store.async_load()
@@ -881,6 +949,8 @@ class DiagnosisMonitor:
 
     async def async_stop(self) -> None:
         self._hub.async_remove_pellematic_sensor(self._handle_update)
+        if self._history_task and not self._history_task.done():
+            self._history_task.cancel()
         await self._store.async_save(self.diagnosis.as_dict())
 
     def maintenance_done(self, heater: str) -> None:
@@ -907,6 +977,70 @@ class DiagnosisMonitor:
             self._hass.bus.async_fire(EVENT_FINDING, {"hub": self._hub_name, **change})
         if messages or changes or time.monotonic() - self._last_save >= SAVE_INTERVAL_SECONDS:
             self._save_soon()
+
+
+    def async_load_history(self) -> None:
+        """Seed the flue-gas baseline from the recorder once the entities exist."""
+        self._history_task = self._hass.async_create_background_task(
+            self._async_seed_from_history(), f"{DOMAIN} diagnosis history"
+        )
+
+    async def _async_seed_from_history(self) -> None:
+        """Take the flue-gas baseline from the recorder's long-term statistics."""
+        heaters = {
+            name: heater
+            for name, heater in self.diagnosis.heaters.items()
+            if heater.has_flue_gas and not heater.history_checked
+        }
+        if not heaters or "recorder" not in self._hass.config.components:
+            return
+        from datetime import timedelta
+
+        from homeassistant.components.recorder import get_instance
+        from homeassistant.components.recorder.statistics import statistics_during_period
+        from homeassistant.helpers import entity_registry as er
+        from homeassistant.util import dt as dt_util
+
+        registry = er.async_get(self._hass)
+        prefix = self._hub_name.lower()
+
+        def entity_id(heater: str, key: str) -> Optional[str]:
+            return registry.async_get_entity_id("sensor", DOMAIN, f"{prefix}_{heater}_{key}")
+
+        try:
+            recorder = get_instance(self._hass)
+            await recorder.async_db_ready
+            now = dt_util.utcnow()
+            for name, heater in heaters.items():
+                fan_id, modulation_id = entity_id(name, "L_fluegas"), entity_id(name, "L_modulation")
+                if not fan_id or not modulation_id:
+                    continue
+                stats = await recorder.async_add_executor_job(
+                    statistics_during_period, self._hass, now - timedelta(days=HISTORY_DAYS),
+                    now, {fan_id, modulation_id}, "hour", None, {"mean"},
+                )
+
+                def rows(statistic_id: str) -> list[tuple[float, float]]:
+                    return [
+                        (row["start"], row["mean"])
+                        for row in stats.get(statistic_id, [])
+                        if row.get("mean") is not None
+                    ]
+
+                result = baseline_from_history(rows(fan_id), rows(modulation_id), now.timestamp())
+                if result is None:
+                    continue
+                baseline, recent, hours = result
+                if heater.seed_from_history(baseline, recent):
+                    _LOGGER.info(
+                        "Ökofen %s %s: flue-gas baseline %.1f %% from %d full-load hours of history",
+                        self._hub_name, name, baseline, hours,
+                    )
+                self._save_soon()
+        except Exception:  # noqa: BLE001 - history is a bonus, live learning still works
+            _LOGGER.debug("Ökofen %s: no flue-gas history available", self._hub_name, exc_info=True)
+            return
+        self._hub.async_notify_listeners()
 
 
 def utc_iso(timestamp: Optional[float]) -> Optional[str]:

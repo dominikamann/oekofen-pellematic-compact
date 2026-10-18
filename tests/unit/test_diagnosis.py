@@ -20,6 +20,7 @@ from custom_components.oekofen_pellematic_compact.diagnosis import (
     HeaterHealth,
     HeatPumpHealth,
     MessageLog,
+    baseline_from_history,
     decode_state,
     is_problem,
     overall_status,
@@ -155,6 +156,64 @@ def test_maintenance_button_clears_cleaning_warning_at_once():
     _burn(heater, 10 * STEP, fan=41, start=t)
     assert heater.findings() == []
     assert heater.baseline == pytest.approx(41, abs=1.5)
+
+
+def _history(fans, modulation=100, start=0.0):
+    """Hourly (start, mean) rows for fan and modulation."""
+    times = [start + i * 3600 for i in range(len(fans))]
+    return list(zip(times, fans)), [(t, modulation) for t in times]
+
+
+def test_history_baseline_stays_clean_while_fouling():
+    # Half a year clean at ~41 %, then weeks of fouling up to 65 %.
+    fans = [41 + (i % 5) * 0.3 for i in range(200)] + [45 + i * 0.25 for i in range(80)]
+    fan_rows, modulation_rows = _history(fans)
+    baseline, recent, hours = baseline_from_history(fan_rows, modulation_rows, fan_rows[-1][0])
+    assert hours == 280
+    assert baseline == pytest.approx(41.3, abs=0.5)
+    assert recent == pytest.approx(64.5, abs=0.5)
+
+
+def test_history_counts_full_load_hours_only():
+    fan_rows, _ = _history([90] * 30 + [41] * 10)
+    modulation_rows = [(t, 50 if i < 30 else 100) for i, (t, _) in enumerate(fan_rows)]
+    assert baseline_from_history(fan_rows, modulation_rows, fan_rows[-1][0]) is None
+    fan_rows, modulation_rows = _history([41] * 25)
+    assert baseline_from_history(fan_rows, modulation_rows, fan_rows[-1][0])[0] == pytest.approx(41)
+
+
+def test_history_recent_only_when_fresh():
+    fan_rows, modulation_rows = _history([41] * 25)
+    result = baseline_from_history(fan_rows, modulation_rows, fan_rows[-1][0] + 30 * DAY)
+    assert result[1] is None
+
+
+def test_seed_from_history_warns_at_once_on_a_fouled_boiler():
+    heater = HeaterHealth()
+    t = _burn(heater, 3600, fan=60)  # installed on a fouled boiler: still learning
+    assert heater.learning
+    assert heater.seed_from_history(41.0, None)
+    assert heater.baseline_source == "history" and not heater.learning
+    _burn(heater, 3600, fan=60, start=t)
+    assert _codes(heater.findings()) == ["cleaning_due"]
+
+
+def test_seed_from_history_replaces_a_baseline_learned_while_fouling():
+    heater = HeaterHealth()
+    _burn(heater, BASELINE_LEARN_SECONDS + STEP, fan=50)
+    assert heater.baseline == pytest.approx(50)
+    assert not heater.seed_from_history(48.5, None)  # within 5 %: keep the learned one
+    assert heater.seed_from_history(41.0, None)
+    assert heater.baseline == 41.0 and heater.history_checked
+    restored = HeaterHealth(heater.as_dict())
+    assert restored.baseline_source == "history" and restored.history_checked
+
+
+def test_baseline_follows_a_cleaner_boiler_faster():
+    heater = HeaterHealth()
+    t = _burn(heater, BASELINE_LEARN_SECONDS + STEP, fan=50)  # learned while fouled
+    _burn(heater, 50 * 3600, fan=41, start=t)  # cleaned, without pressing the button
+    assert heater.baseline < 45
 
 
 # -- ignition -------------------------------------------------------------

@@ -206,6 +206,7 @@ def create_diagnosis_sensors(hub_name, hub, device_info, monitor: DiagnosisMonit
                     "baseline": round(h(d).baseline, 1) if h(d).baseline else None,
                     "current_at_full_load": round(h(d).recent, 1) if h(d).recent else None,
                     "learning_progress": h(d).learn_progress,
+                    "baseline_source": h(d).baseline_source,
                 },
                 unit=PERCENTAGE, icon="mdi:fan-chevron-up",
             ))

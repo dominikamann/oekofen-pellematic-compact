@@ -193,11 +193,15 @@ content: >
 
 ### Good to know
 
-- **Learning:** the normal flue-gas fan speed is learned during the first 5 hours of full-load
-  operation; until then the status is `learning` and the flue-gas index shows the progress in its
-  `learning_progress` attribute. In winter that takes a day or two, in spring and autumn, when the
-  boiler rarely runs at full load, it can take a few weeks. The other checks do not wait for it.
-  The value adapts slowly to seasonal drift but never to a fouling boiler.
+- **Learning:** the normal flue-gas fan speed at full load comes from your **history** first: at
+  start the diagnosis reads up to a year of the recorder's hourly statistics and takes a low
+  quantile of all full-load hours. That level stays at the clean value even when the boiler is
+  fouling right now, so a new installation on a dirty boiler warns at once. Without enough history
+  it learns during the first 5 hours of full-load operation; until then the status is `learning`
+  and the flue-gas index shows the progress in its `learning_progress` attribute (`baseline_source`
+  says `history` or `learned`). In spring and autumn, when the boiler rarely runs at full load,
+  that can take a few weeks; the other checks do not wait for it. Afterwards the value follows
+  seasonal drift slowly, a cleaner boiler faster, and never a fouling one.
 - **First hours:** burner runtime per start is shown right away from the boiler's own counters,
   starts per day after 12 hours. Short cycling is only judged after two days of data.
 - **Maintenance counter:** counting starts when you install this version. Press

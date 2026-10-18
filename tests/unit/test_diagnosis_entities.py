@@ -1,6 +1,8 @@
 """Full setup against real fixtures: diagnosis entities, events and button."""
 
 import copy
+
+import pytest
 from unittest.mock import patch
 
 from homeassistant.helpers import entity_registry as er
@@ -149,4 +151,54 @@ async def test_diagnosis_is_persisted_while_polling(hass, hass_storage, enable_c
     await hass.async_block_till_done()
     stored = hass_storage[f"{DOMAIN}.diagnosis.{entry.entry_id}"]["data"]
     assert stored["messages"]["count"] == 1
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_baseline_from_recorder_history(recorder_mock, hass, enable_custom_integrations):
+    """A new installation on a fouled boiler warns at once from the recorder statistics."""
+    from homeassistant.components.recorder.models import StatisticMeanType
+    from homeassistant.components.recorder.statistics import async_import_statistics
+    from pytest_homeassistant_custom_component.components.recorder.common import (
+        async_wait_recording_done,
+    )
+
+    data = copy.deepcopy(load_fixture("api_response_ext_zx.json"))
+    data["error"] = {}
+    entry = await _setup(hass, data)
+    registry = er.async_get(hass)
+    fan_id = registry.async_get_entity_id("sensor", DOMAIN, "pellematic_pe1_L_fluegas")
+    modulation_id = registry.async_get_entity_id("sensor", DOMAIN, "pellematic_pe1_L_modulation")
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+    hour = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+    fans = [41.0] * 40 + [60.0] * 3  # clean for weeks, fouled in the last hours
+    for statistic_id, values in ((fan_id, fans), (modulation_id, [100.0] * len(fans))):
+        async_import_statistics(
+            hass,
+            {
+                "has_mean": True,
+                "mean_type": StatisticMeanType.ARITHMETIC,
+                "has_sum": False,
+                "name": None,
+                "source": "recorder",
+                "statistic_id": statistic_id,
+                "unit_class": None,
+                "unit_of_measurement": "%",
+            },
+            [
+                {"start": hour - timedelta(hours=len(values) - i), "mean": v, "min": v, "max": v}
+                for i, v in enumerate(values)
+            ],
+        )
+    await async_wait_recording_done(hass)
+
+    with patch(FETCH, return_value=data):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+
+    index = hass.states.get("sensor.pellematic_pe1_flue_gas_index")
+    assert index.attributes["baseline_source"] == "history"
+    assert index.attributes["baseline"] == 41.0
+    assert float(index.state) == pytest.approx(146.3, abs=0.1)
+    assert hass.states.get("sensor.pellematic_diagnosis").state == "cleaning_due"
     assert await hass.config_entries.async_unload(entry.entry_id)
