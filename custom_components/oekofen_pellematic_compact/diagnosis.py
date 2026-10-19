@@ -50,9 +50,11 @@ DAY = 86400.0
 # that ships one ("0:Dauerlauf|1:Start|2:Zuendung|...|11:Störung|..."). Newer
 # firmware sends the same indices as a bit mask instead (16 = bit 4 =
 # Leistungsbrand, 2048 = bit 11 = Störung) and drops the `format`.
+STATE_START = 1
 STATE_IGNITION = 2
 STATE_SOFTSTART = 3
 STATE_FULL_BURN = 4
+STATE_SUCTION = 7
 STATE_ASH = 8
 STATE_PELLETS = 9
 STATE_FAULT = 11
@@ -383,6 +385,9 @@ class HeaterHealth:
         self.has_counters = False
         self.states: set[int] = set()
         self._ignition_start: Optional[float] = None
+        # Set when an ignition was cut short by a pellet suction; the outcome
+        # is decided by what the boiler does once the hopper is refilled.
+        self._ignition_interrupted: Optional[float] = None
         self._last_update: Optional[float] = None
         self._now: float = 0.0
 
@@ -520,6 +525,10 @@ class HeaterHealth:
         igniting = STATE_IGNITION in self.states
         if igniting and STATE_IGNITION not in previous:
             self._ignition_start = now
+            self._ignition_interrupted = None
+            return
+        if self._ignition_interrupted is not None and not igniting:
+            self._resolve_interrupted_ignition(now)
             return
         if igniting or self._ignition_start is None:
             return
@@ -527,11 +536,15 @@ class HeaterHealth:
         self._ignition_start = None
         if not 0 < minutes <= MAX_IGNITION_MINUTES:
             return
-        if not self.states & {STATE_SOFTSTART, STATE_FULL_BURN}:
-            self.ignition_failures.append(now)
-            self.ignition_failures = [
-                t for t in self.ignition_failures if now - t <= WINDOW_DAYS * DAY
-            ]
+        burning = self.states & {STATE_SOFTSTART, STATE_FULL_BURN}
+        if STATE_SUCTION in self.states and not burning:
+            # The boiler paused the ignition to refill its hopper. That is not
+            # a failure: the flame often catches during the suction, or the
+            # boiler ignites again afterwards. Decide once the suction is over.
+            self._ignition_interrupted = now
+            return
+        if not burning:
+            self._record_ignition_failure(now)
             return
         self.ignition_last = round(minutes, 1)
         self.ignition_avg = round(
@@ -548,6 +561,33 @@ class HeaterHealth:
                     sum(self._ignition_ref_samples) / len(self._ignition_ref_samples), 2
                 )
                 self._ignition_ref_samples = []
+
+    def _resolve_interrupted_ignition(self, now: float) -> None:
+        """Judge an ignition that a pellet suction interrupted.
+
+        A flame that caught (softstart or full burn) is a success; refilling
+        or preparing a fresh ignition keeps the verdict open (a new ignition
+        is judged on its own). Anything else is a failed ignition. No ignition
+        time is recorded: it would include the suction.
+        """
+        since = self._ignition_interrupted
+        if since is None:
+            return
+        if self.states & {STATE_SOFTSTART, STATE_FULL_BURN}:
+            self._ignition_interrupted = None
+            return
+        within = now - since <= MAX_IGNITION_MINUTES * 60
+        if within and self.states & {STATE_SUCTION, STATE_START}:
+            return
+        self._ignition_interrupted = None
+        if within:
+            self._record_ignition_failure(now)
+
+    def _record_ignition_failure(self, now: float) -> None:
+        self.ignition_failures.append(now)
+        self.ignition_failures = [
+            t for t in self.ignition_failures if now - t <= WINDOW_DAYS * DAY
+        ]
 
     def _track_flue_gas(
         self, fan: Optional[float], modulation: Optional[float], weight: float
