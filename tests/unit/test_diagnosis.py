@@ -34,6 +34,7 @@ START = {"val": 2, "factor": 1}
 IGNITION = {"val": 4, "factor": 1}
 SOFTSTART = {"val": 8, "factor": 1}
 FULL_BURN = {"val": 16, "factor": 1}
+SUCTION = {"val": 128, "factor": 1}
 OFF = {"val": 2147483648, "factor": 1}
 FAULT_STATE = {"val": 2048, "factor": 1}
 
@@ -246,6 +247,60 @@ def test_failed_ignitions_warn():
     # A week later they have aged out.
     heater.update(_pe(OFF), t + 8 * DAY)
     assert heater.findings() == []
+
+
+def test_suction_during_ignition_is_not_a_failure():
+    # Seen on a Pellematic: the hopper refill pauses the ignition, the flame
+    # catches during the suction and the boiler goes straight to softstart.
+    heater = HeaterHealth()
+    heater.update(_pe(OFF), 0)
+    heater.update(_pe(IGNITION), 30)
+    heater.update(_pe(SUCTION), 240)
+    heater.update(_pe(SUCTION), 270)
+    heater.update(_pe(SOFTSTART), 360)
+    heater.update(_pe(FULL_BURN), 420)
+    assert heater.failed_ignitions() == 0
+    assert heater.ignition_count == 0  # the time would include the suction
+
+
+def test_suction_then_new_ignition_is_judged_on_the_new_one():
+    heater = HeaterHealth()
+    heater.update(_pe(OFF), 0)
+    heater.update(_pe(IGNITION), 30)
+    heater.update(_pe(SUCTION), 240)
+    heater.update(_pe(START), 600)
+    heater.update(_pe(IGNITION), 630)
+    heater.update(_pe(SOFTSTART), 870)
+    assert heater.failed_ignitions() == 0
+    assert heater.ignition_last == 4.0
+    assert heater.ignition_count == 1
+
+
+def test_suction_then_giving_up_is_a_failure():
+    heater = HeaterHealth()
+    heater.update(_pe(OFF), 0)
+    heater.update(_pe(IGNITION), 30)
+    heater.update(_pe(SUCTION), 240)
+    heater.update(_pe(OFF), 420)
+    assert heater.failed_ignitions() == 1
+
+
+def test_suction_then_new_ignition_that_fails_counts_once():
+    heater = HeaterHealth()
+    heater.update(_pe(IGNITION), 0)
+    heater.update(_pe(SUCTION), 210)
+    heater.update(_pe(START), 400)
+    heater.update(_pe(IGNITION), 430)
+    heater.update(_pe(START), 1030)  # second ignition gave up
+    assert heater.failed_ignitions() == 1
+
+
+def test_polling_gap_after_suction_gives_no_verdict():
+    heater = HeaterHealth()
+    heater.update(_pe(IGNITION), 0)
+    heater.update(_pe(SUCTION), 210)
+    heater.update(_pe(OFF), 210 + 2 * 3600)
+    assert heater.failed_ignitions() == 0
 
 
 def test_slow_ignition_against_reference():
