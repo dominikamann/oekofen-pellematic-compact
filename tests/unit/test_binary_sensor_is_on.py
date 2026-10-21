@@ -49,3 +49,28 @@ def test_is_on_handles_true_false_strings(raw_value, expected):
 def test_is_on_returns_none_when_missing():
     sensor = _make_sensor("circ1", "L_pump", {"circ1": {}})
     assert sensor.is_on is None
+
+
+@pytest.mark.parametrize("key", ["L_not", "L_stb"])
+@pytest.mark.parametrize(
+    "raw_value,expected",
+    [
+        # Normally closed safety circuit: 1 = closed = OK (issue #197)
+        ({"val": 1, "format": "0:Aus|1:Ein"}, False),
+        ({"val": 0, "format": "0:Aus|1:Ein"}, True),
+        ({"val": "true", "format": "0:Aus|1:Ein"}, False),
+        ({"val": "0", "format": "0:Aus|1:Ein"}, True),
+        (True, False),
+        ("false", True),
+    ],
+)
+def test_is_on_inverts_normally_closed_safety_inputs(key, raw_value, expected):
+    sensor = _make_sensor("pe1", key, {"pe1": {key: raw_value}})
+    sensor._inverted = True
+    assert sensor.is_on is expected
+
+
+def test_inverted_sensor_stays_unknown_when_missing():
+    sensor = _make_sensor("pe1", "L_not", {"pe1": {}})
+    sensor._inverted = True
+    assert sensor.is_on is None

@@ -283,6 +283,19 @@ def infer_device_class(data: dict, key: str) -> Optional[str]:
     return None
 
 
+# Safety inputs wired as a normally closed circuit (emergency stop, safety
+# thermostat): the API reports 1 while the circuit is closed (all good) and 0
+# once it opens. Every fixture shows 1 on a healthy boiler, so for the PROBLEM
+# device class the raw value has to be inverted (issue #197).
+NORMALLY_CLOSED_MARKERS = ("_not", "_stb")
+
+
+def is_normally_closed(key: str) -> bool:
+    """Return True if the binary key is OK at 1 and a problem at 0."""
+    key_lower = key.lower()
+    return any(marker in key_lower for marker in NORMALLY_CLOSED_MARKERS)
+
+
 def infer_binary_device_class(data: dict, key: str) -> Optional[BinarySensorDeviceClass]:
     """Infer the correct BinarySensorDeviceClass from key name and context."""
     key_lower = key.lower()
@@ -297,7 +310,7 @@ def infer_binary_device_class(data: dict, key: str) -> Optional[BinarySensorDevi
         return BinarySensorDeviceClass.RUNNING
 
     # Fault / emergency / safety trip condition
-    if any(word in key_lower for word in ("_not", "_stb", "error", "fault", "stoer")):
+    if is_normally_closed(key) or any(word in key_lower for word in ("error", "fault", "stoer")):
         return BinarySensorDeviceClass.PROBLEM
 
     # USB / connectivity
@@ -620,6 +633,10 @@ def discover_entities_from_component(
             if is_binary_sensor(data):
                 definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation, language)
                 definition["device_class"] = infer_binary_device_class(data, key)
+                definition["inverted"] = (
+                    definition["device_class"] == BinarySensorDeviceClass.PROBLEM
+                    and is_normally_closed(key)
+                )
                 entities["binary_sensors"].append(definition)
             else:
                 definition = create_sensor_definition(component_key, key, data, index, keys_need_disambiguation, language)

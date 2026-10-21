@@ -244,6 +244,8 @@ async def async_setup_entry(
 class PellematicBinarySensor(BinarySensorEntity):
     """Representation of a binary sensor entity."""
 
+    _inverted = False
+
     def __init__(
         self,
         hub_name,
@@ -268,6 +270,8 @@ class PellematicBinarySensor(BinarySensorEntity):
 
         # Set device class from definition (None is fine — HA will show a generic on/off)
         self._attr_device_class = sensor_definition.get('device_class') or None
+        # Normally closed safety inputs (L_not, L_stb): 1 = OK, 0 = problem
+        self._inverted = bool(sensor_definition.get('inverted'))
 
         _LOGGER.debug(
             "Adding dynamic PellematicBinarySensor: %s, %s",
@@ -277,6 +281,13 @@ class PellematicBinarySensor(BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return True when the sensor is on, False when off, None when unknown."""
+        state = self._raw_is_on()
+        if state is None or not self._inverted:
+            return state
+        return not state
+
+    def _raw_is_on(self) -> bool | None:
+        """Return the API value as a bool, None when unknown."""
         try:
             raw_data = self._hub.data[self._prefix][self._key.replace("#2", "")]
             current_value = get_api_value(raw_data)
