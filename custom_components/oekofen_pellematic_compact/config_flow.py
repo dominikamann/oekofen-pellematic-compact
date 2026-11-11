@@ -43,7 +43,9 @@ from .const import (
     DEFAULT_NUM_OF_WIRELESS_SENSORS,
     CONF_NUM_OF_WIRELESS_SENSORS,
     CONF_NUM_OF_BUFFER_STORAGE,
-    DEFAULT_NUM_OF_BUFFER_STORAGE
+    DEFAULT_NUM_OF_BUFFER_STORAGE,
+    ApiUsagePageError,
+    is_api_usage_page,
 )
 
 from homeassistant.core import HomeAssistant, callback
@@ -354,6 +356,11 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 suggested_charset = None
                 str_response = raw_data.decode(self._charset, 'ignore')
             
+            if is_api_usage_page(str_response):
+                raise ApiUsagePageError(
+                    "The heater returned its JSON interface help page instead of data - check the URL (must end with /all) and the JSON password"
+                )
+
             # Apply hotfix for invalid JSON
             str_response = str_response.replace("L_statetext:", 'L_statetext":')
             data = json.loads(str_response, strict=False)
@@ -502,12 +509,12 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                                 title=final_config[CONF_NAME], 
                                 data=final_config
                             )
-                        
+
                 except Exception as e:
                     import logging
                     _LOGGER = logging.getLogger(__name__)
                     _LOGGER.error("Failed to connect or discover: %s", e)
-                    errors["base"] = "cannot_connect"
+                    errors["base"] = "usage_page" if isinstance(e, ApiUsagePageError) else "cannot_connect"
                     # Ensure charset and old_firmware have fallback values
                     user_input.setdefault(CONF_CHARSET, DEFAULT_CHARSET)
                     user_input.setdefault(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE)
@@ -651,7 +658,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                     import logging
                     _LOGGER = logging.getLogger(__name__)
                     _LOGGER.error("Failed to connect during reconfigure: %s", e)
-                    errors["base"] = "cannot_connect"
+                    errors["base"] = "usage_page" if isinstance(e, ApiUsagePageError) else "cannot_connect"
                     # Ensure charset and API suffix have fallback values
                     user_input.setdefault(CONF_CHARSET, current_config.get(CONF_CHARSET, DEFAULT_CHARSET))
                     user_input.setdefault(CONF_API_SUFFIX, current_config.get(CONF_API_SUFFIX, DEFAULT_API_SUFFIX))

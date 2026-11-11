@@ -25,6 +25,7 @@
     "error": {
       "already_configured": "Appareil déjà configuré",
       "cannot_connect": "Échec de connexion à l'API. Vérifiez l'URL et le mot de passe. Si l'URL est correcte, l'API Ökofen peut limiter les requêtes - veuillez patienter un moment et réessayer.",
+      "usage_page": "La chaudière a renvoyé la page d'aide de son interface JSON au lieu des données. Cela signifie presque toujours que l'URL ou le mot de passe JSON est incorrect. L'URL doit avoir la forme http://IP:PORT/MOT_DE_PASSE/all - avec /all à la fin et le mot de passe JSON affiché par le Touch là où vous avez activé l'interface JSON.",
       "invalid_charset": "Encodage de caractères invalide. Utilisez un codec Python valide (ex: iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {

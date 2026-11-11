@@ -45,6 +45,23 @@ ATTR_MANUFACTURER = "Ökofen"
 ATTR_MODEL = "Pellematic Compact"
 
 
+class ApiUsagePageError(Exception):
+    """The heater answered with the help page of its JSON interface instead of data."""
+
+
+def is_api_usage_page(text: str) -> bool:
+    """Return True if a response is the JSON interface help page, not JSON.
+
+    The Touch answers requests it can't map to a command (wrong password or a
+    URL without /all) with a plain-text page starting with
+    "Oekofen JSON Interface ... usage:" (issue #200).
+    """
+    head = text.lstrip()[:500]
+    if head.startswith("{"):
+        return False
+    return "JSON Interface" in head or "usage:" in head
+
+
 def get_api_value(data_field, default=None):
     """Extract value from API data field.
     

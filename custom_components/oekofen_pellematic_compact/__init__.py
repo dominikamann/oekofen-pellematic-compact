@@ -50,6 +50,8 @@ from .const import (
     DEFAULT_NUM_OF_HEAT_PUMPS,
     DEFAULT_NUM_OF_WIRELESS_SENSORS,
     DEFAULT_NUM_OF_BUFFER_STORAGE,
+    ApiUsagePageError,
+    is_api_usage_page,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -931,6 +933,11 @@ def fetch_data(url: str, charset: str = DEFAULT_CHARSET, api_suffix: str = DEFAU
         finally:
             if response is not None:
                 response.close()
+
+    if is_api_usage_page(str_response):
+        raise ApiUsagePageError(
+            "The heater returned its JSON interface help page instead of data - check the URL (must end with /all) and the JSON password"
+        )
 
     # Hotfix for pellematic update 4.02 (invalid json)
     str_response = str_response.replace("L_statetext:", 'L_statetext":')

@@ -25,6 +25,7 @@
     "error": {
       "already_configured": "Gerät ist bereits konfiguriert",
       "cannot_connect": "Verbindung zur API fehlgeschlagen. Überprüfen Sie die URL und das Passwort. Falls die URL korrekt ist, könnte die Ökofen-API zu viele Anfragen blockieren - bitte warten Sie einen Moment und versuchen Sie es erneut.",
+      "usage_page": "Die Heizung hat statt Daten die Hilfeseite ihrer JSON-Schnittstelle geschickt. Das bedeutet fast immer, dass die URL oder das JSON-Passwort falsch ist. Die URL muss so aussehen: http://IP:PORT/PASSWORT/all - mit /all am Ende und dem JSON-Passwort, das der Touch dort anzeigt, wo Sie die JSON-Schnittstelle aktiviert haben.",
       "invalid_charset": "Ungültige Zeichenkodierung. Verwenden Sie einen gültigen Python-Codec (z.B. iso-8859-1, utf-8, windows-1252)"
     },
     "abort": {
