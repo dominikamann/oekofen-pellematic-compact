@@ -10,6 +10,7 @@ from custom_components.oekofen_pellematic_compact.diagnosis import (
     NOTIFICATION_TITLES,
     Diagnosis,
     DiagnosisMonitor,
+    message_notification,
     notification_for,
 )
 
@@ -27,8 +28,8 @@ CLEANING_SOON = {
 
 
 def test_notification_for_active_finding():
-    assert notification_for(CLEANING_SOON, "Pelletheizung", "de") == (
-        "oekofen_pellematic_compact_pelletheizung_pe1_cleaning_soon",
+    assert notification_for(CLEANING_SOON, "Pelletheizung", "de", "abc123") == (
+        "oekofen_pellematic_compact_abc123_pe1_cleaning_soon",
         "Pelletheizung: Reinigung bald fällig",
         "Saugzug bei 115.0 % des Normalwerts - Reinigung einplanen",
     )
@@ -36,25 +37,61 @@ def test_notification_for_active_finding():
 
 def test_notification_for_cleared_finding_is_none():
     cleared = {"component": "pe1", "code": "cleaning_soon", "active": False}
-    assert notification_for(cleared, "Pelletheizung", "de") is None
+    assert notification_for(cleared, "Pelletheizung", "de", "abc123") is None
 
 
 def test_notification_for_unknown_language_falls_back_to_english():
-    _, title, _ = notification_for(CLEANING_SOON, "Pelletheizung", "xx")
+    _, title, _ = notification_for(CLEANING_SOON, "Pelletheizung", "xx", "abc123")
     assert title == "Pelletheizung: Cleaning due soon"
 
 
 def test_notification_for_unknown_code_uses_code_as_label():
     change = dict(CLEANING_SOON, code="something_new")
-    _, title, _ = notification_for(change, "Pelletheizung", "de")
+    _, title, _ = notification_for(change, "Pelletheizung", "de", "abc123")
     assert title == "Pelletheizung: something_new"
 
 
 def test_notification_id_is_the_same_when_a_finding_reappears():
     later = dict(CLEANING_SOON, value=117.1, message="Saugzug bei 117.1 %")
-    assert notification_for(later, "Pelletheizung", "de")[0] == notification_for(
-        CLEANING_SOON, "Pelletheizung", "de"
+    assert notification_for(later, "Pelletheizung", "de", "abc123")[0] == notification_for(
+        CLEANING_SOON, "Pelletheizung", "de", "abc123"
     )[0]
+
+
+def test_notification_ids_differ_between_hubs_with_similar_names():
+    first = notification_for(CLEANING_SOON, "Heizung Süd", "de", "entry1")[0]
+    second = notification_for(CLEANING_SOON, "Heizung Sd", "de", "entry2")[0]
+    assert first != second
+
+
+def test_boiler_log_finding_is_left_to_the_message_notification():
+    change = dict(CLEANING_SOON, component="error", code="boiler_message")
+    assert notification_for(change, "Pelletheizung", "de", "abc123") is None
+
+
+ASH_MESSAGE = {
+    "time": "2026-11-14T18:21:01",
+    "text": "PE 1 Aschebox in Kürze voll Bitte in den nächsten Tagen entleeren",
+    "code": 5050,
+    "source": "boiler",
+}
+
+
+def test_message_notification_for_boiler_message():
+    assert message_notification(ASH_MESSAGE, "Pelletheizung", "de", "abc123") == (
+        "oekofen_pellematic_compact_abc123_message_5050",
+        "Pelletheizung: Kesselmeldung 5050",
+        "PE 1 Aschebox in Kürze voll Bitte in den nächsten Tagen entleeren",
+    )
+
+
+def test_message_notification_skips_fault_entries():
+    fault = {"time": "x", "text": "Störung", "code": None, "source": "pe1"}
+    assert message_notification(fault, "Pelletheizung", "de", "abc123") is None
+
+
+def test_regional_language_uses_the_base_language():
+    assert Diagnosis(language="de-CH").language == "de"
 
 
 @pytest.mark.parametrize("language", sorted(MESSAGES))
@@ -87,7 +124,7 @@ def test_monitor_creates_notification_for_new_finding(create):
         monitor._hass,
         "Kessel in Störung: Störung",
         "Pelletheizung: Störung",
-        "oekofen_pellematic_compact_pelletheizung_pe1_fault",
+        "oekofen_pellematic_compact_entry_pe1_fault",
     )
 
 
@@ -116,3 +153,17 @@ def test_monitor_does_not_notify_again_after_restart(create):
     restarted, hub = _monitor(stored=first.diagnosis.as_dict())
     _feed(restarted, hub, FAULTED)
     assert create.call_count == 1
+
+
+@patch("homeassistant.components.persistent_notification.async_create")
+def test_monitor_notifies_every_new_boiler_message(create):
+    monitor, hub = _monitor()
+    ash = "14-11-2026 18:21:01|PE 1 Aschebox voll[5050]"
+    pellets = "16-11-2026 20:00:00|PE 1 Pellets leer[5060]"
+    _feed(monitor, hub, {"error": {"error_1": ash}})
+    _feed(monitor, hub, {"error": {"error_1": ash, "error_2": pellets}})
+    ids = [call.args[3] for call in create.call_args_list]
+    assert ids == [
+        "oekofen_pellematic_compact_entry_message_5050",
+        "oekofen_pellematic_compact_entry_message_5060",
+    ]

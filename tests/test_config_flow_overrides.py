@@ -306,10 +306,6 @@ async def test_reconfigure_user_override():
     assert updated_data[CONF_OLD_FIRMWARE] is True  # User's choice (NOT auto-detected False)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
-
-
 def _reconfigure_flow(current):
     flow = OekofenPellematicCompactConfigFlow()
     flow.hass = MagicMock()
@@ -380,3 +376,7 @@ async def test_reconfigure_notifications_with_host_change_still_probes():
     flow.hass.async_add_executor_job.assert_awaited()
     updated = flow.hass.config_entries.async_update_entry.call_args[1]["data"]
     assert updated[CONF_NOTIFICATIONS] is False
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

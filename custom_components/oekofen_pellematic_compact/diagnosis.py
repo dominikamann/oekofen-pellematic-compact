@@ -934,6 +934,7 @@ class Diagnosis:
 
     def __init__(self, stored: Optional[dict] = None, language: str = "en") -> None:
         stored = stored or {}
+        language = (language or "en").split("-")[0]
         self.language = language if language in MESSAGES else "en"
         self.messages = MessageLog(stored.get("messages"))
         self.heaters = {n: HeaterHealth(d) for n, d in stored.get("heaters", {}).items()}
@@ -1009,20 +1010,41 @@ class Diagnosis:
         return changes
 
 
-def notification_for(change: dict, hub_name: str, language: str) -> Optional[tuple[str, str, str]]:
+def notification_for(
+    change: dict, hub_name: str, language: str, entry_id: str
+) -> Optional[tuple[str, str, str]]:
     """(notification_id, title, message) for a finding that appeared, else None.
 
     The id is fixed per component and code, so a finding that clears and comes
-    back replaces its notification instead of stacking a second one.
+    back replaces its notification instead of stacking a second one. Boiler-log
+    findings share one key for all messages, so those are notified per message
+    by `message_notification` instead.
     """
-    if not change.get("active"):
+    if not change.get("active") or change["component"] == "error":
         return None
     titles = NOTIFICATION_TITLES.get(language, NOTIFICATION_TITLES["en"])
-    hub = re.sub(r"[^a-z0-9]+", "_", hub_name.lower()).strip("_")
     return (
-        f"{DOMAIN}_{hub}_{change['component']}_{change['code']}",
+        f"{DOMAIN}_{entry_id}_{change['component']}_{change['code']}",
         f"{hub_name}: {titles.get(change['code'], change['code'])}",
         change["message"],
+    )
+
+
+def message_notification(
+    entry: dict, hub_name: str, language: str, entry_id: str
+) -> Optional[tuple[str, str, str]]:
+    """(notification_id, title, message) for a new boiler-log message, else None.
+
+    Fault entries are skipped: the fault finding already announces them.
+    """
+    if entry.get("source") != "boiler":
+        return None
+    title = NOTIFICATION_TITLES.get(language, NOTIFICATION_TITLES["en"])[BOILER_MESSAGE]
+    code = entry.get("code")
+    return (
+        f"{DOMAIN}_{entry_id}_message_{code if code is not None else 'none'}",
+        f"{hub_name}: {title}{f' {code}' if code is not None else ''}",
+        entry["text"],
     )
 
 
@@ -1036,6 +1058,7 @@ class DiagnosisMonitor:
         self._hub = hub
         self._hub_name = hub_name
         self._notify = notify
+        self._entry_id = entry_id
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.diagnosis.{entry_id}")
         self.diagnosis = Diagnosis(language=hass.config.language)
         self._last_save = 0.0
@@ -1072,15 +1095,20 @@ class DiagnosisMonitor:
         messages, changes = self.diagnosis.update(
             self._hub.data or {}, now.timestamp(), dt_util.as_local(now).isoformat()
         )
+        notifications = []
         for entry in messages:
             _LOGGER.warning("Ökofen %s: %s", self._hub_name, entry["text"])
             self._hass.bus.async_fire(EVENT_MESSAGE, {"hub": self._hub_name, **entry})
+            notifications.append(
+                message_notification(entry, self._hub_name, self.diagnosis.language, self._entry_id)
+            )
         for change in changes:
             self._hass.bus.async_fire(EVENT_FINDING, {"hub": self._hub_name, **change})
-            notification = self._notify and notification_for(
-                change, self._hub_name, self.diagnosis.language
+            notifications.append(
+                notification_for(change, self._hub_name, self.diagnosis.language, self._entry_id)
             )
-            if notification:
+        if self._notify:
+            for notification in filter(None, notifications):
                 notification_id, title, message = notification
                 persistent_notification.async_create(self._hass, message, title, notification_id)
         if messages or changes or time.monotonic() - self._last_save >= SAVE_INTERVAL_SECONDS:
