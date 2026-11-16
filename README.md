@@ -290,6 +290,10 @@ Set unit of measurement to `m³` and device class to `Gas` so the result shows u
 - **Development:** see [CONTRIBUTING.md](CONTRIBUTING.md). Security problems: [SECURITY.md](SECURITY.md).
 - **License:** [Apache 2.0](LICENSE)
 
+This is an unofficial community project. It is not affiliated with, endorsed by or supported by ÖkoFEN.
+ÖkoFEN, Pellematic and Pellematic Compact are trademarks of their respective owners and are used here
+only to describe which heaters the integration works with.
+
 ---
 
 <p align="center">Proudly provided by <a href="https://amannlabs.eu">amannlabs.eu</a></p>
