@@ -18,7 +18,8 @@
           "host": "JSON API URL (including password)",
           "scan_interval": "Polling interval (seconds)",
           "charset": "Character set (iso-8859-1 or utf-8)",
-          "old_firmware": "Old firmware mode (around v3.10)"
+          "old_firmware": "Old firmware mode (around v3.10)",
+          "notifications": "Show diagnosis findings as Home Assistant notifications"
         }
       }
     },

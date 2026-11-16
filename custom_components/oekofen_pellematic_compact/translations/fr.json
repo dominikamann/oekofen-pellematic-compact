@@ -18,7 +18,8 @@
           "host": "URL de l'API JSON (mot de passe inclus)",
           "scan_interval": "Fréquence de rafraîchissement (secondes)",
           "charset": "Jeu de caractères (iso-8859-1 ou utf-8)",
-          "old_firmware": "Mode ancien firmware (environ v3.10)"
+          "old_firmware": "Mode ancien firmware (environ v3.10)",
+          "notifications": "Afficher les diagnostics comme notifications Home Assistant"
         }
       }
     },

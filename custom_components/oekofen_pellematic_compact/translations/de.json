@@ -18,7 +18,8 @@
           "host": "JSON-API URL (inkl. Passwort)",
           "scan_interval": "Aktualisierungsintervall (Sekunden)",
           "charset": "Zeichensatz (iso-8859-1 oder utf-8)",
-          "old_firmware": "Alte Firmware-Version (ca. v3.10)"
+          "old_firmware": "Alte Firmware-Version (ca. v3.10)",
+          "notifications": "Diagnose-Befunde als Home-Assistant-Benachrichtigung anzeigen"
         }
       }
     },

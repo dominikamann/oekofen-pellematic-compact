@@ -8,6 +8,7 @@ from custom_components.oekofen_pellematic_compact.const import (
     DOMAIN,
     CONF_CHARSET,
     CONF_OLD_FIRMWARE,
+    CONF_NOTIFICATIONS,
     CONF_API_SUFFIX,
     CONF_NUM_OF_HEATING_CIRCUIT,
     DEFAULT_CHARSET,
@@ -307,3 +308,75 @@ async def test_reconfigure_user_override():
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+def _reconfigure_flow(current):
+    flow = OekofenPellematicCompactConfigFlow()
+    flow.hass = MagicMock()
+    mock_entry = MagicMock()
+    mock_entry.data = current
+    flow.hass.config_entries.async_get_entry = MagicMock(return_value=mock_entry)
+    flow.hass.config_entries.async_update_entry = MagicMock()
+    flow.hass.config_entries.async_reload = AsyncMock(return_value=None)
+    flow.hass.async_add_executor_job = AsyncMock(
+        return_value=({"system": {}}, "utf-8", "?", False)
+    )
+    flow.context = {"entry_id": "test123"}
+    return flow
+
+
+CURRENT = {
+    CONF_HOST: "http://192.168.1.100/pass/all?",
+    CONF_NAME: "My Heater",
+    CONF_SCAN_INTERVAL: 30,
+    CONF_CHARSET: "utf-8",
+    CONF_OLD_FIRMWARE: False,
+    CONF_API_SUFFIX: "?",
+}
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_shows_notifications_switch_on_by_default():
+    flow = _reconfigure_flow(dict(CURRENT))
+    result = await flow.async_step_reconfigure(None)
+    defaults = {str(k): k.default() for k in result["data_schema"].schema}
+    assert defaults[CONF_NOTIFICATIONS] is True
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_only_notifications_skips_the_api_probe():
+    flow = _reconfigure_flow(dict(CURRENT))
+    user_input = {
+        CONF_HOST: "http://192.168.1.100/pass/all",  # the form shows it without "?"
+        CONF_SCAN_INTERVAL: 30,
+        CONF_CHARSET: "utf-8",
+        CONF_OLD_FIRMWARE: False,
+        CONF_NOTIFICATIONS: False,
+    }
+
+    result = await flow.async_step_reconfigure(user_input)
+
+    flow.hass.async_add_executor_job.assert_not_awaited()
+    updated = flow.hass.config_entries.async_update_entry.call_args[1]["data"]
+    assert updated == {**CURRENT, CONF_NOTIFICATIONS: False}
+    flow.hass.config_entries.async_reload.assert_awaited_once()
+    assert result["reason"] == "reconfiguration_successful"
+
+
+@pytest.mark.asyncio
+async def test_reconfigure_notifications_with_host_change_still_probes():
+    flow = _reconfigure_flow(dict(CURRENT))
+    user_input = {
+        CONF_HOST: "http://192.168.1.101/pass/all",
+        CONF_SCAN_INTERVAL: 30,
+        CONF_CHARSET: "utf-8",
+        CONF_OLD_FIRMWARE: False,
+        CONF_NOTIFICATIONS: False,
+    }
+
+    with patch('custom_components.oekofen_pellematic_compact.discover_components_from_api', return_value={}):
+        await flow.async_step_reconfigure(user_input)
+
+    flow.hass.async_add_executor_job.assert_awaited()
+    updated = flow.hass.config_entries.async_update_entry.call_args[1]["data"]
+    assert updated[CONF_NOTIFICATIONS] is False

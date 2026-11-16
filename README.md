@@ -129,6 +129,21 @@ Each finding in the `findings` attribute looks like this:
   message: Flue-gas fan at 116.2 % of normal - plan a cleaning   # in your HA language
 ```
 
+### Notifications
+
+Every new finding shows up as a Home Assistant notification (the bell in the sidebar), e.g.
+*Pelletheizung: Cleaning due soon – Flue-gas fan at 115.0 % of normal - plan a cleaning*. This
+covers all levels, from a slow ignition to a fault, and boiler messages such as a full ash box.
+
+- A notification stays until you dismiss it, even if the finding has cleared in the meantime.
+- If a finding clears and comes back, it replaces its earlier notification instead of adding a second one.
+- It is on by default. To switch it off, open the integration, choose **Reconfigure** and untick
+  *Show diagnosis findings as Home Assistant notifications*. If you only change this switch, the
+  heater does not need to be reachable.
+- The events below are not affected: if you send yourself push notifications with your own
+  automation, it keeps working. If that automation also creates a persistent notification, remove
+  that step to avoid seeing each finding twice.
+
 ### Automations
 
 Get a push notification as soon as the heater needs attention:

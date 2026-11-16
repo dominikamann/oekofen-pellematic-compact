@@ -552,7 +552,33 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
             host = user_input[CONF_HOST]
             charset = user_input.get(CONF_CHARSET, DEFAULT_CHARSET)
     
-            if not charset_valid(charset):
+            # Only the notification switch changed: save without asking the
+            # heater, so it can be toggled while the heater does not answer.
+            connection_keys = {
+                CONF_HOST: DEFAULT_HOST,
+                CONF_SCAN_INTERVAL: DEFAULT_SCAN_INTERVAL,
+                CONF_CHARSET: DEFAULT_CHARSET,
+                CONF_OLD_FIRMWARE: DEFAULT_OLD_FIRMWARE,
+            }
+            current_notifications = current_config.get(CONF_NOTIFICATIONS, DEFAULT_NOTIFICATIONS)
+            only_notifications_changed = (
+                CONF_NOTIFICATIONS in user_input
+                and user_input[CONF_NOTIFICATIONS] != current_notifications
+                and all(
+                    str(user_input.get(key, current_config.get(key, default))).strip().rstrip("?")
+                    == str(current_config.get(key, default)).strip().rstrip("?")
+                    for key, default in connection_keys.items()
+                )
+            )
+
+            if only_notifications_changed:
+                self.hass.config_entries.async_update_entry(
+                    config_entry,
+                    data={**current_config, CONF_NOTIFICATIONS: user_input[CONF_NOTIFICATIONS]},
+                )
+                await self.hass.config_entries.async_reload(config_entry.entry_id)
+                return self.async_abort(reason="reconfiguration_successful")
+            elif not charset_valid(charset):
                 errors[CONF_CHARSET] = "invalid_charset"
             elif not host_valid(host):
                 errors[CONF_HOST] = "invalid_host_ip"
@@ -674,6 +700,7 @@ class OekofenPellematicCompactConfigFlow(config_entries.ConfigFlow, domain=DOMAI
                 vol.Optional(CONF_SCAN_INTERVAL, default=current_config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
                 vol.Optional(CONF_CHARSET, default=current_config.get(CONF_CHARSET, DEFAULT_CHARSET)): str,
                 vol.Optional(CONF_OLD_FIRMWARE, default=current_config.get(CONF_OLD_FIRMWARE, DEFAULT_OLD_FIRMWARE)): bool,
+                vol.Optional(CONF_NOTIFICATIONS, default=current_config.get(CONF_NOTIFICATIONS, DEFAULT_NOTIFICATIONS)): bool,
             }
         )
 
