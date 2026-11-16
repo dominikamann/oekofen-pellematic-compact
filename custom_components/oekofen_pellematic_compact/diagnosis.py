@@ -209,6 +209,49 @@ MESSAGES = {
     },
 }
 
+# Titles of the persistent notifications, one short label per finding code.
+NOTIFICATION_TITLES = {
+    "en": {
+        FAULT: "Fault",
+        BOILER_MESSAGE: "Boiler message",
+        CLEANING_SOON: "Cleaning due soon",
+        CLEANING_DUE: "Cleaning due",
+        MAINTENANCE_DUE: "Maintenance due",
+        IGNITION_FAILURES: "Ignition problems",
+        IGNITION_SLOW: "Slow ignition",
+        SHORT_CYCLING: "Short cycling",
+        FLOW_TEMPERATURE_LOW: "Flow temperature too low",
+        OUTSIDE_SENSOR_SUN: "Outside sensor in the sun",
+        HEAT_PUMP_SHORT_CYCLING: "Heat pump short cycling",
+    },
+    "de": {
+        FAULT: "Störung",
+        BOILER_MESSAGE: "Kesselmeldung",
+        CLEANING_SOON: "Reinigung bald fällig",
+        CLEANING_DUE: "Reinigung fällig",
+        MAINTENANCE_DUE: "Wartung fällig",
+        IGNITION_FAILURES: "Zündprobleme",
+        IGNITION_SLOW: "Langsame Zündung",
+        SHORT_CYCLING: "Kessel taktet",
+        FLOW_TEMPERATURE_LOW: "Vorlauf zu niedrig",
+        OUTSIDE_SENSOR_SUN: "Außenfühler in der Sonne",
+        HEAT_PUMP_SHORT_CYCLING: "Wärmepumpe taktet",
+    },
+    "fr": {
+        FAULT: "Défaut",
+        BOILER_MESSAGE: "Message de la chaudière",
+        CLEANING_SOON: "Nettoyage bientôt nécessaire",
+        CLEANING_DUE: "Nettoyage nécessaire",
+        MAINTENANCE_DUE: "Entretien nécessaire",
+        IGNITION_FAILURES: "Problèmes d'allumage",
+        IGNITION_SLOW: "Allumage lent",
+        SHORT_CYCLING: "Cycles courts",
+        FLOW_TEMPERATURE_LOW: "Température de départ trop basse",
+        OUTSIDE_SENSOR_SUN: "Sonde extérieure au soleil",
+        HEAT_PUMP_SHORT_CYCLING: "Cycles courts de la pompe à chaleur",
+    },
+}
+
 _MESSAGE_RE = re.compile(
     r"^\s*(?P<time>\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})\s*\|(?P<text>.*?)(?:\[(?P<code>\d+)\])?\s*$",
     re.DOTALL,
@@ -966,15 +1009,33 @@ class Diagnosis:
         return changes
 
 
+def notification_for(change: dict, hub_name: str, language: str) -> Optional[tuple[str, str, str]]:
+    """(notification_id, title, message) for a finding that appeared, else None.
+
+    The id is fixed per component and code, so a finding that clears and comes
+    back replaces its notification instead of stacking a second one.
+    """
+    if not change.get("active"):
+        return None
+    titles = NOTIFICATION_TITLES.get(language, NOTIFICATION_TITLES["en"])
+    hub = re.sub(r"[^a-z0-9]+", "_", hub_name.lower()).strip("_")
+    return (
+        f"{DOMAIN}_{hub}_{change['component']}_{change['code']}",
+        f"{hub_name}: {titles.get(change['code'], change['code'])}",
+        change["message"],
+    )
+
+
 class DiagnosisMonitor:
     """Feeds hub updates into `Diagnosis`, persists it and fires events."""
 
-    def __init__(self, hass, hub, entry_id: str, hub_name: str) -> None:
+    def __init__(self, hass, hub, entry_id: str, hub_name: str, notify: bool = True) -> None:
         from homeassistant.helpers.storage import Store
 
         self._hass = hass
         self._hub = hub
         self._hub_name = hub_name
+        self._notify = notify
         self._store = Store(hass, STORAGE_VERSION, f"{DOMAIN}.diagnosis.{entry_id}")
         self.diagnosis = Diagnosis(language=hass.config.language)
         self._last_save = 0.0
@@ -1004,6 +1065,7 @@ class DiagnosisMonitor:
         self._store.async_delay_save(self.diagnosis.as_dict, 1)
 
     def _handle_update(self) -> None:
+        from homeassistant.components import persistent_notification
         from homeassistant.util import dt as dt_util
 
         now = dt_util.utcnow()
@@ -1015,6 +1077,12 @@ class DiagnosisMonitor:
             self._hass.bus.async_fire(EVENT_MESSAGE, {"hub": self._hub_name, **entry})
         for change in changes:
             self._hass.bus.async_fire(EVENT_FINDING, {"hub": self._hub_name, **change})
+            notification = self._notify and notification_for(
+                change, self._hub_name, self.diagnosis.language
+            )
+            if notification:
+                notification_id, title, message = notification
+                persistent_notification.async_create(self._hass, message, title, notification_id)
         if messages or changes or time.monotonic() - self._last_save >= SAVE_INTERVAL_SECONDS:
             self._save_soon()
 

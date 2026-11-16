@@ -25,7 +25,9 @@ from .const import (
     CONF_API_SUFFIX,
     DEFAULT_API_SUFFIX,
     CONF_OLD_FIRMWARE,
+    CONF_NOTIFICATIONS,
     DEFAULT_OLD_FIRMWARE,
+    DEFAULT_NOTIFICATIONS,
     DEFAULT_HOST,
     DOMAIN,
     DEFAULT_NAME,
@@ -585,7 +587,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     from .diagnosis import DiagnosisMonitor
 
-    diagnosis = DiagnosisMonitor(hass, hub, entry.entry_id, name)
+    diagnosis = DiagnosisMonitor(
+        hass, hub, entry.entry_id, name,
+        notify=entry.data.get(CONF_NOTIFICATIONS, DEFAULT_NOTIFICATIONS),
+    )
     await diagnosis.async_start()
     hass.data[DOMAIN][name]["diagnosis"] = diagnosis
 
