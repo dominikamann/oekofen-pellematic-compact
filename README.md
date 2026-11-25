@@ -116,6 +116,9 @@ Checks whose values your firmware does not send are skipped silently.
 | `sensor.<name>_pe1_full_load_hours_since_maintenance` | Counts towards the next maintenance |
 | `button.<name>_pe1_maintenance_done` | **Press it after a cleaning or service.** Resets the maintenance counter and clears a cleaning warning right away |
 | `sensor.<name>_wp1_compressor_starts_per_day` / `_compressor_runtime_per_cycle` | Heat pump cycling (experimental) |
+| `sensor.<name>_hk1_heating_curve_slope` | Slope of the heating curve as the controller applies it, read back from the set points (experimental). Attributes: `status`, `offset`, `flow_at_0`, `flow_at_minus_10`, `scatter`, `heating_hours`, `outdoor_min` / `outdoor_max`, and `configured_slope` where the firmware reports it |
+| `sensor.<name>_hk1_circuit_type` | `mixed` or `unmixed`; no value while that is not clear yet (experimental) |
+| `sensor.<name>_hk1_flow_surplus` | How far the flow temperature sits above its set point on average while heating, in K (experimental) |
 
 All numeric sensors keep long-term statistics, so you can follow the trend over years.
 
@@ -217,6 +220,27 @@ content: >
   says `history` or `learned`). In spring and autumn, when the boiler rarely runs at full load,
   that can take a few weeks; the other checks do not wait for it. Afterwards the value follows
   seasonal drift slowly, a cleaner boiler faster, and never a fouling one.
+- **Heating curve (experimental):** per heating circuit the diagnosis reads back the curve your
+  controller applies: `flow set = room set + offset + slope × (room set − outdoor)`. The slope
+  matches the "heating curve" value on the controller (verified on one installation: 1.00 against
+  a configured 1.0). These are figures only - there is no finding and no recommendation yet; judging
+  whether a curve suits the house needs room data, which is planned as a next step
+  ([discussion #202](https://github.com/dominikamann/oekofen-pellematic-compact/discussions/202)).
+  - The value appears once there are 24 hours of heating over at least 6 K of outdoor
+    temperatures. If the last 90 days of long-term statistics hold that much, it is there right
+    after the update; otherwise it takes some days to weeks of heating. Until then `status` says
+    `learning`.
+  - `status: undeterminable` means the set points do not follow one straight line, typically
+    because the curve is cut off at the minimum or maximum flow temperature, or because room
+    influence moves the set point. A curve that is cut off only in the very coldest hours can
+    still read a few percent too flat.
+  - After you change the curve on the controller, the value moves to the new one over a few
+    weeks of heating.
+  - **Circuit type:** a circuit without a mixing valve simply gets the buffer temperature, so a
+    flow surplus of several K is normal there. A mixed circuit holds the flow near its set point.
+    The type is taken from the configuration where the firmware reports it, otherwise learned
+    from what the flow does while the buffer is clearly hotter than requested.
+  - Not available on firmware that sends values without metadata (v3.10d and older).
 - **First hours:** burner runtime per start is shown right away from the boiler's own counters,
   starts per day after 12 hours. Short cycling is only judged after two days of data.
 - **Maintenance counter:** counting starts when you install this version. Press

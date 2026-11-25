@@ -76,6 +76,19 @@
       },
       "compressor_runtime_per_cycle": {
         "name": "Pompe à chaleur {number} durée par cycle compresseur"
+      },
+      "heating_curve_slope": {
+        "name": "Circuit de chauffage {number} pente de la courbe de chauffe (estimée)"
+      },
+      "circuit_type": {
+        "name": "Circuit de chauffage {number} type de circuit",
+        "state": {
+          "mixed": "Avec vanne mélangeuse",
+          "unmixed": "Direct"
+        }
+      },
+      "flow_surplus": {
+        "name": "Circuit de chauffage {number} excédent de température de départ"
       }
     },
     "binary_sensor": {

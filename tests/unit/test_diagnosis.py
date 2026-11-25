@@ -409,6 +409,34 @@ def test_flow_temperature_low_only_after_hours():
     assert circuit.findings() == []
 
 
+@pytest.mark.parametrize("pump", [1, "1", "true", True, {"val": "true"}, {"val": True}, {"val": "1"}])
+def test_flow_temperature_low_understands_every_pump_shape(pump):
+    """Some firmware reports the pump as "true" instead of 1."""
+    circuit = CircuitHealth()
+    for now in (0, 4 * 3600):
+        circuit.update(dict(_hk(30, 45), L_pump=pump), now)
+    assert circuit.findings()[0]["value"] == 15
+
+
+@pytest.mark.parametrize("pump", [0, "0", "false", False, {"val": "false"}, {"val": 0}, None])
+def test_flow_temperature_low_needs_a_running_pump(pump):
+    circuit = CircuitHealth()
+    hk = dict(_hk(30, 45), L_pump=pump)
+    if pump is None:
+        del hk["L_pump"]  # without a pump state there is no telling whether heat is being drawn
+    for now in (0, 4 * 3600):
+        circuit.update(hk, now)
+    assert circuit.findings() == []
+
+
+def test_flow_temperature_low_needs_scalable_values():
+    """Old firmware sends tenths of a degree without a factor: 0.6 K must not read as 6 K."""
+    circuit = CircuitHealth()
+    for now in (0, 4 * 3600):
+        circuit.update({"L_flowtemp_act": 262, "L_flowtemp_set": "268", "L_pump": "true"}, now)
+    assert circuit.findings() == []
+
+
 def test_outside_sensor_in_the_sun():
     ambient = AmbientHealth()
     for day in range(3):

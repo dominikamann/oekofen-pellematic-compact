@@ -19,6 +19,19 @@ events. Reference values:
   once a year (operating manual).
 * Heat pump (experimental): 90 % of the Fraunhofer field test stayed below ~15
   compressor starts a day; runs shorter than ~6-10 min cost efficiency (BWP).
+* Heating curve (experimental, figures only, no finding): the controller sets
+  `flow set = room set + offset + slope * (room set - outdoor)`, so slope and
+  offset can be read back from the set points alone. One installation over a
+  heating season: slope 0.998 and offset 10.04 K against "Heizkurve 1.0" on the
+  controller. Below a room set of 15 °C the set point leaves the curve (-6 to
+  +17 K). A curve cut off at the flow limits fits a straight line with little
+  scatter but different slopes in the lower and upper half of the weather
+  (0.99 / 0.33 when cut at 50 °C), which is what the half-slope check catches.
+  A curve cut off in the coldest weeks only shows as scatter (0.36 K when cut
+  at 58 °C, slope already 5 % low) while an intact one stays below 0.2 K.
+  A circuit without a mixer simply gets the source temperature: with the buffer
+  8 K or more above the set point the flow sat 9.7 K above it on average and
+  never below 3.4 K over any 48 such hours; a mixer holds it near the set point.
 
 `*Health` classes and `MessageLog` are plain Python (no Home Assistant imports)
 so they can be unit-tested; `DiagnosisMonitor` wires them to the hub, a `Store`
@@ -109,6 +122,23 @@ FLOW_DEFICIT_K = 5
 FLOW_DEFICIT_SECONDS = 4 * 3600
 FLOW_MIN_SET = 20
 
+# Heating curve (experimental): read back from the set points, per circuit
+CURVE_MIN_ROOM_SET = 15  # below, the set point follows frost protection, not the curve
+CURVE_BIN_K = 2  # width of a class of (room set - outdoor)
+CURVE_TAU_SECONDS = 14 * DAY  # counted in heating time, so summer does not erase it
+CURVE_MIN_SECONDS = 24 * 3600
+CURVE_MIN_BIN_SECONDS = 3600
+CURVE_MIN_BINS = 4
+CURVE_MIN_SPREAD_K = 6
+CURVE_MAX_SCATTER_K = 0.3  # the set points are computed, not measured: a real curve fits almost exactly
+CURVE_MAX_HALF_SLOPE_DIFF = 0.15  # lower vs. upper half: a curve cut off at a flow limit
+CURVE_MIN_SLOPE = 0.1
+CURVE_HISTORY_DAYS = 90
+# Mixed or not: what the flow does while the source is clearly hotter than asked for
+SOURCE_HOT_K = 8
+MIXED_MAX_SURPLUS_K = 2
+UNMIXED_MIN_SURPLUS_K = 5
+
 # Outside sensor in the sun
 AMBIENT_MAX_PLAUSIBLE = 45
 AMBIENT_MAX_RISE_PER_HOUR = 6
@@ -163,6 +193,15 @@ FLOW_TEMPERATURE_LOW = "flow_temperature_low"
 OUTSIDE_SENSOR_SUN = "outside_sensor_sun"
 HEAT_PUMP_SHORT_CYCLING = "heat_pump_short_cycling"
 NO_MESSAGES = "no_messages"  # text of the last-message sensor before the first one
+
+CURVE_LEARNING = "learning"
+CURVE_DETERMINED = "determined"
+CURVE_UNDETERMINABLE = "undeterminable"
+CIRCUIT_MIXED = "mixed"
+CIRCUIT_UNMIXED = "unmixed"
+CIRCUIT_UNKNOWN = "unknown"
+# "unknown" is not offered as a sensor state: Home Assistant already has one of that name.
+CIRCUIT_TYPES = [CIRCUIT_MIXED, CIRCUIT_UNMIXED]
 
 MESSAGES = {
     "en": {
@@ -272,6 +311,31 @@ def _number(raw: Any) -> Optional[float]:
         return value * float(factor) if factor is not None else value
     except (TypeError, ValueError):
         return value
+
+
+def _has_metadata(raw: Any) -> bool:
+    """Modern firmware: the value comes with its `factor`, so it can be scaled."""
+    return isinstance(raw, dict) and "val" in raw
+
+
+def _is_on(raw: Any) -> Optional[bool]:
+    """A switch state of the API: 0/1 or "true"/"false", bare or as `val`. None if absent."""
+    value = raw.get("val") if isinstance(raw, dict) else raw
+    if value is None:
+        return None
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in ("true", "on"):
+            return True
+        if text in ("false", "off", ""):
+            return False
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number <= -32766 or number >= 32765:
+        return None  # int16 "not available" markers
+    return number != 0
 
 
 def decode_state(raw: Any) -> set[int]:
@@ -736,9 +800,11 @@ class CircuitHealth:
 
     def update(self, hk: dict, now: float) -> None:
         self._now = now
-        actual = _number(hk.get("L_flowtemp_act"))
-        target = _number(hk.get("L_flowtemp_set"))
-        pump = _number(hk.get("L_pump"))
+        # Firmware without metadata sends tenths of a degree: 5 K would be 0.5 K there.
+        scalable = _has_metadata(hk.get("L_flowtemp_act")) and _has_metadata(hk.get("L_flowtemp_set"))
+        actual = _number(hk.get("L_flowtemp_act")) if scalable else None
+        target = _number(hk.get("L_flowtemp_set")) if scalable else None
+        pump = _is_on(hk.get("L_pump"))  # 1 or "true", depending on the firmware
         if (
             actual is not None
             and target is not None
@@ -757,6 +823,275 @@ class CircuitHealth:
         if self.below_since is not None and self._now - self.below_since >= FLOW_DEFICIT_SECONDS:
             return [_finding(FLOW_TEMPERATURE_LOW, STATUS_WARNING, self.deficit)]
         return []
+
+
+def has_curve_inputs(hk: Any, system: Any) -> bool:
+    """Whether a circuit delivers what the curve analysis needs, in scalable form.
+
+    Firmware without metadata sends unscaled values in mixed scales (flow set
+    371 next to a heat pump flow of 12.2), so it is left out altogether.
+    """
+    if not isinstance(hk, dict) or not isinstance(system, dict):
+        return False
+    return _has_metadata(system.get("L_ambient")) and all(
+        _has_metadata(hk.get(key)) for key in ("L_flowtemp_set", "L_flowtemp_act", "L_roomtemp_set")
+    )
+
+
+def source_temperature(data: dict) -> Optional[float]:
+    """Temperature available to the heating circuits, on the safe (cool) side.
+
+    The API does not say which source feeds which circuit. With buffers the
+    circuits draw from a buffer, and the boiler charging it is hotter than what
+    reaches them - so only buffers count, and of several the coolest: if even
+    that one is hot, the real source is too. Without a buffer the generators
+    feed the circuits directly.
+    """
+
+    def readings(prefix: str, key: str) -> tuple[bool, list[float]]:
+        present, values = False, []
+        for name, component in data.items():
+            if not isinstance(component, dict) or not re.fullmatch(rf"{prefix}\d+", name):
+                continue
+            present = True
+            if _has_metadata(component.get(key)):
+                value = _number(component[key])
+                if value is not None:
+                    values.append(value)
+        return present, values
+
+    has_buffer, buffers = readings("pu", "L_tpo_act")
+    if has_buffer:
+        return min(buffers) if buffers else None
+    generators = readings("pe", "L_temp_act")[1] + readings("wp", "L_temp_flow_is")[1]
+    return min(generators) if generators else None
+
+
+def _line(points: list[tuple[float, float, float]]) -> tuple[float, float]:
+    """Weighted least-squares line through (weight, x, y): (slope, offset)."""
+    total = sum(w for w, _, _ in points)
+    mean_x = sum(w * x for w, x, _ in points) / total
+    mean_y = sum(w * y for w, _, y in points) / total
+    spread = sum(w * (x - mean_x) ** 2 for w, x, _ in points)
+    if spread <= 0:
+        return 0.0, mean_y
+    slope = sum(w * (x - mean_x) * (y - mean_y) for w, x, y in points) / spread
+    return slope, mean_y - slope * mean_x
+
+
+class CurveHealth:
+    """Heating circuit (`hk1`, ...): the heating curve in effect, mixed or not, flow surplus.
+
+    Experimental and figures only. With x = room set - outdoor and
+    y = flow set - room set the controller's curve is the line
+    y = offset + slope * x; the samples are collected in classes of x and fade
+    with the heating time, so a changed curve takes over within weeks.
+    """
+
+    def __init__(self, stored: Optional[dict] = None) -> None:
+        stored = stored or {}
+        # class of x -> [seconds, sum of x, sum of y, sum of outdoor], all time-weighted
+        self._bins: dict[int, list[float]] = {int(k): list(v) for k, v in stored.get("bins", {}).items()}
+        self._surplus: list[float] = list(stored.get("surplus", [0.0, 0.0]))  # seconds, sum
+        self._hot: list[float] = list(stored.get("hot", [0.0, 0.0]))  # seconds, sum of surplus
+        self._room_set: Optional[float] = stored.get("room_set")
+        self._mixer_config: Optional[bool] = stored.get("mixer_config")
+        self.configured_slope: Optional[float] = stored.get("configured_slope")
+        self.history_checked: bool = stored.get("history_checked", False)
+        self._last: Optional[float] = None
+        self._fit_cache: Optional[tuple] = None
+
+    def as_dict(self) -> dict:
+        return {
+            "bins": {str(k): [round(v, 3) for v in values] for k, values in self._bins.items()},
+            "surplus": [round(v, 3) for v in self._surplus],
+            "hot": [round(v, 3) for v in self._hot],
+            "room_set": self._room_set,
+            "mixer_config": self._mixer_config,
+            "configured_slope": self.configured_slope,
+            "history_checked": self.history_checked,
+        }
+
+    def update(self, hk: dict, ambient: Optional[float], source: Optional[float], now: float) -> None:
+        seconds = 0.0 if self._last is None else min(max(now - self._last, 0.0), MAX_SAMPLE_SECONDS)
+        self._last = now
+        self._mixer_config = _is_on(hk.get("L_cfg_mixer"))
+        self.configured_slope = _number(hk.get("L_cfg_curve_slope"))
+        self.add_sample(
+            seconds,
+            ambient,
+            _number(hk.get("L_roomtemp_set")),
+            _number(hk.get("L_flowtemp_set")),
+            _number(hk.get("L_flowtemp_act")),
+            source,
+            hk.get("L_pump"),
+        )
+
+    def add_sample(
+        self,
+        seconds: float,
+        ambient: Optional[float],
+        room_set: Optional[float],
+        flow_set: Optional[float],
+        flow_act: Optional[float],
+        source: Optional[float],
+        pump: Any = None,
+    ) -> bool:
+        """Count `seconds` of operation at these values; False if the circuit is not heating."""
+        if ambient is None or room_set is None or flow_set is None or flow_act is None:
+            return False
+        if _is_on(pump) is False:  # an absent pump state leaves it to the set points
+            return False
+        if flow_set < FLOW_MIN_SET or flow_set <= room_set or room_set < CURVE_MIN_ROOM_SET:
+            return False
+        self._room_set = room_set
+        if seconds <= 0:
+            return True
+        self._fit_cache = None
+        keep = math.exp(-seconds / CURVE_TAU_SECONDS)
+        for values in self._bins.values():
+            for index in range(len(values)):
+                values[index] *= keep
+        x, y = room_set - ambient, flow_set - room_set
+        entry = self._bins.setdefault(math.floor(x / CURVE_BIN_K), [0.0, 0.0, 0.0, 0.0])
+        for index, value in enumerate((1.0, x, y, ambient)):
+            entry[index] += seconds * value
+        surplus = flow_act - flow_set
+        self._surplus = [self._surplus[0] * keep + seconds, self._surplus[1] * keep + seconds * surplus]
+        if source is not None and source >= flow_set + SOURCE_HOT_K:
+            self._hot = [self._hot[0] * keep + seconds, self._hot[1] * keep + seconds * surplus]
+        return True
+
+    # --- heating curve
+
+    def _fit(self) -> tuple[str, Optional[float], Optional[float], Optional[float]]:
+        """(status, slope, offset, scatter) from the classes that hold enough time."""
+        if self._fit_cache is not None:
+            return self._fit_cache
+        points = sorted(
+            (values[1] / values[0], values[0], values[2] / values[0])
+            for values in self._bins.values()
+            if values[0] >= CURVE_MIN_BIN_SECONDS
+        )
+        points = [(w, x, y) for x, w, y in points]
+        result: tuple = (CURVE_LEARNING, None, None, None)
+        if (
+            self._surplus[0] >= CURVE_MIN_SECONDS
+            and len(points) >= CURVE_MIN_BINS
+            and points[-1][1] - points[0][1] >= CURVE_MIN_SPREAD_K
+        ):
+            slope, offset = _line(points)
+            total = sum(w for w, _, _ in points)
+            scatter = math.sqrt(sum(w * (y - offset - slope * x) ** 2 for w, x, y in points) / total)
+            middle = len(points) // 2
+            lower, upper = _line(points[: middle + 1])[0], _line(points[middle:])[0]
+            if (
+                scatter > CURVE_MAX_SCATTER_K
+                or abs(lower - upper) > CURVE_MAX_HALF_SLOPE_DIFF
+                or slope < CURVE_MIN_SLOPE
+            ):
+                result = (CURVE_UNDETERMINABLE, None, None, None)
+            else:
+                result = (CURVE_DETERMINED, slope, offset, scatter)
+        self._fit_cache = result
+        return result
+
+    @property
+    def curve_status(self) -> str:
+        return self._fit()[0]
+
+    @property
+    def slope(self) -> Optional[float]:
+        return self._fit()[1]
+
+    @property
+    def offset(self) -> Optional[float]:
+        return self._fit()[2]
+
+    @property
+    def scatter(self) -> Optional[float]:
+        return self._fit()[3]
+
+    @property
+    def heating_hours(self) -> float:
+        """Heating time the figures rest on (fading, so at most ~14 days' worth)."""
+        return self._surplus[0] / 3600
+
+    @property
+    def outdoor_range(self) -> Optional[tuple[float, float]]:
+        outdoor = [v[3] / v[0] for v in self._bins.values() if v[0] >= CURVE_MIN_BIN_SECONDS]
+        return (min(outdoor), max(outdoor)) if outdoor else None
+
+    def flow_at(self, outdoor: float) -> Optional[float]:
+        """Flow set point of the curve at this outdoor temperature, for the current room set."""
+        _, slope, offset, _ = self._fit()
+        if slope is None or self._room_set is None:
+            return None
+        return self._room_set + offset + slope * (self._room_set - outdoor)
+
+    # --- mixed or not, flow surplus
+
+    @property
+    def hot_source_hours(self) -> float:
+        return self._hot[0] / 3600
+
+    @property
+    def surplus_with_hot_source(self) -> Optional[float]:
+        return self._hot[1] / self._hot[0] if self._hot[0] > 0 else None
+
+    @property
+    def circuit_type_source(self) -> Optional[str]:
+        if self._mixer_config is not None:
+            return "config"
+        return "learned" if self.circuit_type != CIRCUIT_UNKNOWN else None
+
+    @property
+    def circuit_type(self) -> str:
+        if self._mixer_config is not None:
+            return CIRCUIT_MIXED if self._mixer_config else CIRCUIT_UNMIXED
+        if self._hot[0] < CURVE_MIN_SECONDS:
+            return CIRCUIT_UNKNOWN
+        surplus = self._hot[1] / self._hot[0]
+        if abs(surplus) <= MIXED_MAX_SURPLUS_K:  # far below is a fault or a stopped pump, not a mixer
+            return CIRCUIT_MIXED
+        if surplus >= UNMIXED_MIN_SURPLUS_K:
+            return CIRCUIT_UNMIXED
+        return CIRCUIT_UNKNOWN
+
+    @property
+    def flow_surplus(self) -> Optional[float]:
+        """Mean of flow actual - set while heating."""
+        if self._surplus[0] < CURVE_MIN_SECONDS:
+            return None
+        return self._surplus[1] / self._surplus[0]
+
+
+def seed_curve_from_history(curve: CurveHealth, rows: dict[str, list[tuple[float, float]]]) -> int:
+    """Feed hourly means (`ambient`, `room_set`, `flow_set`, `flow_act`, optional `source`).
+
+    Each list holds (hour start in seconds, mean). An hour only counts between
+    two neighbours with the same room set: the mean over a set-point change is
+    not a point of the curve. Returns the hours that counted as heating.
+    """
+    series = {key: dict(values) for key, values in rows.items()}
+    room_sets = series.get("room_set", {})
+    used = 0
+    for start in sorted(series.get("flow_set", {})):
+        room_set = room_sets.get(start)
+        before, after = room_sets.get(start - 3600), room_sets.get(start + 3600)
+        if room_set is None or before is None or after is None:
+            continue
+        if abs(before - room_set) > 0.05 or abs(after - room_set) > 0.05:
+            continue
+        used += curve.add_sample(
+            3600.0,
+            series.get("ambient", {}).get(start),
+            room_set,
+            series["flow_set"][start],
+            series.get("flow_act", {}).get(start),
+            series.get("source", {}).get(start),
+        )
+    return used
 
 
 class AmbientHealth:
@@ -941,6 +1276,7 @@ class Diagnosis:
         self.heat_pumps = {n: HeatPumpHealth(d) for n, d in stored.get("heat_pumps", {}).items()}
         self.ambient = AmbientHealth(stored.get("ambient"))
         self.circuits: dict[str, CircuitHealth] = {}
+        self.curves = {n: CurveHealth(d) for n, d in stored.get("curves", {}).items()}
         self.has_ambient = False
         self._state_texts: dict[str, str] = {}
         self._announced: set[str] = set(stored.get("announced", []))
@@ -951,6 +1287,7 @@ class Diagnosis:
             "heaters": {n: h.as_dict() for n, h in self.heaters.items()},
             "heat_pumps": {n: h.as_dict() for n, h in self.heat_pumps.items()},
             "ambient": self.ambient.as_dict(),
+            "curves": {n: c.as_dict() for n, c in self.curves.items()},
             "announced": sorted(self._announced),
         }
 
@@ -960,8 +1297,14 @@ class Diagnosis:
     def heat_pump(self, name: str) -> HeatPumpHealth:
         return self.heat_pumps.setdefault(name, HeatPumpHealth())
 
+    def curve(self, name: str) -> CurveHealth:
+        return self.curves.setdefault(name, CurveHealth())
+
     def update(self, data: dict, now: float, now_iso: str) -> tuple[list[dict], list[dict]]:
         """Feed one API response; return (new messages, finding changes)."""
+        system = data.get("system")
+        ambient = _number(system.get("L_ambient")) if isinstance(system, dict) else None
+        source = source_temperature(data)
         for name, values in data.items():
             if not isinstance(values, dict):
                 continue
@@ -970,6 +1313,8 @@ class Diagnosis:
                 self._state_texts[name] = " ".join(str(get_api_value(values.get("L_statetext")) or "").split())
             elif re.fullmatch(r"hk\d+", name):
                 self.circuits.setdefault(name, CircuitHealth()).update(values, now)
+                if has_curve_inputs(values, system):
+                    self.curve(name).update(values, ambient, source, now)
             elif re.fullmatch(r"wp\d+", name):
                 self.heat_pump(name).update(values, now)
             elif name == "system":
@@ -1063,6 +1408,8 @@ class DiagnosisMonitor:
         self.diagnosis = Diagnosis(language=hass.config.language)
         self._last_save = 0.0
         self._history_task = None
+        self._curve_history_task = None
+        self._history_ready = False  # set once the entities exist (async_load_history)
 
     async def async_start(self) -> None:
         stored = await self._store.async_load()
@@ -1073,8 +1420,9 @@ class DiagnosisMonitor:
 
     async def async_stop(self) -> None:
         self._hub.async_remove_pellematic_sensor(self._handle_update)
-        if self._history_task and not self._history_task.done():
-            self._history_task.cancel()
+        for task in (self._history_task, self._curve_history_task):
+            if task and not task.done():
+                task.cancel()
         await self._store.async_save(self.diagnosis.as_dict())
 
     def maintenance_done(self, heater: str) -> None:
@@ -1113,13 +1461,114 @@ class DiagnosisMonitor:
                 persistent_notification.async_create(self._hass, message, title, notification_id)
         if messages or changes or time.monotonic() - self._last_save >= SAVE_INTERVAL_SECONDS:
             self._save_soon()
+        self._seed_curves_if_needed()
+
+    def _seed_curves_if_needed(self) -> None:
+        """Start the curve seeding for circuits that showed up after setup (boiler was unreachable)."""
+        if not self._history_ready or (self._curve_history_task and not self._curve_history_task.done()):
+            return
+        if any(not curve.history_checked for curve in self.diagnosis.curves.values()):
+            self._curve_history_task = self._hass.async_create_background_task(
+                self._async_seed_curves_from_history(), f"{DOMAIN} diagnosis curve history"
+            )
 
 
     def async_load_history(self) -> None:
-        """Seed the flue-gas baseline from the recorder once the entities exist."""
+        """Seed the flue-gas baseline and the heating curves from the recorder once the entities exist."""
         self._history_task = self._hass.async_create_background_task(
             self._async_seed_from_history(), f"{DOMAIN} diagnosis history"
         )
+        self._history_ready = True
+        self._seed_curves_if_needed()
+
+    async def _async_seed_curves_from_history(self) -> None:
+        """Give each heating circuit its curve at once, from the hourly statistics.
+
+        Once per circuit: after this the curve lives on what the hub delivers,
+        and replaying the same weeks again would count them twice.
+        """
+        curves = {name: curve for name, curve in self.diagnosis.curves.items() if not curve.history_checked}
+        if not curves:
+            return
+        try:
+            await self._async_read_curve_history(curves)
+        except Exception:  # noqa: BLE001 - history is a bonus, live learning still works
+            _LOGGER.debug("Ökofen %s: no heating-curve history available", self._hub_name, exc_info=True)
+        # Not reached when the task is cancelled (unload, restart): the next start tries again.
+        for curve in curves.values():
+            curve.history_checked = True
+        self._save_soon()
+        self._hub.async_notify_listeners()
+
+    async def _async_read_curve_history(self, curves: dict) -> None:
+        if "recorder" not in self._hass.config.components:
+            return
+        from datetime import timedelta
+
+        from homeassistant.components.recorder import get_instance
+        from homeassistant.components.recorder.statistics import statistics_during_period
+        from homeassistant.helpers import entity_registry as er
+        from homeassistant.util import dt as dt_util
+
+        registry = er.async_get(self._hass)
+        prefix = self._hub_name.lower()
+        data = self._hub.data or {}
+
+        def entity_id(component: str, key: str) -> Optional[str]:
+            return registry.async_get_entity_id("sensor", DOMAIN, f"{prefix}_{component}_{key}")
+
+        def components(kind: str) -> list[str]:
+            return [n for n, v in data.items() if isinstance(v, dict) and re.fullmatch(rf"{kind}\d+", n)]
+
+        # Same choice as source_temperature(): buffers if there are any.
+        if components("pu"):
+            source_ids = [entity_id(name, "L_tpo_act") for name in components("pu")]
+        else:
+            source_ids = [entity_id(name, "L_temp_act") for name in components("pe")]
+            source_ids += [entity_id(name, "L_temp_flow_is") for name in components("wp")]
+        sources_known = all(source_ids)
+        ambient_id = entity_id("system", "L_ambient")
+
+        recorder = get_instance(self._hass)
+        await recorder.async_db_ready
+        now = dt_util.utcnow()
+        for name, curve in curves.items():
+            ids = {
+                "ambient": ambient_id,
+                "room_set": entity_id(name, "L_roomtemp_set"),
+                "flow_set": entity_id(name, "L_flowtemp_set"),
+                "flow_act": entity_id(name, "L_flowtemp_act"),
+            }
+            if not all(ids.values()):
+                continue
+            wanted = set(ids.values()) | ({i for i in source_ids} if sources_known else set())
+            stats = await recorder.async_add_executor_job(
+                statistics_during_period, self._hass, now - timedelta(days=CURVE_HISTORY_DAYS),
+                now, wanted, "hour", None, {"mean"},
+            )
+
+            def rows(statistic_id: str) -> list[tuple[float, float]]:
+                return [
+                    (row["start"], row["mean"])
+                    for row in stats.get(statistic_id, [])
+                    if row.get("mean") is not None
+                ]
+
+            history = {key: rows(statistic_id) for key, statistic_id in ids.items()}
+            if sources_known and source_ids:
+                # The coolest source of each hour, and only hours every source reported.
+                per_source = [dict(rows(statistic_id)) for statistic_id in source_ids]
+                history["source"] = [
+                    (start, min(series[start] for series in per_source))
+                    for start in per_source[0]
+                    if all(start in series for series in per_source)
+                ]
+            hours = seed_curve_from_history(curve, history)
+            if hours:
+                _LOGGER.info(
+                    "Ökofen %s %s: heating curve seeded from %d hours of history",
+                    self._hub_name, name, hours,
+                )
 
     async def _async_seed_from_history(self) -> None:
         """Take the flue-gas baseline from the recorder's long-term statistics."""

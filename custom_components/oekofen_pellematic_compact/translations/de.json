@@ -76,6 +76,19 @@
       },
       "compressor_runtime_per_cycle": {
         "name": "Wärmepumpe {number} Verdichterlaufzeit pro Takt"
+      },
+      "heating_curve_slope": {
+        "name": "Heizkreis {number} Heizkurve Steigung (ermittelt)"
+      },
+      "circuit_type": {
+        "name": "Heizkreis {number} Kreisart",
+        "state": {
+          "mixed": "Gemischt",
+          "unmixed": "Ungemischt"
+        }
+      },
+      "flow_surplus": {
+        "name": "Heizkreis {number} Vorlaufüberschuss"
       }
     },
     "binary_sensor": {

@@ -76,6 +76,19 @@
       },
       "compressor_runtime_per_cycle": {
         "name": "Heat pump {number} compressor runtime per cycle"
+      },
+      "heating_curve_slope": {
+        "name": "Heating circuit {number} heating curve slope (estimated)"
+      },
+      "circuit_type": {
+        "name": "Heating circuit {number} circuit type",
+        "state": {
+          "mixed": "Mixed",
+          "unmixed": "Unmixed"
+        }
+      },
+      "flow_surplus": {
+        "name": "Heating circuit {number} flow surplus"
       }
     },
     "binary_sensor": {

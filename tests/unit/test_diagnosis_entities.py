@@ -202,3 +202,69 @@ async def test_baseline_from_recorder_history(recorder_mock, hass, enable_custom
     assert float(index.state) == pytest.approx(146.3, abs=0.1)
     assert hass.states.get("sensor.pellematic_diagnosis").state == "cleaning_due"
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_heating_curve_sensors(hass, enable_custom_integrations):
+    entry = await _setup(hass, load_fixture("api_response_ext_zx.json"))
+    ids = _entity_ids(hass, entry)
+    for circuit in ("hk1", "hk2"):
+        for kind in ("heating_curve_slope", "circuit_type", "flow_surplus"):
+            assert f"sensor.pellematic_{circuit}_{kind}" in ids
+
+    slope = hass.states.get("sensor.pellematic_hk1_heating_curve_slope")
+    assert slope.state == "unknown"  # nothing is shown before it is determined
+    assert slope.attributes["status"] == "learning"
+    assert slope.attributes["experimental"] is True
+    assert slope.attributes["friendly_name"] == "Pellematic Heating circuit 1 heating curve slope (estimated)"
+    circuit_type = hass.states.get("sensor.pellematic_hk1_circuit_type")
+    assert circuit_type.state == "unknown"
+    assert circuit_type.attributes["options"] == ["mixed", "unmixed"]
+    assert "configured_slope" not in slope.attributes  # this firmware does not report it
+    assert hass.states.get("sensor.pellematic_hk1_flow_surplus").state == "unknown"
+
+    # With a determined curve the figures appear.
+    from tests.unit.test_diagnosis_curve import WINTER, _feed
+
+    monitor = hass.data[DOMAIN]["Pellematic"]["diagnosis"]
+    _feed(monitor.diagnosis.curve("hk1"), WINTER, surplus=6.0, source_above=10.0)
+    await _poll(hass, load_fixture("api_response_ext_zx.json"))
+    slope = hass.states.get("sensor.pellematic_hk1_heating_curve_slope")
+    assert float(slope.state) == pytest.approx(1.0, abs=0.01)
+    assert slope.attributes["status"] == "determined"
+    assert slope.attributes["offset"] == pytest.approx(10.0, abs=0.1)
+    assert slope.attributes["flow_at_0"] is not None
+    assert hass.states.get("sensor.pellematic_hk1_circuit_type").state == "unmixed"
+    assert float(hass.states.get("sensor.pellematic_hk1_flow_surplus").state) == pytest.approx(6.0, abs=0.2)
+    assert hass.states.get("sensor.pellematic_diagnosis").state in ("ok", "learning", "warning")
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+    # What was learned is stored and comes back.
+    with patch(FETCH, return_value=load_fixture("api_response_ext_zx.json")):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+    assert hass.states.get("sensor.pellematic_hk1_circuit_type").state == "unmixed"
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_no_heating_curve_sensors_without_metadata(hass, enable_custom_integrations):
+    """Firmware that sends bare values cannot be scaled reliably."""
+    data = copy.deepcopy(load_fixture("api_response_ext_zx.json"))
+    data["hk1"]["L_flowtemp_set"] = 470  # hk1 as old firmware sends it
+    entry = await _setup(hass, data)
+    ids = _entity_ids(hass, entry)
+    assert not any(i.startswith("sensor.pellematic_hk1_") and "curve" in i for i in ids)
+    assert "sensor.pellematic_hk1_circuit_type" not in ids and "sensor.pellematic_hk1_flow_surplus" not in ids
+    assert "sensor.pellematic_hk2_heating_curve_slope" in ids
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+def test_heating_curve_translations_exist_in_every_language():
+    import json
+    from pathlib import Path
+
+    folder = Path(__file__).parents[2] / "custom_components" / "oekofen_pellematic_compact" / "translations"
+    for path in folder.glob("*.json"):
+        sensors = json.loads(path.read_text(encoding="utf-8"))["entity"]["sensor"]
+        for kind in ("heating_curve_slope", "circuit_type", "flow_surplus"):
+            assert "{number}" in sensors[kind]["name"], (path.name, kind)
+        assert set(sensors["circuit_type"]["state"]) == {"mixed", "unmixed"}, path.name
