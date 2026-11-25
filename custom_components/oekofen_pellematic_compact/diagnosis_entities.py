@@ -9,6 +9,7 @@ entity IDs are set explicitly and stay language-independent:
     sensor.<hub>_pe1_flue_gas_index, _ignition_time, _burner_starts_per_day,
            _burner_runtime_per_start, _full_load_hours_since_maintenance
     sensor.<hub>_wp1_compressor_starts_per_day, _compressor_runtime_per_cycle
+    sensor.<hub>_hk1_heating_curve_slope, _circuit_type, _flow_surplus
     button.<hub>_pe1_maintenance_done
 """
 
@@ -20,14 +21,16 @@ from typing import Any, Callable, Optional
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.components.button import ButtonEntity
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTemperature, UnitOfTime
 from homeassistant.util import slugify
 
 from .diagnosis import (
+    CIRCUIT_TYPES,
     MESSAGES,
     NO_MESSAGES,
     STATUS_OPTIONS,
     DiagnosisMonitor,
+    has_curve_inputs,
     is_problem,
     utc_iso,
 )
@@ -124,6 +127,7 @@ class DiagnosisValueSensor(_DiagnosisEntity, SensorEntity):
         icon: Optional[str] = None,
         state_class: Optional[str] = SensorStateClass.MEASUREMENT,
         device_class: Optional[str] = None,
+        options: Optional[list[str]] = None,
     ) -> None:
         super().__init__("sensor", hub_name, hub, device_info, monitor, component, kind)
         self._value = value
@@ -133,6 +137,10 @@ class DiagnosisValueSensor(_DiagnosisEntity, SensorEntity):
         self._attr_state_class = state_class
         if device_class:
             self._attr_device_class = device_class
+        if options:
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = options
+            self._attr_state_class = None
 
     @property
     def native_value(self):
@@ -160,6 +168,17 @@ class MaintenanceDoneButton(_DiagnosisEntity, ButtonEntity):
     async def async_press(self) -> None:
         self._monitor.maintenance_done(self._component)
         self._hub.async_notify_listeners()
+
+
+def _rounded(value: Optional[float], digits: int) -> Optional[float]:
+    return None if value is None else round(value, digits)
+
+
+def _without_none(key: str, attributes: dict) -> dict:
+    """Leave out an attribute that only some firmware delivers."""
+    if attributes.get(key) is None:
+        attributes.pop(key, None)
+    return attributes
 
 
 def _components(data: dict, prefix: str) -> list[tuple[str, dict]]:
@@ -264,6 +283,46 @@ def create_diagnosis_sensors(hub_name, hub, device_info, monitor: DiagnosisMonit
                 unit=UnitOfTime.MINUTES, icon="mdi:timer-outline",
                 device_class=SensorDeviceClass.DURATION,
             ))
+    for name, hk in _components(data, "hk"):
+        if not has_curve_inputs(hk, data.get("system")):
+            continue
+        monitor.diagnosis.curve(name)
+        curve = lambda d, n=name: d.curve(n)  # noqa: E731
+        entities.append(DiagnosisValueSensor(
+            *args, name, "heating_curve_slope",
+            value=lambda d, c=curve: _rounded(c(d).slope, 2),
+            attributes=lambda d, c=curve: _without_none("configured_slope", {
+                "experimental": True,
+                "status": c(d).curve_status,
+                "offset": _rounded(c(d).offset, 1),
+                "flow_at_0": _rounded(c(d).flow_at(0), 1),
+                "flow_at_minus_10": _rounded(c(d).flow_at(-10), 1),
+                "scatter": _rounded(c(d).scatter, 2),
+                "heating_hours": round(c(d).heating_hours),
+                "outdoor_min": _rounded((c(d).outdoor_range or (None, None))[0], 1),
+                "outdoor_max": _rounded((c(d).outdoor_range or (None, None))[1], 1),
+                "configured_slope": c(d).configured_slope,
+            }),
+            icon="mdi:chart-line",
+        ))
+        entities.append(DiagnosisValueSensor(
+            *args, name, "circuit_type",
+            # "unknown" is Home Assistant's own state for "no value yet"
+            value=lambda d, c=curve: c(d).circuit_type if c(d).circuit_type in CIRCUIT_TYPES else None,
+            attributes=lambda d, c=curve: {
+                "experimental": True,
+                "source": c(d).circuit_type_source,
+                "hot_source_hours": round(c(d).hot_source_hours),
+                "surplus_with_hot_source": _rounded(c(d).surplus_with_hot_source, 1),
+            },
+            icon="mdi:valve", options=CIRCUIT_TYPES,
+        ))
+        entities.append(DiagnosisValueSensor(
+            *args, name, "flow_surplus",
+            value=lambda d, c=curve: _rounded(c(d).flow_surplus, 1),
+            attributes=lambda d: {"experimental": True},
+            unit=UnitOfTemperature.KELVIN, icon="mdi:thermometer-chevron-up",
+        ))
     return entities
 
 
