@@ -183,3 +183,39 @@ async def test_circuits_that_appear_after_setup_are_seeded_too(
         async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=61))  # let the setup retry finish
         await hass.async_block_till_done(wait_background_tasks=True)
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_seeding_reads_the_room_temperature_too(recorder_mock, hass, hass_storage, enable_custom_integrations):
+    """A circuit with a room sensor: controller at slope 1.2, room influence 5."""
+    from pytest_homeassistant_custom_component.components.recorder.common import async_wait_recording_done
+
+    data = _data()
+    entry = await _setup(hass, data)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    hass_storage[f"{DOMAIN}.diagnosis.{entry.entry_id}"]["data"].pop("curves")
+
+    registry = er.async_get(hass)
+    deviations = [[-0.6, 0.8, -0.4, 0.5, 0.1, -0.2, 0.3][i % 7] for i in range(len(OUTDOOR))]
+    series = {
+        ("system", "L_ambient"): OUTDOOR,
+        ("hk1", "L_roomtemp_set"): [21.0] * len(OUTDOOR),
+        ("hk1", "L_roomtemp_act"): [21.0 - d for d in deviations],
+        ("hk1", "L_flowtemp_set"): [21 + 3 + 1.2 * (21 - a) + 5 * d for a, d in zip(OUTDOOR, deviations)],
+    }
+    series[("hk1", "L_flowtemp_act")] = series[("hk1", "L_flowtemp_set")]
+    for (component, key), values in series.items():
+        await _import(hass, registry.async_get_entity_id("sensor", DOMAIN, f"pellematic_{component}_{key}"), values)
+    await async_wait_recording_done(hass)
+
+    with patch(FETCH, return_value=data):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done(wait_background_tasks=True)
+    curve = _monitor(hass).diagnosis.curves["hk1"]
+    assert curve.curve_status == "determined"
+    assert curve.slope == pytest.approx(1.2, abs=0.03)
+    assert curve.room_influence == pytest.approx(5.0, abs=0.3)
+    state = hass.states.get("sensor.pellematic_hk1_heating_curve_slope")
+    assert state.attributes["room_influence"] == pytest.approx(5.0, abs=0.3)
+    assert await hass.config_entries.async_unload(entry.entry_id)

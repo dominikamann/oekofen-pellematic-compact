@@ -220,6 +220,7 @@ async def test_heating_curve_sensors(hass, enable_custom_integrations):
     assert circuit_type.state == "unknown"
     assert circuit_type.attributes["options"] == ["mixed", "unmixed"]
     assert "configured_slope" not in slope.attributes  # this firmware does not report it
+    assert "room_influence" not in slope.attributes  # and nothing is known about the room yet
     assert hass.states.get("sensor.pellematic_hk1_flow_surplus").state == "unknown"
 
     # With a determined curve the figures appear.
@@ -233,6 +234,15 @@ async def test_heating_curve_sensors(hass, enable_custom_integrations):
     assert slope.attributes["status"] == "determined"
     assert slope.attributes["offset"] == pytest.approx(10.0, abs=0.1)
     assert slope.attributes["flow_at_0"] is not None
+
+    # A circuit with a room sensor also shows what the room does to the set point.
+    from tests.unit.test_diagnosis_curve import _feed_with_room
+
+    _feed_with_room(monitor.diagnosis.curve("hk2"))
+    await _poll(hass, load_fixture("api_response_ext_zx.json"))
+    with_room = hass.states.get("sensor.pellematic_hk2_heating_curve_slope")
+    assert float(with_room.state) == pytest.approx(1.2, abs=0.02)
+    assert with_room.attributes["room_influence"] == pytest.approx(5.0, abs=0.2)
     assert hass.states.get("sensor.pellematic_hk1_circuit_type").state == "unmixed"
     assert float(hass.states.get("sensor.pellematic_hk1_flow_surplus").state) == pytest.approx(6.0, abs=0.2)
     assert hass.states.get("sensor.pellematic_diagnosis").state in ("ok", "learning", "warning")

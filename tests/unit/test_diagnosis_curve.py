@@ -34,10 +34,10 @@ def _flow_set(ambient, room_set, slope=1.0, offset=10.0, flow_max=None, flow_min
 
 def _feed(curve, ambients, hours_each=6, room_set=21.0, surplus=0.0, source_above=None, pump=True, **shape):
     """Hourly samples for each outdoor temperature; the flow sits `surplus` above its set point."""
-    for ambient in ambients:
-        flow_set = _flow_set(ambient, room_set, **shape)
-        source = None if source_above is None else flow_set + source_above
-        for _ in range(hours_each):
+    for _ in range(hours_each):  # the weather comes mixed, not one temperature after the other
+        for ambient in ambients:
+            flow_set = _flow_set(ambient, room_set, **shape)
+            source = None if source_above is None else flow_set + source_above
             curve.add_sample(HOUR, ambient, room_set, flow_set, flow_set + surplus, source, pump)
 
 
@@ -130,12 +130,45 @@ def test_every_pump_shape_of_the_api_counts(pump):
 
 
 def test_a_changed_curve_takes_over():
+    """Changed on the controller: start over rather than show a blend of old and new."""
     curve = CurveHealth()
     _feed(curve, WINTER, hours_each=30)
-    for _ in range(7):  # six weeks of heating with a steeper curve
-        _feed(curve, WINTER, hours_each=12, slope=1.4)
+    _feed(curve, [0], hours_each=12, slope=1.4)  # half a day on the new curve
+    assert curve.curve_status == CURVE_LEARNING
+    assert curve.slope is None
+    _feed(curve, WINTER, hours_each=4, slope=1.4)
     assert curve.curve_status == CURVE_DETERMINED
-    assert curve.slope == pytest.approx(1.4, abs=0.05)
+    assert curve.slope == pytest.approx(1.4, abs=0.02)
+
+
+@pytest.mark.parametrize(("off", "hours"), [(10, 2), (7, 3), (5, 5)])
+def test_a_few_stray_hours_neither_restart_nor_disturb_the_learning(off, hours):
+    """A boost or a manual override for an evening."""
+    curve = CurveHealth()
+    _feed(curve, WINTER, hours_each=30)
+    learned = curve.heating_hours
+    for _ in range(hours):
+        curve.add_sample(HOUR, 0.0, 21.0, 52.0 + off, 52.0 + off, None, True)
+    assert curve.heating_hours == pytest.approx(learned, rel=0.02)  # still there, and not added to
+    assert curve.curve_status == CURVE_DETERMINED
+    assert curve.slope == pytest.approx(1.0, abs=0.01)
+    assert curve.scatter < 0.1
+
+
+def test_a_restart_keeps_what_is_known_about_the_circuit_and_learns_from_scratch():
+    curve = CurveHealth()
+    _feed(curve, WINTER, hours_each=30, surplus=9.0, source_above=10.0)
+    assert curve.circuit_type == "unmixed"
+    _feed(curve, [0], hours_each=7, slope=1.4, surplus=9.0, source_above=10.0)  # the curve was changed
+    assert curve.curve_status == CURVE_LEARNING
+    assert curve.heating_hours < 7  # only what came after the change was noticed
+    assert curve.circuit_type == "unmixed"
+    assert curve.flow_surplus == pytest.approx(9.0, abs=0.1)
+    _feed(curve, WINTER[:4], hours_each=2, slope=1.4)  # enough classes, but far from a day of heating
+    assert curve.curve_status == CURVE_LEARNING
+    _feed(curve, WINTER, hours_each=2, slope=1.4)
+    assert curve.curve_status == CURVE_DETERMINED
+    assert curve.slope == pytest.approx(1.4, abs=0.02)
 
 
 def test_update_reads_the_api_shape_and_weights_by_time():
@@ -396,3 +429,213 @@ def test_hours_next_to_a_gap_or_a_set_point_change_are_skipped():
     gap = [0, HOUR, 2 * HOUR, 5 * HOUR, 6 * HOUR, 7 * HOUR]
     assert seed_curve_from_history(CurveHealth(), rows([21] * 6, gap)) == 2
     assert seed_curve_from_history(CurveHealth(), {"ambient": [], "room_set": [], "flow_set": [], "flow_act": []}) == 0
+
+
+# --- room influence (installations with an Ökofen room sensor) ---------------
+
+
+def _feed_with_room(curve, slope=1.2, offset=3.0, influence=5.0, room_set=21.0, deviations=None, hours_each=4):
+    """The controller raises the flow set by `influence` K per K the room is below its set point."""
+    deviations = deviations or [-0.6, -0.2, 0.1, 0.4, 0.8, 0.3, -0.4, 0.0, 0.5, -0.1, 0.2, -0.3]
+    for index, ambient in enumerate(WINTER):
+        for hour in range(hours_each):
+            deviation = deviations[(index + 3 * hour) % len(deviations)]  # room set - room actual
+            flow_set = room_set + offset + slope * (room_set - ambient) + influence * deviation
+            curve.add_sample(HOUR, ambient, room_set, flow_set, flow_set, None, True, room_set - deviation)
+
+
+def test_room_influence_is_separated_from_the_curve():
+    """Reference: an installation set to slope 1.2 and room influence 5."""
+    curve = CurveHealth()
+    _feed_with_room(curve)
+    assert curve.curve_status == CURVE_DETERMINED
+    assert curve.slope == pytest.approx(1.2, abs=0.02)
+    assert curve.offset == pytest.approx(3.0, abs=0.3)
+    assert curve.room_influence == pytest.approx(5.0, abs=0.2)
+    # The curve itself, i.e. with the room exactly at its set point:
+    assert curve.flow_at(0) == pytest.approx(21 + 3 + 1.2 * 21, abs=0.5)
+
+
+def test_readings_scattered_by_something_the_model_lacks_are_not_reported():
+    """Room influence without a room reading: the class means still fit, the single readings do not."""
+    curve = CurveHealth()
+    for index, ambient in enumerate(WINTER):
+        for hour in range(4):
+            deviation = [-0.6, 0.8, -0.4, 0.5][(index + hour) % 4]
+            flow_set = 21 + 3 + 1.2 * (21 - ambient) + 5 * deviation
+            curve.add_sample(HOUR, ambient, 21.0, flow_set, flow_set, None, True)  # no room reading
+    assert curve.curve_status == CURVE_UNDETERMINABLE
+    assert curve.room_influence is None
+
+
+def test_no_room_influence_is_reported_as_zero_when_a_sensor_exists():
+    curve = CurveHealth()
+    _feed_with_room(curve, slope=1.0, offset=10.0, influence=0.0)
+    assert curve.slope == pytest.approx(1.0, abs=0.01)
+    assert curve.room_influence == pytest.approx(0.0, abs=0.05)
+
+
+def test_room_influence_needs_a_room_that_actually_deviates():
+    steady = CurveHealth()
+    _feed_with_room(steady, slope=1.0, offset=10.0, influence=5.0, deviations=[0.0])
+    assert steady.curve_status == CURVE_DETERMINED
+    assert steady.slope == pytest.approx(1.0, abs=0.01)
+    assert steady.room_influence is None  # nothing to tell it from
+
+
+def test_a_room_reading_of_zero_means_no_sensor():
+    curve = CurveHealth()
+    for ambient in WINTER:
+        for _ in range(6):
+            flow_set = _flow_set(ambient, 21.0)
+            curve.add_sample(HOUR, ambient, 21.0, flow_set, flow_set, None, True, 0.0)
+    assert curve.slope == pytest.approx(1.0, abs=0.01)
+    assert curve.room_influence is None
+
+
+def test_room_deviation_that_only_follows_the_weather_cannot_be_separated():
+    """Colder outside, cooler inside, perfectly in step: slope and influence are one number then."""
+    curve = CurveHealth()
+    for ambient in WINTER:
+        deviation = (14 - ambient) * 0.04
+        flow_set = 21 + 10 + (21 - ambient) + 5 * deviation
+        for _ in range(6):
+            curve.add_sample(HOUR, ambient, 21.0, flow_set, flow_set, None, True, 21.0 - deviation)
+    # Fitting the weather alone would give slope 1.2 for a controller set to 1.0.
+    assert curve.curve_status == CURVE_UNDETERMINABLE
+    assert curve.slope is None and curve.room_influence is None
+
+
+def test_room_that_mostly_follows_the_weather_is_still_separated_with_enough_readings():
+    import random
+
+    rng = random.Random(7)
+    curve = CurveHealth()
+    for _ in range(10):
+        for ambient in WINTER:
+            deviation = (14 - ambient) * 0.05 + rng.gauss(0, 0.1)
+            flow_set = 21 + 3 + 1.2 * (21 - ambient) + 5 * deviation
+            curve.add_sample(HOUR, ambient, 21.0, flow_set, flow_set, None, True, 21.0 - deviation)
+    assert curve.curve_status == CURVE_DETERMINED
+    assert curve.slope == pytest.approx(1.2, abs=0.05)
+    assert curve.room_influence == pytest.approx(5.0, abs=0.5)
+
+
+def test_a_known_influence_is_kept_while_the_room_sits_still():
+    curve = CurveHealth()
+    _feed_with_room(curve, hours_each=8)
+    assert curve.room_influence == pytest.approx(5.0, abs=0.2)
+    # Weeks with the room steadily 0.3 K below its set point: nothing to separate any more.
+    _feed_with_room(curve, deviations=[0.3], hours_each=60)
+    assert curve.curve_status == CURVE_DETERMINED
+    assert curve.slope == pytest.approx(1.2, abs=0.03)
+    assert curve.offset == pytest.approx(3.0, abs=0.3)  # not shifted by 5 x 0.3
+    assert curve.room_influence == pytest.approx(5.0, abs=0.3)
+    assert CurveHealth(curve.as_dict()).offset == pytest.approx(curve.offset, abs=0.05)
+
+
+def test_a_configured_room_influence_is_used_as_it_is():
+    def hk(ambient, deviation, configured):
+        flow_set = 21 + 3 + 1.2 * (21 - ambient) + 5 * deviation
+        return {
+            "L_flowtemp_set": {"val": round(flow_set * 10), "factor": 0.1},
+            "L_flowtemp_act": {"val": round(flow_set * 10), "factor": 0.1},
+            "L_roomtemp_set": {"val": 210, "factor": 0.1},
+            "L_roomtemp_act": {"val": round((21 - deviation) * 10), "factor": 0.1},
+            "L_cfg_room_influence": {"val": configured, "factor": 1, "min": 0, "max": 10},
+        }
+
+    curve, now = CurveHealth(), 0.0
+    for _ in range(30):
+        for ambient in WINTER:  # the room follows the weather exactly: not separable from readings
+            for _ in range(12):
+                now += 300
+                curve.update(hk(ambient, (14 - ambient) * 0.04, 5), ambient, None, now)
+    assert curve.curve_status == CURVE_DETERMINED
+    assert curve.slope == pytest.approx(1.2, abs=0.02)
+    assert curve.room_influence == 5
+
+    off = CurveHealth()
+    off.update(hk(0, 0.0, -1), 0.0, None, 0.0)  # -1: no room influence configured
+    assert off._influence_config is None
+
+
+def test_update_reads_the_room_temperature():
+    curve = CurveHealth()
+    hk = {
+        "L_flowtemp_set": {"val": 520, "factor": 0.1},
+        "L_flowtemp_act": {"val": 520, "factor": 0.1},
+        "L_roomtemp_set": {"val": 210, "factor": 0.1},
+        "L_roomtemp_act": {"val": 205, "factor": 0.1},
+        "L_pump": {"val": 1},
+    }
+    curve.update(hk, 0.0, None, 0.0)
+    curve.update(hk, 0.0, None, 300.0)
+    (values,) = curve.as_dict()["bins"].values()
+    assert values[0] == pytest.approx(300.0)
+    assert values[4] == pytest.approx(300.0 * 0.5)  # time-weighted sum of room set - room
+
+
+def _stored_by_v4_6_0():
+    old = CurveHealth()
+    _feed(old, WINTER, surplus=6.0, source_above=10.0)
+    old.history_checked = True
+    stored = old.as_dict()
+    stored["bins"] = {key: values[:4] for key, values in stored["bins"].items()}  # sums only
+    del stored["influence"]
+    return stored
+
+
+def _hk_reading(room):
+    return {
+        "L_flowtemp_set": {"val": 520, "factor": 0.1},
+        "L_flowtemp_act": {"val": 580, "factor": 0.1},
+        "L_roomtemp_set": {"val": 210, "factor": 0.1},
+        "L_roomtemp_act": {"val": room, "factor": 0.1},
+        "L_pump": {"val": 1},
+    }
+
+
+def test_state_stored_by_v4_6_0_continues_without_a_room_sensor():
+    restored = CurveHealth(_stored_by_v4_6_0())
+    assert restored.slope == pytest.approx(1.0, abs=0.01)
+    restored.update(_hk_reading(0), 0.0, 62.0, 0.0)
+    restored.update(_hk_reading(0), 0.0, 62.0, 300.0)
+    assert restored.history_checked is True
+    assert restored.curve_status == CURVE_DETERMINED
+    assert restored.slope == pytest.approx(1.0, abs=0.01)
+    assert restored.circuit_type == "unmixed"
+
+
+def test_state_stored_by_v4_6_0_starts_over_where_a_room_sensor_moves_the_set_point():
+    """It was learned without the room term; the history is read again, with the room."""
+    restored = CurveHealth(_stored_by_v4_6_0())
+    restored.update(_hk_reading(205), 0.0, 62.0, 0.0)
+    assert restored.history_checked is False
+    assert restored.curve_status == CURVE_LEARNING
+    assert restored.circuit_type == "unmixed"  # what is known about the circuit stays
+    restored.history_checked = True
+    again = CurveHealth(restored.as_dict())
+    again.update(_hk_reading(205), 0.0, 62.0, 0.0)
+    assert again.history_checked is True  # only once
+
+
+def test_room_influence_survives_a_restart_and_seeding_takes_the_room_series():
+    curve = CurveHealth()
+    _feed_with_room(curve)
+    assert CurveHealth(curve.as_dict()).room_influence == pytest.approx(curve.room_influence)
+
+    starts = [i * HOUR for i in range(len(WINTER) * 6)]
+    ambients = [a for a in WINTER for _ in range(6)]
+    deviations = [[-0.6, 0.8, -0.4, 0.5, 0.1, -0.2][i % 6] for i in range(len(starts))]
+    rows = {
+        "ambient": list(zip(starts, ambients)),
+        "room_set": [(t, 21.0) for t in starts],
+        "room_act": [(t, 21.0 - d) for t, d in zip(starts, deviations)],
+        "flow_set": [(t, 21 + 3 + 1.2 * (21 - a) + 5 * d) for t, a, d in zip(starts, ambients, deviations)],
+    }
+    rows["flow_act"] = rows["flow_set"]
+    seeded = CurveHealth()
+    seed_curve_from_history(seeded, rows)
+    assert seeded.slope == pytest.approx(1.2, abs=0.03)
+    assert seeded.room_influence == pytest.approx(5.0, abs=0.3)
