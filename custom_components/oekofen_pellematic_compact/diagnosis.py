@@ -29,6 +29,10 @@ events. Reference values:
   (0.99 / 0.33 when cut at 50 °C), which is what the half-slope check catches.
   A curve cut off in the coldest weeks only shows as scatter (0.36 K when cut
   at 58 °C, slope already 5 % low) while an intact one stays below 0.2 K.
+  With a room sensor the controller adds `influence * (room set - room)` to the
+  set point (an installation set to 5 K per K reported the slope as not
+  determinable without that term), so the deviation is fitted as a second
+  variable wherever the room reading exists.
   A circuit without a mixer simply gets the source temperature: with the buffer
   8 K or more above the set point the flow sat 9.7 K above it on average and
   never below 3.4 K over any 48 such hours; a mixer holds it near the set point.
@@ -133,6 +137,16 @@ CURVE_MIN_SPREAD_K = 6
 CURVE_MAX_SCATTER_K = 0.3  # the set points are computed, not measured: a real curve fits almost exactly
 CURVE_MAX_HALF_SLOPE_DIFF = 0.15  # lower vs. upper half: a curve cut off at a flow limit
 CURVE_MIN_SLOPE = 0.1
+CURVE_MAX_SAMPLE_SCATTER_K = 0.6  # single readings around the fit: an influence the model lacks
+# Room influence: K of flow set per K the room is below its set point
+ROOM_SENSOR_MIN = 1.0  # the controller reports 0 °C when no room sensor is connected
+ROOM_MIN_DEVIATION_K = 0.05  # below: the room sits still, there is nothing to separate
+ROOM_MAX_INFLUENCE_ERROR = 0.5  # standard error up to which the fitted influence is trusted
+# A curve changed on the controller: the readings leave the fit for good, so start over
+# instead of showing a blend of old and new for weeks.
+CURVE_DRIFT_TAU_SECONDS = 24 * 3600
+CURVE_DRIFT_K = 1.5
+CURVE_OUTLIER_K = 3.0  # a reading this far from the known curve is not learned from
 CURVE_HISTORY_DAYS = 90
 # Mixed or not: what the flow does while the source is clearly hotter than asked for
 SOURCE_HOT_K = 8
@@ -885,13 +899,19 @@ class CurveHealth:
     Experimental and figures only. With x = room set - outdoor and
     y = flow set - room set the controller's curve is the line
     y = offset + slope * x; the samples are collected in classes of x and fade
-    with the heating time, so a changed curve takes over within weeks.
+    with the heating time, so a changed curve takes over within weeks. Where a
+    room sensor exists, d = room set - room joins as y = ... + influence * d.
     """
+
+    # Per class of x, all time-weighted: seconds, sums of x, y, outdoor, d, and the
+    # second moments needed to fit and to judge the scatter of the single readings.
+    _W, _X, _Y, _OUT, _D, _XX, _XD, _DD, _XY, _DY, _YY = range(11)
 
     def __init__(self, stored: Optional[dict] = None) -> None:
         stored = stored or {}
-        # class of x -> [seconds, sum of x, sum of y, sum of outdoor], all time-weighted
-        self._bins: dict[int, list[float]] = {int(k): list(v) for k, v in stored.get("bins", {}).items()}
+        self._bins: dict[int, list[float]] = {
+            int(k): self._with_moments(list(v)) for k, v in stored.get("bins", {}).items()
+        }
         self._surplus: list[float] = list(stored.get("surplus", [0.0, 0.0]))  # seconds, sum
         self._hot: list[float] = list(stored.get("hot", [0.0, 0.0]))  # seconds, sum of surplus
         self._room_set: Optional[float] = stored.get("room_set")
@@ -900,6 +920,24 @@ class CurveHealth:
         self.history_checked: bool = stored.get("history_checked", False)
         self._last: Optional[float] = None
         self._fit_cache: Optional[tuple] = None
+        # Last influence the readings could separate: used while the room sits too still to tell.
+        self._influence_known: Optional[float] = stored.get("influence")
+        self._influence_config: Optional[float] = None
+        self._reference: Optional[tuple[float, float, float]] = None  # last determined slope, offset, influence
+        self._drift = 0.0  # recent mean distance of the readings from that reference
+        # State of v4.6.0 knows nothing about the room: see update().
+        self._legacy = any(len(values) < 11 for values in stored.get("bins", {}).values())
+
+    @classmethod
+    def _with_moments(cls, values: list[float]) -> list[float]:
+        """A class as v4.6.0 stored it (sums only): take its readings as all alike."""
+        if len(values) >= 11:
+            return values[:11]
+        w, x, y, outdoor = values[:4]
+        d = values[4] if len(values) > 4 else 0.0
+        if w <= 0:
+            return [0.0] * 11
+        return [w, x, y, outdoor, d, x * x / w, x * d / w, d * d / w, x * y / w, d * y / w, y * y / w]
 
     def as_dict(self) -> dict:
         return {
@@ -907,6 +945,7 @@ class CurveHealth:
             "surplus": [round(v, 3) for v in self._surplus],
             "hot": [round(v, 3) for v in self._hot],
             "room_set": self._room_set,
+            "influence": self._influence_known,
             "mixer_config": self._mixer_config,
             "configured_slope": self.configured_slope,
             "history_checked": self.history_checked,
@@ -917,6 +956,17 @@ class CurveHealth:
         self._last = now
         self._mixer_config = _is_on(hk.get("L_cfg_mixer"))
         self.configured_slope = _number(hk.get("L_cfg_curve_slope"))
+        configured = _number(hk.get("L_cfg_room_influence"))
+        self._influence_config = configured if configured is not None and configured >= 0 else None  # -1: off
+        room = _number(hk.get("L_roomtemp_act")) if _has_metadata(hk.get("L_roomtemp_act")) else None
+        if self._legacy:
+            self._legacy = False
+            if room is not None and room >= ROOM_SENSOR_MIN:
+                # Learned without the room term although the room moves the set point here:
+                # start over and let the history be read again, this time with the room.
+                self._bins.clear()
+                self._fit_cache = None
+                self.history_checked = False
         self.add_sample(
             seconds,
             ambient,
@@ -925,6 +975,7 @@ class CurveHealth:
             _number(hk.get("L_flowtemp_act")),
             source,
             hk.get("L_pump"),
+            room,
         )
 
     def add_sample(
@@ -936,8 +987,13 @@ class CurveHealth:
         flow_act: Optional[float],
         source: Optional[float],
         pump: Any = None,
+        room: Optional[float] = None,
+        live: bool = True,
     ) -> bool:
-        """Count `seconds` of operation at these values; False if the circuit is not heating."""
+        """Count `seconds` of operation at these values; False if the circuit is not heating.
+
+        `live` readings also watch for a curve that was changed on the controller.
+        """
         if ambient is None or room_set is None or flow_set is None or flow_act is None:
             return False
         if _is_on(pump) is False:  # an absent pump state leaves it to the set points
@@ -947,36 +1003,99 @@ class CurveHealth:
         self._room_set = room_set
         if seconds <= 0:
             return True
+        surplus = flow_act - flow_set
+        fade = math.exp(-seconds / CURVE_TAU_SECONDS)
+        self._surplus = [self._surplus[0] * fade + seconds, self._surplus[1] * fade + seconds * surplus]
+        if source is not None and source >= flow_set + SOURCE_HOT_K:
+            self._hot = [self._hot[0] * fade + seconds, self._hot[1] * fade + seconds * surplus]
+
+        x, y = room_set - ambient, flow_set - room_set
+        d = room_set - room if room is not None and room >= ROOM_SENSOR_MIN else 0.0
+        status, slope, offset, _, influence = self._fit()
+        if status == CURVE_DETERMINED:
+            self._reference = (slope, offset, influence or 0.0)
+        if live and self._reference is not None:
+            slope, offset, influence = self._reference
+            distance = abs(y - offset - slope * x - influence * d)
+            self._drift += (1 - math.exp(-seconds / CURVE_DRIFT_TAU_SECONDS)) * (distance - self._drift)
+            if self._drift > CURVE_DRIFT_K:
+                self._bins.clear()
+                self._fit_cache = None
+                self._reference = self._influence_known = None
+                self._drift = 0.0
+            elif distance > CURVE_OUTLIER_K:
+                return True  # a stray reading (boost, manual override): heating, but not the curve
         self._fit_cache = None
-        keep = math.exp(-seconds / CURVE_TAU_SECONDS)
         for values in self._bins.values():
             for index in range(len(values)):
-                values[index] *= keep
-        x, y = room_set - ambient, flow_set - room_set
-        entry = self._bins.setdefault(math.floor(x / CURVE_BIN_K), [0.0, 0.0, 0.0, 0.0])
-        for index, value in enumerate((1.0, x, y, ambient)):
+                values[index] *= fade
+        entry = self._bins.setdefault(math.floor(x / CURVE_BIN_K), [0.0] * 11)
+        for index, value in enumerate((1.0, x, y, ambient, d, x * x, x * d, d * d, x * y, d * y, y * y)):
             entry[index] += seconds * value
-        surplus = flow_act - flow_set
-        self._surplus = [self._surplus[0] * keep + seconds, self._surplus[1] * keep + seconds * surplus]
-        if source is not None and source >= flow_set + SOURCE_HOT_K:
-            self._hot = [self._hot[0] * keep + seconds, self._hot[1] * keep + seconds * surplus]
         return True
 
     # --- heating curve
 
-    def _fit(self) -> tuple[str, Optional[float], Optional[float], Optional[float]]:
-        """(status, slope, offset, scatter) from the classes that hold enough time."""
+    def _moments(self) -> list[float]:
+        return [sum(values[i] for values in self._bins.values()) for i in range(11)]
+
+    def _room_term(self) -> tuple[Optional[float], bool]:
+        """(influence to subtract, blocked).
+
+        Blocked: a room sensor moves the set point but its part cannot be told
+        from the weather's, so neither slope nor offset can be trusted.
+        """
+        if self._influence_config is not None:
+            return self._influence_config, False
+        m = self._moments()
+        w = m[self._W]
+        if w <= 0:
+            return self._influence_known, False
+        sxx = m[self._XX] - m[self._X] ** 2 / w
+        sdd = m[self._DD] - m[self._D] ** 2 / w
+        sxd = m[self._XD] - m[self._X] * m[self._D] / w
+        sxy = m[self._XY] - m[self._X] * m[self._Y] / w
+        sdy = m[self._DY] - m[self._D] * m[self._Y] / w
+        syy = m[self._YY] - m[self._Y] ** 2 / w
+        if sdd / w < ROOM_MIN_DEVIATION_K**2:
+            return self._influence_known, False  # no room sensor, or a room that sits still
+        determinant = sxx * sdd - sxd**2
+        if sxx > 0 and determinant > 1e-6 * sxx * sdd:
+            slope = (sxy * sdd - sdy * sxd) / determinant
+            influence = (sdy * sxx - sxy * sxd) / determinant
+            variance = max(syy - slope * sxy - influence * sdy, 0.0) / w
+            # Standard error of the influence, taking an hour of readings as one observation.
+            error = math.sqrt(variance * sxx / determinant / (w / 3600))
+            if error <= ROOM_MAX_INFLUENCE_ERROR:
+                self._influence_known = influence
+                return influence, False
+        return self._influence_known, self._influence_known is None
+
+    def _sample_scatter(self, slope: float, offset: float, influence: float) -> float:
+        """Standard deviation of the single readings around the fit."""
+        m = self._moments()
+        rss = (
+            m[self._YY] - 2 * offset * m[self._Y] - 2 * slope * m[self._XY] - 2 * influence * m[self._DY]
+            + offset**2 * m[self._W] + 2 * offset * slope * m[self._X] + 2 * offset * influence * m[self._D]
+            + slope**2 * m[self._XX] + 2 * slope * influence * m[self._XD] + influence**2 * m[self._DD]
+        )
+        return math.sqrt(max(rss, 0.0) / m[self._W])
+
+    def _fit(self) -> tuple[str, Optional[float], Optional[float], Optional[float], Optional[float]]:
+        """(status, slope, offset, scatter, room influence) from the classes that hold enough time."""
         if self._fit_cache is not None:
             return self._fit_cache
+        influence, blocked = self._room_term()
+        k = influence or 0.0
         points = sorted(
-            (values[1] / values[0], values[0], values[2] / values[0])
+            (values[1] / values[0], values[0], (values[2] - k * values[self._D]) / values[0])
             for values in self._bins.values()
             if values[0] >= CURVE_MIN_BIN_SECONDS
         )
         points = [(w, x, y) for x, w, y in points]
-        result: tuple = (CURVE_LEARNING, None, None, None)
+        result: tuple = (CURVE_LEARNING, None, None, None, None)
         if (
-            self._surplus[0] >= CURVE_MIN_SECONDS
+            sum(values[0] for values in self._bins.values()) >= CURVE_MIN_SECONDS
             and len(points) >= CURVE_MIN_BINS
             and points[-1][1] - points[0][1] >= CURVE_MIN_SPREAD_K
         ):
@@ -986,13 +1105,15 @@ class CurveHealth:
             middle = len(points) // 2
             lower, upper = _line(points[: middle + 1])[0], _line(points[middle:])[0]
             if (
-                scatter > CURVE_MAX_SCATTER_K
+                blocked
+                or scatter > CURVE_MAX_SCATTER_K
                 or abs(lower - upper) > CURVE_MAX_HALF_SLOPE_DIFF
                 or slope < CURVE_MIN_SLOPE
+                or self._sample_scatter(slope, offset, k) > CURVE_MAX_SAMPLE_SCATTER_K
             ):
-                result = (CURVE_UNDETERMINABLE, None, None, None)
+                result = (CURVE_UNDETERMINABLE, None, None, None, None)
             else:
-                result = (CURVE_DETERMINED, slope, offset, scatter)
+                result = (CURVE_DETERMINED, slope, offset, self._sample_scatter(slope, offset, k), influence)
         self._fit_cache = result
         return result
 
@@ -1013,9 +1134,14 @@ class CurveHealth:
         return self._fit()[3]
 
     @property
+    def room_influence(self) -> Optional[float]:
+        """K added to the flow set per K the room is below its set point; None if not separable."""
+        return self._fit()[4]
+
+    @property
     def heating_hours(self) -> float:
-        """Heating time the figures rest on (fading, so at most ~14 days' worth)."""
-        return self._surplus[0] / 3600
+        """Heating time the curve rests on (fading, so at most ~14 days' worth)."""
+        return sum(values[0] for values in self._bins.values()) / 3600
 
     @property
     def outdoor_range(self) -> Optional[tuple[float, float]]:
@@ -1023,8 +1149,11 @@ class CurveHealth:
         return (min(outdoor), max(outdoor)) if outdoor else None
 
     def flow_at(self, outdoor: float) -> Optional[float]:
-        """Flow set point of the curve at this outdoor temperature, for the current room set."""
-        _, slope, offset, _ = self._fit()
+        """Flow set point of the curve at this outdoor temperature, for the current room set.
+
+        The curve itself, i.e. with the room at its set point.
+        """
+        _, slope, offset, _, _ = self._fit()
         if slope is None or self._room_set is None:
             return None
         return self._room_set + offset + slope * (self._room_set - outdoor)
@@ -1067,7 +1196,7 @@ class CurveHealth:
 
 
 def seed_curve_from_history(curve: CurveHealth, rows: dict[str, list[tuple[float, float]]]) -> int:
-    """Feed hourly means (`ambient`, `room_set`, `flow_set`, `flow_act`, optional `source`).
+    """Feed hourly means (`ambient`, `room_set`, `flow_set`, `flow_act`, optional `source`, `room_act`).
 
     Each list holds (hour start in seconds, mean). An hour only counts between
     two neighbours with the same room set: the mean over a set-point change is
@@ -1090,6 +1219,9 @@ def seed_curve_from_history(curve: CurveHealth, rows: dict[str, list[tuple[float
             series["flow_set"][start],
             series.get("flow_act", {}).get(start),
             series.get("source", {}).get(start),
+            None,
+            series.get("room_act", {}).get(start),
+            live=False,  # history is one piece: no restart half way through
         )
     return used
 
@@ -1541,6 +1673,9 @@ class DiagnosisMonitor:
             }
             if not all(ids.values()):
                 continue
+            room_id = entity_id(name, "L_roomtemp_act")
+            if room_id:
+                ids["room_act"] = room_id
             wanted = set(ids.values()) | ({i for i in source_ids} if sources_known else set())
             stats = await recorder.async_add_executor_job(
                 statistics_during_period, self._hass, now - timedelta(days=CURVE_HISTORY_DAYS),

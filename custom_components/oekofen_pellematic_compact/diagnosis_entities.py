@@ -174,10 +174,11 @@ def _rounded(value: Optional[float], digits: int) -> Optional[float]:
     return None if value is None else round(value, digits)
 
 
-def _without_none(key: str, attributes: dict) -> dict:
-    """Leave out an attribute that only some firmware delivers."""
-    if attributes.get(key) is None:
-        attributes.pop(key, None)
+def _without_none(keys: tuple[str, ...], attributes: dict) -> dict:
+    """Leave out attributes that only some installations have."""
+    for key in keys:
+        if attributes.get(key) is None:
+            attributes.pop(key, None)
     return attributes
 
 
@@ -291,7 +292,7 @@ def create_diagnosis_sensors(hub_name, hub, device_info, monitor: DiagnosisMonit
         entities.append(DiagnosisValueSensor(
             *args, name, "heating_curve_slope",
             value=lambda d, c=curve: _rounded(c(d).slope, 2),
-            attributes=lambda d, c=curve: _without_none("configured_slope", {
+            attributes=lambda d, c=curve: _without_none(("configured_slope", "room_influence"), {
                 "experimental": True,
                 "status": c(d).curve_status,
                 "offset": _rounded(c(d).offset, 1),
@@ -302,6 +303,7 @@ def create_diagnosis_sensors(hub_name, hub, device_info, monitor: DiagnosisMonit
                 "outdoor_min": _rounded((c(d).outdoor_range or (None, None))[0], 1),
                 "outdoor_max": _rounded((c(d).outdoor_range or (None, None))[1], 1),
                 "configured_slope": c(d).configured_slope,
+                "room_influence": _rounded(c(d).room_influence, 1),
             }),
             icon="mdi:chart-line",
         ))
